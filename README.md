@@ -18,7 +18,7 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
   - Click the arrow icon at the bottom right to return to windowed mode
 - Use "Open With" context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` to stay up-to-date (download new zip, unzip, replace)
--⚠️ Avoid rapidly clicking the `Play Selected Video` button, as it may cause playback conflicts or unexpected behavior
+- ⚠️ Avoid rapidly clicking the `Play Selected Video` button, as it may cause playback conflicts or unexpected behavior
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
 
 - Retrieve your **personal YouTube playlists**
