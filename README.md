@@ -104,9 +104,11 @@ Commercial use is not permitted without the author’s explicit permission.
 
 ## Contribution
 
-Due to sensitive content encryption and API usage, PRs are currently not accepted.
-Feel free to fork and experiment locally.
+Due to sensitive encryption and API mechanisms, pull requests (PRs) are not accepted directly.
 
+If you have ideas, suggestions, or improvements, feel free to open an issue first to discuss proposed changes.
+
+Forking the project and experimenting locally is always welcome.
 ---
 
 ## Acknowledgements
