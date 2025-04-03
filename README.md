@@ -69,13 +69,16 @@ To access playlist, liked videos, and subscription features, you'll need to:
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project (or use an existing one)
 3. Enable **YouTube Data API v3** for that project
-4. Go to **OAuth consent screen**, set it up (choose "External" and fill in app info)
-5. Navigate to **Credentials**:
+4. Go to OAuth consent screen:
+   -Choose External
+   -Fill in application name, company, and description — these fields do not impact functionality for personal use
+   -Add your Google account email as a test user (important for free-tier access)
+6. Navigate to **Credentials**:
    - Click **Create Credentials > OAuth Client ID**
    - Application type: Desktop App
    - Download the generated `client_secrets.json`
-6. Place `client_secrets.json` inside the `_internal/` folder (filename must be exact)
-7. Get your **API key** from the same Credentials tab and paste it into the app via `Settings > Enter YouTube API`
+7. Place `client_secrets.json` inside the `_internal/` folder (filename must be exact)
+8. Get your **API key** from the same Credentials tab and paste it into the app via `Settings > Enter YouTube API`
 
 
 ---
