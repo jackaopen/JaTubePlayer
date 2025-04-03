@@ -67,21 +67,39 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
 
 ## How to Get Google API Key and Client Secrets
 
-To access playlist, liked videos, and subscription features, you'll need to:
+Follow this step-by-step guide to use advanced features (like accessing your playlists or subscriptions):
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project (or use an existing one)
-3. Enable **YouTube Data API v3** for that project
-4. Go to OAuth consent screen:
-   - Choose External
-   - Fill in application name, company, and description — these fields do not impact functionality for personal use
-   - Add your Google account email as a test user (important for free-tier access)
-6. Navigate to **Credentials**:
-   - Click **Create Credentials > OAuth Client ID**
-   - Application type: Desktop App
-   - Download the generated `client_secrets.json`
-7. Place `client_secrets.json` inside the `_internal/` folder (filename must be exact)
-8. Get your **API key** from the same Credentials tab and paste it into the app via `Settings > Enter YouTube API`
+1. Visit https://console.cloud.google.com/
+2. In the top bar, click the **Project dropdown** → **New Project** → enter any project name → click **Create**
+3. From the main dashboard, go to `API & Services > Library`
+4. Search for **YouTube Data API v3**, click it, and click **Enable**
+
+### Setup OAuth Consent:
+
+5. Go to `OAuth Consent Screen` on the left
+6. Choose **External** user type
+7. Fill in **App name**, **User support email**, and add your email in **Developer Contact Info**
+8. Click **Save and Continue** (Scopes can be left as default)
+9. In the **Test Users** section, add your Google account email (required for free-tier testing)
+
+### Setup Credentials:
+
+10. Go to `API & Services > Credentials`
+11. Click `+ Create Credentials > OAuth Client ID`
+12. Choose **Desktop App**, name it anything
+13. Click **Create** and download the `client_secrets.json`
+14. Rename the file **exactly** to `client_secrets.json` and place it inside the `_internal/` folder
+
+### Get API Key:
+
+15. In the same `Credentials` page, click `+ Create Credentials > API Key`
+16. Copy the API Key
+17. Open JaTubePlayer and go to `Settings > Enter YouTube API`, paste your key
+18. (Optional but recommended) In the same credentials list, click the 3-dot menu beside the key → `Edit API Key`
+    - Set Application Restrictions: None
+    - Set API Restrictions: Restrict to only `YouTube Data API v3`
+
+---
 
 
 ---
