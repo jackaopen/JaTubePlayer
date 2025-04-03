@@ -4,7 +4,7 @@
 
 JaTubePlayer is a feature-rich YouTube playlist and local media player built with Python and VLC. Designed for both online and offline media playback, it also includes YouTube playlist management, encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
 
-> Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system.
+> Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 
 ## Features
 
@@ -22,7 +22,7 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
 - Retrieve your **personal YouTube playlists**
 - Access your **Liked videos** and **Subscribed channel list**
 
-> Place your `client_secrets.json` inside the _internal/ folder, please note that the name has to be exactly 'client_secrets.json' or the app may not read it correctly, and enter your API key via `Settings >  YouTube API`
+> Place your `client_secrets.json` inside the `_internal/` folder. Please note that the name must be exactly `client_secrets.json` or the application will not recognize it. This step is **only necessary** if you intend to use advanced features (like playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings > Enter YouTube API`.
 
 ---
 
@@ -32,6 +32,7 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
   - A local machine-dependent key
   - A second embedded static key inside the executable
 - You can clear your local key via `Settings > Delete System Key`. A new one is generated at next startup.
+- The encryption module is **obfuscated** for extra protection against tampering.
 
 ---
 
@@ -45,7 +46,7 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
 ### Like & Subscribe System:
 
 - **Sub System**: Randomly selects channels from your saved list and retrieves their latest uploads. (Experimental, evolving)
-- **Like System**: Displays your liked videos **based on timestamp order** — navigate through entries via `Like Prev` / `Like Next` buttons.
+- **Like System**: Displays your liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
 
 ### Settings Panel:
 
@@ -72,9 +73,10 @@ To access playlist, liked videos, and subscription features, you'll need to:
 5. Navigate to **Credentials**:
    - Click **Create Credentials > OAuth Client ID**
    - Application type: Desktop App
-   - Download the generated `client_secret.json`
-6. Place `client_secret.json` inside the `_internal/` folder
+   - Download the generated `client_secrets.json`
+6. Place `client_secrets.json` inside the `_internal/` folder (filename must be exact)
 7. Get your **API key** from the same Credentials tab and paste it into the app via `Settings > Enter YouTube API`
+
 
 ---
 
