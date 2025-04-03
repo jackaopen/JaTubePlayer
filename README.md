@@ -22,7 +22,7 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
 - Retrieve your **personal YouTube playlists**
 - Access your **Liked videos** and **Subscribed channel list**
 
-> Place your `client_secrets.json` inside the _internal/ folder, please note that the name has to be exactly 'client_secrets.json' or the execution may not read it correctly, and enter your API key via `Settings >  YouTube API`
+> Place your `client_secrets.json` inside the _internal/ folder, please note that the name has to be exactly 'client_secrets.json' or the app may not read it correctly, and enter your API key via `Settings >  YouTube API`
 
 ---
 
