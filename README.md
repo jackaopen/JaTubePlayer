@@ -131,7 +131,8 @@ Built to be robust and secure without sacrificing flexibility. More updates on S
 
 ## Screenshots
 
-(Coming Soon)
+![螢幕![player](https://github.com/user-attachments/assets/64340da3-5054-4fb9-a26d-cc205de037fc)
+
 
 ---
 
