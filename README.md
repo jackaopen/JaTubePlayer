@@ -70,9 +70,9 @@ To access playlist, liked videos, and subscription features, you'll need to:
 2. Create a new project (or use an existing one)
 3. Enable **YouTube Data API v3** for that project
 4. Go to OAuth consent screen:
-   -Choose External
-   -Fill in application name, company, and description — these fields do not impact functionality for personal use
-   -Add your Google account email as a test user (important for free-tier access)
+   - Choose External
+   - Fill in application name, company, and description — these fields do not impact functionality for personal use
+   - Add your Google account email as a test user (important for free-tier access)
 6. Navigate to **Credentials**:
    - Click **Create Credentials > OAuth Client ID**
    - Application type: Desktop App
