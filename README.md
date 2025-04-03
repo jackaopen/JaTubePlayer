@@ -43,6 +43,9 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
 - **Enter Playlist**: Load your YouTube playlist (retrieved once per session after login).
 - **Update YouTube Playlists**: Refresh the list from the server manually.
 
+### Selected/Playing video info
+ - **Retreive video info including upload channel, upload date, description, video url with yt_dlp**
+
 ### Like & Subscribe System:
 
 - **Sub System**: Randomly selects channels from your saved list and retrieves their latest uploads. (Experimental, evolving)
@@ -93,15 +96,6 @@ To access playlist, liked videos, and subscription features, you'll need to:
 
 > All required binaries, modules, and dependencies must be placed in the same directory or proper subfolder (`_internal/`, etc.) alongside the main executable.
 
----
-
-## License
-
-This project includes third-party components under various licenses.
-Please refer to each module's license if you're redistributing or modifying.
-
-The core application logic and UI are provided for educational and personal use.
-Commercial use is not permitted without the author’s explicit permission.
 
 ---
 
@@ -131,7 +125,7 @@ Built to be robust and secure without sacrificing flexibility. More updates on S
 
 ## Screenshots
 
-![螢幕![player](https://github.com/user-attachments/assets/64340da3-5054-4fb9-a26d-cc205de037fc)
+![player](https://github.com/user-attachments/assets/64340da3-5054-4fb9-a26d-cc205de037fc)
 
 
 ---
