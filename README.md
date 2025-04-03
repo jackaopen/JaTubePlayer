@@ -14,9 +14,11 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
 - Search and **play YouTube videos** directly
 - **Download** YouTube videos selected inside the listbox
 - **Fullscreen mode** support
+  - Click the ⛶ icon beside the video screen to enter fullscreen
+  - Click the arrow icon at the bottom right to return to windowed mode
 - Use "Open With" context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` to stay up-to-date (download new zip, unzip, replace)
-
+-⚠️ Avoid rapidly clicking the `Play Selected Video` button, as it may cause playback conflicts or unexpected behavior
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
 
 - Retrieve your **personal YouTube playlists**
@@ -138,6 +140,15 @@ Forking the project and experimenting locally is always welcome.
 ## Author Notes
 
 Built to be robust and secure without sacrificing flexibility. More updates on Sub system, playlist integration, and UI improvements are in progress.
+
+---
+
+## NOTE
+
+- Please dont span the command like 
+
+
+
 
 ---
 
