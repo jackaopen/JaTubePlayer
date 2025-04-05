@@ -1,4 +1,5 @@
 # JaTubePlayer - YouTube Playlist Music Player
+![ChatGPT Image 2025年4月5日 下午06_51_10](https://github.com/user-attachments/assets/13e3305f-1699-493f-bb88-dc165558fcaf)
 
 ## Overview
 
