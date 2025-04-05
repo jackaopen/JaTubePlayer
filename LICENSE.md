@@ -1,6 +1,6 @@
 Custom License for JaTubePlayer
 
-Copyright © 2024–present
+Copyright © 2025–present
 All rights reserved.
 
 This software is licensed for **personal and educational use only**.
