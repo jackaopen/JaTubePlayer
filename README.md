@@ -163,7 +163,8 @@ Built to be robust and secure without sacrificing flexibility. More updates on S
 
 ## Screenshots
 
-![player](https://github.com/user-attachments/assets/64340da3-5054-4fb9-a26d-cc205de037fc)
+
+![螢幕擷取畫面 2025-04-05 222344](https://github.com/user-attachments/assets/469e5f8d-572c-4331-b3aa-742aecf0537d)
 
 
 ---
