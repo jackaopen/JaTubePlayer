@@ -29,6 +29,7 @@ JaTubePlayer is a feature-rich YouTube playlist and local media player built wit
   - Double click the listbox item to play video
   - space bar to pause/play
   - up/down key for volume adjustment
+  - version check system for both Player and yt_dlp
     
 ---
 
