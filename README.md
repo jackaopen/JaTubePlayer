@@ -2,7 +2,7 @@
 
 ## Overview
 
-JaTubePlayer is a feature-rich YouTube playlist and local media player built with Python and VLC. Designed for both youtube media and local media playback, it also includes YouTube playlist management, encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
+JaTubePlayer is a feature-rich YouTube and local-file media player built with Python and VLC. Designed for both online and offline playback, it also includes YouTube playlist management, encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 
