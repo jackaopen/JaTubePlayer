@@ -31,7 +31,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - space bar to pause/play
   - up/down key for volume adjustment
   - version check system for both Player and yt_dlp
-    
+> Note:Please read the breif introduction of the relesase page to better understand more of the features and functions!
 ---
 
 ## Token & Key Management (Security)
@@ -53,7 +53,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 ### Playlist Management:
 
 - **Enter Playlist**: Load your YouTube playlist (retrieved once per session after login).
-- **Update YouTube Playlists**: Refresh the list from the server manually.
+  -After selected a playlist, **press the button again** to get into the playlist!!
 
 ### Selected/Playing video info
  - **Retreive video info including upload channel, upload date, description, video url with yt_dlp**
@@ -64,16 +64,16 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Like System**: Displays your liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
 
 ### Settings Panel:
-
-- **Resolution**: Set playback stream resolution.
-- **Priority Mode**:
-  - Audio Priority: Sync video to audio for better sound.
-  - Video Priority: Sync audio to video for visual fidelity.
-- **Network Cache**: Adjusts streaming buffer (e.g., for slower connections).
 - **YouTube API Key**:
   - Enter via `Enter YouTube API` button
   - Remove saved key via `Delete Stored API`
 - **Download Selected Video**: Downloads to `download_output/` directory.
+- **Delete System Key**:clear your local key. A new one is generated at next startup.
+- **Login/sys logout Gooele**:login/logout your google account.
+  - Login:Create and store your token inside the player with our encryption logic.
+  - Logout:Delete the stored token, liked video, subscription data.
+- **update liked video/subsciption channel list:update the stored list.   
+- **Update YouTube Playlists**: Refresh the list from the server manually.
 
 ---
 
@@ -119,7 +119,7 @@ Follow this step-by-step guide to use advanced features (like accessing your pla
 ## Dependencies
 
 - Python 3.11+
-- `tkinter`, `sv_ttk`, `ffmpeg`, `vlc`, `cryptography`, `google-auth`, `google-api-python-client`, `Pillow`, `requests`
+- `tkinter`, `sv_ttk`, `ffmpeg`, `mpv`, `cryptography`, `google-auth`, `google-api-python-client`, `Pillow`, `requests`
 - `yt_dlp` (included in `_internal/` folder)
 - `ffmpeg.exe` (bundled in root directory)
 - `libvlc.dll`, `libvlccore.dll`, and `plugins/` (inside `_internal/`)
