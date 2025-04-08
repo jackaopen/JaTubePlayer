@@ -76,6 +76,10 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - Logout:Delete the stored token, liked video, subscription data.
 - **update liked video/subsciption channel list**:update the stored data.   
 - **Update YouTube Playlists**: Refresh the playlist inside the dropdown from the server manually.
+- **Insert/delete cookie**: 
+  - load the cookie into player/ delete cookie from the `_internal` folder
+  - > Not required if you dont encounter the yt_dlp problem!
+
 
 ---
 ## Author Notes
