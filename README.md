@@ -74,7 +74,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Login/sys logout Gooele**:login/logout your google account.
   - Login:Create and store your token inside the player with our encryption logic.
   - Logout:Delete the stored token, liked video, subscription data.
-- **update liked video/subsciption channel list:update the stored data.   
+- **update liked video/subsciption channel list**:update the stored data.   
 - **Update YouTube Playlists**: Refresh the playlist inside the dropdown from the server manually.
 
 ---
