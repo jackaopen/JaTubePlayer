@@ -84,7 +84,8 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - Please read the readme and release notes for better experience
 - If player suddenly pauses, please try to click the pause button to try to replay it
   - If still not playing, try to reload the video
-- Although seldom, if the yt_dlp asks you to authenticate, please put the `cookies.txt` into `_internal` folder
+- Although seldom, if the yt_dlp asks you to authenticate, please try to simply reload the video
+  - If the problem continues, please put the `cookies.txt` into `_internal` folder 
 ---
 ## How to Get Google API Key and Client Secrets
 
