@@ -12,7 +12,7 @@ You are granted a non-transferable, non-exclusive, revocable license to use this
 JaTubePlayer includes and utilizes third-party components under their own respective licenses:
 
 - `yt-dlp` — Unlicense (public domain)
-- `VLC / libvlc` binaries — GNU Lesser General Public License v2.1 (LGPL-2.1)
+- `MPV`  — GNU GENERAL PUBLIC LICENSE
 - Google API Python Client Libraries — Apache License 2.0
 - Other Python packages (e.g., `sv_ttk`, `Pillow`, `requests`) — under MIT/BSD-compatible licenses
 
