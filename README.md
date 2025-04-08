@@ -2,7 +2,7 @@
 
 ## Overview
 
-JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built with Python yt_dlp and mpv. Designed for both online and offline playback, it also includes YouTube playlist management, encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
+JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built with Python yt_dlp and mpv. Designed for both online and offline playback, it also includes YouTube playlist management, youtube video download function, and encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 
@@ -17,6 +17,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Fullscreen mode** support
 - Use "Open With" context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` to stay up-to-date (download new zip, unzip, replace)
+- **Version check sysyem** to check if the `yt_dlp` or the player needs any update
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
 
 - Retrieve your **personal YouTube playlists**
@@ -31,6 +32,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - space bar to pause/play
   - up/down key for volume adjustment
   - version check system for both Player and yt_dlp
+  - Mouse wheel to adjust volume
 > Note:Please read the breif introduction of the relesase page to better understand more of the features and functions!
 ---
 
@@ -72,8 +74,8 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Login/sys logout Gooele**:login/logout your google account.
   - Login:Create and store your token inside the player with our encryption logic.
   - Logout:Delete the stored token, liked video, subscription data.
-- **update liked video/subsciption channel list:update the stored list.   
-- **Update YouTube Playlists**: Refresh the list from the server manually.
+- **update liked video/subsciption channel list:update the stored data.   
+- **Update YouTube Playlists**: Refresh the playlist inside the dropdown from the server manually.
 
 ---
 
@@ -121,8 +123,8 @@ Follow this step-by-step guide to use advanced features (like accessing your pla
 - Python 3.11+
 - `tkinter`, `sv_ttk`, `ffmpeg`, `mpv`, `cryptography`, `google-auth`, `google-api-python-client`, `Pillow`, `requests`
 - `yt_dlp` (included in `_internal/` folder)
-- `ffmpeg.exe` (bundled in root directory)
-- `libvlc.dll`, `libvlccore.dll`, and `plugins/` (inside `_internal/`)
+- `ffmpeg.exe`, `ffprobe.exe` (bundled in root directory)
+- `libmpv-2.dll` (inside `_internal/`)
 
 > All required binaries, modules, and dependencies must be placed in the same directory or proper subfolder (`_internal/`, etc.) alongside the main executable.
 
@@ -151,6 +153,9 @@ Forking the project and experimenting locally is always welcome.
 
 - Built to be robust and secure without sacrificing flexibility. More updates on Sub system, playlist integration, and UI improvements are in progress.
 - Please read the readme and release notes for better experience
+- If player suddenly pauses, please try to click the pause button to try to replay it
+  - If still not playing, try to reload the video
+- Although seldom, if the yt_dlp asks you to authenticate, please put the `cookie.txt` into `_internal` folder
 
 
 ---
