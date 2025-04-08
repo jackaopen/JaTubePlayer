@@ -33,7 +33,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - up/down key for volume adjustment
   - version check system for both Player and yt_dlp
   - Mouse wheel to adjust volume
-> Note:Please read the breif introduction of the relesase page to better understand more of the features and functions!
+> Note:Please read the brief introduction of the relesase page to better understand more of the features and functions!
 ---
 
 ## Token & Key Management (Security)
@@ -78,7 +78,14 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Update YouTube Playlists**: Refresh the playlist inside the dropdown from the server manually.
 
 ---
+## Author Notes
 
+- Built to be robust and secure without sacrificing flexibility. More updates on Sub system, playlist integration, and UI improvements are in progress.
+- Please read the readme and release notes for better experience
+- If player suddenly pauses, please try to click the pause button to try to replay it
+  - If still not playing, try to reload the video
+- Although seldom, if the yt_dlp asks you to authenticate, please put the `cookies.txt` into `_internal` folder
+---
 ## How to Get Google API Key and Client Secrets
 
 Follow this step-by-step guide to use advanced features (like accessing your playlists or subscriptions):
@@ -116,7 +123,6 @@ Follow this step-by-step guide to use advanced features (like accessing your pla
 ---
 
 
----
 
 ## Dependencies
 
@@ -147,15 +153,7 @@ Forking the project and experimenting locally is always welcome.
 - `yt_dlp`
 - Google OAuth Libraries
 
----
 
-## Author Notes
-
-- Built to be robust and secure without sacrificing flexibility. More updates on Sub system, playlist integration, and UI improvements are in progress.
-- Please read the readme and release notes for better experience
-- If player suddenly pauses, please try to click the pause button to try to replay it
-  - If still not playing, try to reload the video
-- Although seldom, if the yt_dlp asks you to authenticate, please put the `cookie.txt` into `_internal` folder
 
 
 ---
