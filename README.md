@@ -12,6 +12,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 ### ✅ Core Features (No Google API Required):
 
 - Play **local files or folders**
+- Play **Youtube Videos and live streams**
 - Search and **play YouTube videos** directly
 - **Download** YouTube videos selected inside the listbox
 - **Fullscreen mode** support
@@ -29,8 +30,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 
 ## Minor addition
   - Double click the listbox item to play video
-  - space bar to pause/play
-  - up/down key for volume adjustment
+  - space bar or click the video screen to pause/play
   - version check system for both Player and yt_dlp
   - Mouse wheel to adjust volume
 > Note:Please read the brief introduction of the relesase page to better understand more of the features and functions!
