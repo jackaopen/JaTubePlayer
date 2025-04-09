@@ -77,9 +77,10 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **update liked video/subsciption channel list**:update the stored data.   
 - **Update YouTube Playlists**: Refresh the playlist inside the dropdown from the server manually.
 - **Insert/delete cookie**: 
-  - load the cookie into player/ delete cookie from the `_internal` folder
-  - > Not required if you dont encounter the yt_dlp problem!
-
+  - load the chosen cookie into player/ delete cookie from player, and your `cookie.txt` if you want
+  - Not required if you dont encounter the yt_dlp problem!
+  - > We only use your cookie to bypass the YouTube 'Sign in to confirm you are not a robot' restriction in yt-dlp. The cookie is not used to access or store any other personal data.
+- **show mpv log** :To better observe the error code from mpv if necessary
 
 ---
 ## Author Notes
