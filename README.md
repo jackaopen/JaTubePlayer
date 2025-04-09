@@ -90,7 +90,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - If player suddenly pauses, please try to click the pause button to try to replay it
   - If still not playing, try to reload the video
 - Although rare, if the yt_dlp asks you to authenticate, please try to simply reload the video
-  - If the problem continues, please put the `cookies.txt` into `_internal` folder, is should solve the problem
+  - If the problem continues, please go to `setting>Insert cookie` and select your cookie file, this should solve the problem
 ---
 ## How to Get Google API Key and Client Secrets
 
