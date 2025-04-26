@@ -17,14 +17,14 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Download** YouTube videos selected inside the listbox
 - **Fullscreen mode** support
 - Use "Open With" context menu for direct playback from system explorer
-- **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` to stay up-to-date (download new zip, unzip, replace)
+- **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
 - **Version check sysyem** to check if the `yt_dlp` or the player needs any update
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
 
 - Retrieve your **personal YouTube playlists**
 - Access your **Liked videos** and **Subscribed channel list**
 
-> Place your `client_secrets.json` inside the `_internal/` folder. Please note that the name must be exactly `client_secrets.json` or the application will not recognize it. This step is **only necessary** if you intend to use advanced features (like playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings > Enter YouTube API`.
+> Client secrets and API keys are **only necessary** if you intend to use advanced features (playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings `.
 
 ---
 
@@ -46,7 +46,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 
 ---
 
-## GUI Options Breakdown
+## GUI Breakdown
 ### Fullscreen:
   - Click the ⛶ icon beside the video screen to enter fullscreen
   - Click the arrow icon at the bottom right to return to windowed mode
@@ -65,7 +65,49 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Sub System**: Randomly selects channels from your saved list and retrieves their latest uploads. (Experimental, evolving)
 - **Like System**: Displays your liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
 
-### Settings Panel:
+## Settings Panel:
+### New version (>= v1.6.8)
+- **Update Lists**  
+  - `update Subscribe channel list`, `update Liked video list`, `Update YouTube playlists`  
+  - Fetch the latest data manually from YouTube server
+
+- **Google Account & System Key**  
+  - `Login Google`: Login and create a local encrypted token for YouTube data access  
+  - `Logout Google`: Delete the stored token, clear liked videos and subscriptions  
+  - `Delete system key`: Clear local encryption keys; new keys will be auto-generated at next startup
+
+- **Download Video**  
+  - Select a format (`mp3` or `mp4`)  
+  - Choose an available resolution  
+  - `Download Selected Video`: Downloads to `download_output/` directory
+
+- **YouTube API Key**  
+  - `Enter YouTube API`: Insert the API key
+  - `Delete Stored API`: Remove the saved API key
+
+- **Cookie Management**  
+  - `Select Cookie`: Load a YouTube cookie into the player  
+  - `Remove Stored Cookie`: Delete the loaded cookie from the player
+  - > Cookies are **optional**. Only needed to bypass YouTube's "Sign in to confirm you are not a robot" restriction.  
+  - > Cookies are used solely for authentication bypass — **no personal data is accessed or stored**.
+
+- **Client Secret Management**  
+  - `Select Client Secret`: Load your OAuth client_secret.json  
+  - `Remove Stored Client Secret`: Delete the loaded secret
+
+- **Advanced Player Setting**  
+  - `Max resolution`: Set maximum playback resolution (to save PC resources)  
+  - `Auto retry`: Enable automatic retry if MPV fails to load  
+  - `Fullscreen with console`: Toggle between full-frame maximize vs real fullscreen behavior
+  - `Show MPV log`: Observe error logs from MPV for troubleshooting
+
+- **Version & Info Panel**  
+  - Display current and latest versions of yt-dlp and JaTubePlayer  
+  - Option to toggle "check for updates at startup"
+  - Direct links to yt-dlp and JaTubePlayer websites
+
+
+### Old version (<= v1.6.7)
 - **YouTube API Key**:
   - Enter via `Enter YouTube API` button
   - Remove saved key via `Delete Stored API`
@@ -81,7 +123,13 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - Not required if you dont encounter the yt_dlp problem!
   - > We only use your cookie to bypass the YouTube 'Sign in to confirm you are not a robot' restriction in yt-dlp. The cookie is not used to access or store any other personal data.
 - **show mpv log** :To better observe the error code from mpv if necessary
+---
 
+## Yt_dlp Hot update
+- Go https://github.com/yt-dlp/yt-dlp/releases and download both `yt-dlp.exe` and `yt-dlp.tar.gz`
+  - Replace the `yt-dlp.exe` in the `_internal` folder
+  - Unzip the `yt-dlp.tar.gz`, and find the `yt_dlp` folder in `yt-dlp.tar.gz/yt-dlp`
+  - Replace the `yt_dlp` folder in `_internal`. 
 ---
 ## Author Notes
 
@@ -89,8 +137,9 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - Please read the readme and release notes for better experience
 - If player suddenly pauses, please try to click the pause button to try to replay it
   - If still not playing, try to reload the video
+
 - Although rare, if the yt_dlp asks you to authenticate, please try to simply reload the video
-  - If the problem continues, please go to `setting>Insert cookie` and select your cookie file, this should solve the problem
+  - If the problem continues, please go to `setting>select cookie` and select your cookie file, this should solve the problem
 ---
 ## How to Get Google API Key and Client Secrets
 
