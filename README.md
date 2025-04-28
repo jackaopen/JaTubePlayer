@@ -1,4 +1,5 @@
 # JaTubePlayer - YouTube & local media Player
+## Enjoy the youtube music and video wihout the interruption from ads.
 
 ## Overview
 
