@@ -6,8 +6,10 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 
+![螢幕擷取畫面 2025-04-09 163853](https://github.com/user-attachments/assets/bcc42066-73d6-4adb-9709-9b11c1c22858)
 
 ## Features
+
 
 ### ✅ Core Features (No Google API Required):
 
@@ -66,6 +68,8 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Like System**: Displays your liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
 
 ## Settings Panel:
+![螢幕擷取畫面 2025-04-28 155235](https://github.com/user-attachments/assets/7c8f12fe-823f-437b-aabd-afdb16cbe0cf)
+
 ### New version (>= v1.6.8)
 - **Update Lists**  
   - `update Subscribe channel list`, `update Liked video list`, `Update YouTube playlists`  
@@ -207,16 +211,6 @@ Forking the project and experimenting locally is always welcome.
 - python mpv
 - `yt_dlp`
 - Google OAuth Libraries
-
-
-
-
----
-
-## Screenshots
-
-
-![螢幕擷取畫面 2025-04-05 222344](https://github.com/user-attachments/assets/469e5f8d-572c-4331-b3aa-742aecf0537d)
 
 
 ---
