@@ -19,7 +19,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - Search and **play YouTube videos** directly
 - **Download** YouTube videos selected inside the listbox
 - **Fullscreen mode** support
-- Use "Open With" context menu for direct playback from system explorer
+- Use **Open With** context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
 - **Version check sysyem** to check if the `yt_dlp` or the player needs any update
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
