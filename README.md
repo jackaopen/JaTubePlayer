@@ -1,4 +1,4 @@
-# JaTubePlayer - YouTube Playlist Music Player
+# JaTubePlayer - YouTube & local media Player
 
 ## Overview
 
