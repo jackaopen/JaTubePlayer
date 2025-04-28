@@ -67,6 +67,8 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 
 - **Sub System**: Randomly selects channels from your saved list and retrieves their latest uploads. (Experimental, evolving)
 - **Like System**: Displays your liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
+- 
+---
 
 ## Settings Panel:
 ![螢幕擷取畫面 2025-04-28 155235](https://github.com/user-attachments/assets/7c8f12fe-823f-437b-aabd-afdb16cbe0cf)
@@ -111,7 +113,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - Option to toggle "check for updates at startup"
   - Direct links to yt-dlp and JaTubePlayer websites
 
-
+--
 ### Old version (<= v1.6.7)
 - **YouTube API Key**:
   - Enter via `Enter YouTube API` button
