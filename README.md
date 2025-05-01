@@ -1,5 +1,5 @@
-# JaTubePlayer - YouTube & local media Player
-## Enjoy the youtube music and video wihout the interruption from ads.
+
+![螢幕擷取畫面 2025-04-28 233627](https://github.com/user-attachments/assets/17aef0de-8a7f-4493-ac40-956d3ed05ef9)
 
 ## Overview
 
@@ -7,7 +7,8 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 
-![螢幕擷取畫面 2025-04-09 163853](https://github.com/user-attachments/assets/bcc42066-73d6-4adb-9709-9b11c1c22858)
+![螢幕擷取畫面 2025-04-28 214400](https://github.com/user-attachments/assets/c238b3ea-4e2b-413e-80ab-b4dd17b8365e)
+
 
 ## Features
 
