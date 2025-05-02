@@ -33,6 +33,14 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 > Client secrets and API keys are **only necessary** if you intend to use advanced features (playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings `.
 
 ---
+## ✅ Best For
+- Music & video lovers who want full control
+- Tech-savvy users tired of browser ads
+- Anyone who wants to watch or listen offline
+## 🛠️ Use Cases
+- Save lectures, music, or VODs for travel
+- Use on low-resource systems (it's fast & lightweight)
+---
 
 ## Minor addition
   - Double click the listbox item to play video
