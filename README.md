@@ -9,7 +9,8 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 
 ![螢幕擷取畫面 2025-04-28 214400](https://github.com/user-attachments/assets/c238b3ea-4e2b-413e-80ab-b4dd17b8365e)
 
-
+## IMPORTANT NOTE
+ - The app is solely created by me(jackaopen), and DOES NOT charge anything, its free!
 ## Features
 
 
