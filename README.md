@@ -31,15 +31,6 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - Access your **Liked videos** and **Subscribed channel list**
 
 > Client secrets and API keys are **only necessary** if you intend to use advanced features (playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings `.
-
----
-## ✅ Best For
-- Music & video lovers who want full control
-- Tech-savvy users tired of browser ads
-- Anyone who wants to watch or listen offline
-## 🛠️ Use Cases
-- Save lectures, music, or VODs for travel
-- Use on low-resource systems (it's fast & lightweight)
 ---
 
 ## Minor addition
@@ -48,6 +39,16 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - version check system for both Player and yt_dlp
   - Mouse wheel to adjust volume
 > Note:Please read the brief introduction of the relesase page to better understand more of the features and functions!
+---
+
+## ✅ Best For
+- Music & video lovers who want full control
+- Tech-savvy users tired of browser ads
+- Anyone who wants to watch or listen offline
+## 🛠️ Use Cases
+- Save lectures, music, or VODs for travel
+- Use on low-resource systems (it's fast & lightweight)
+
 ---
 
 ## Token & Key Management (Security)
