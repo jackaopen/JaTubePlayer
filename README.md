@@ -6,12 +6,11 @@
 JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built with Python yt_dlp and mpv. Designed for both online and offline playback, it also includes YouTube playlist management, youtube video download function, and encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
+> ### This software is for **personal, research, and educational use only**.
 
 ![螢幕擷取畫面 2025-04-28 214400](https://github.com/user-attachments/assets/c238b3ea-4e2b-413e-80ab-b4dd17b8365e)
 
-## IMPORTANT NOTE
- - The app is solely created by me(jackaopen), and DOES NOT charge anything
- - ! we have found some websites that are aginst our lisence, we are investigating it now
+
 ## Features
 
 
