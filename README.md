@@ -3,7 +3,7 @@
 
 ## Overview
 
-JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built with Python yt_dlp and mpv. Designed for both online and offline playback, it also includes YouTube playlist management, youtube video download function, and encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
+JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built with Python yt_dlp and mpv. Designed for both online and offline playback, it also includes YouTube playlist retrival, youtube video achive function, and encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 > ### This software is for **personal, research, and educational use only**.
@@ -19,7 +19,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - Play **local files or folders**
 - Play **Youtube Videos and live streams**
 - Search and **play YouTube videos** directly
-- **Download** YouTube videos selected inside the listbox
+- **Archive**  selected YouTube videos locally from the listbox for personal access
 - **Fullscreen mode** support
 - Use **Open With** context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
