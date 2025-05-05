@@ -68,7 +68,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 
 ### Playlist:
 
-- **Enter Playlist**: Load your yt playlist (retrieved once per session after login).
+- **Enter Playlist**: Load your YouTube  playlist (retrieved once per session after login).
   - After selected a playlist, **press the button again** to get into the playlist!!
 
 ### Selected/Playing video info
@@ -77,11 +77,11 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 ### Like & Subscription System:
 
 - **Sub System**:
-  - Stores your yt subscribed channel list along with the timestamp of each channel’s latest video at the time of retrieval locally.
+  - Stores your YouTube  subscribed channel list along with the timestamp of each channel’s latest video at the time of retrieval locally.
   - When accessing, the player uses the saved timestamps to check and display each channel’s newest content.
 
 
-- **Like System**: Displays your yt liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
+- **Like System**: Displays your YouTube liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
   
 ---
 
