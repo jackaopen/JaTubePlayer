@@ -1,38 +1,38 @@
 
-![螢幕擷取畫面 2025-04-28 233627](https://github.com/user-attachments/assets/17aef0de-8a7f-4493-ac40-956d3ed05ef9)
+![螢幕擷取畫面 2025-05-05 134202](https://github.com/user-attachments/assets/20ed6f6b-3af3-424e-8925-bc29cdd7f8df)
 
 ## Overview
 
-JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built with Python yt_dlp and mpv. Designed for both online and offline playback, it also includes YouTube playlist retrival, youtube video achive function, and encrypted Google OAuth token storage, and lightweight GUI controls built with `tkinter` and `sv_ttk`.
+JaTubePlayer is a feature-rich online and local media player built with Python, yt_dlp, and mpv. Designed for both online and offline playback, it supports online videos & live streams playback,  playlist access, video archiving, secure OAuth login for personal content integration, and a lightweight GUI built with `tkinter` and `sv_ttk`.
 
 > Note: This application respects your privacy and encrypts Google credentials securely using a dual-key Fernet system. Our Fernet-based encryption module is already **obfuscated** for enhanced protection.
 > ### This software is for **personal, research, and educational use only**.
 
-![螢幕擷取畫面 2025-04-28 214400](https://github.com/user-attachments/assets/c238b3ea-4e2b-413e-80ab-b4dd17b8365e)
 
 
 ## Features
+![螢幕擷取畫面 2025-05-05 140325](https://github.com/user-attachments/assets/e7bec5ed-796a-4470-8c7b-5a38e74c7f1e)
 
 
 ### ✅ Core Features (No Google API Required):
 
 - Play **local files or folders**
-- Play **Youtube Videos and live streams**
-- Search and **play YouTube videos** directly
-- **Archive**  selected YouTube videos locally from the listbox for personal access
+- Play **Online Videos and live streams**
+- Search and **play online videos** directly
+- **Archive**  selected online videos locally from the listbox for personal access
 - **Fullscreen mode** support
 - Use **Open With** context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
-- **Version check sysyem** to check if the `yt_dlp` or the player needs any update
+- **Version check system** to check if the `yt_dlp` or the player needs any update
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
 
-- Retrieve your **personal YouTube playlists**
+- Retrieve your **personal playlists**
 - Access your **Liked videos** and **Subscribed channel list**
 
 > Client secrets and API keys are **only necessary** if you intend to use advanced features (playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings `.
 ---
 
-## Minor addition
+## Other features
   - Double click the listbox item to play video
   - space bar or click the video screen to pause/play
   - version check system for both Player and yt_dlp
@@ -66,19 +66,23 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - Click the arrow icon at the bottom right to return to windowed mode
   - Now v1.6.6 can toggle fullscreen with esc key
 
-### Playlist Management:
+### Playlist:
 
-- **Enter Playlist**: Load your YouTube playlist (retrieved once per session after login).
-  -After selected a playlist, **press the button again** to get into the playlist!!
+- **Enter Playlist**: Load your yt playlist (retrieved once per session after login).
+  - After selected a playlist, **press the button again** to get into the playlist!!
 
 ### Selected/Playing video info
  - **Retreive video info including upload channel, upload date, description, video url with yt_dlp**
 
-### Like & Subscribe System:
+### Like & Subscription System:
 
-- **Sub System**: Randomly selects channels from your saved list and retrieves their latest uploads. (Experimental, evolving)
-- **Like System**: Displays your liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
-- 
+- **Sub System**:
+  - Stores your yt subscribed channel list along with the timestamp of each channel’s latest video at the time of retrieval locally.
+  - When accessing, the player uses the saved timestamps to check and display each channel’s newest content.
+
+
+- **Like System**: Displays your yt liked videos **based on timestamp order**. Navigate entries via `Like Prev` / `Like Next` buttons. Pagination is not used.
+  
 ---
 
 ## Settings Panel:
@@ -106,7 +110,7 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
 - **Cookie Management**  
   - `Select Cookie`: Load a YouTube cookie into the player  
   - `Remove Stored Cookie`: Delete the loaded cookie from the player
-  - > Cookies are **optional**. Only needed to bypass YouTube's "Sign in to confirm you are not a robot" restriction.  
+  - > Cookies are **optional**. Only needed to bypass the error's "Sign in to confirm you are not a robot" restriction.  
   - > Cookies are used solely for authentication bypass — **no personal data is accessed or stored**.
 
 - **Client Secret Management**  
@@ -118,46 +122,42 @@ JaTubePlayer is a feature-rich **YouTube** and **local-file** media player built
   - `Auto retry`: Enable automatic retry if MPV fails to load  
   - `Fullscreen with console`: Toggle between full-frame maximize vs real fullscreen behavior
   - `Show MPV log`: Observe error logs from MPV for troubleshooting
+ 
+  - 
+- **Recommendation & History** (version >= v1.6.9)
+ - `Record History`: When enabled, stores tags and channel info of watched videos locally
+ - `Show Recommendation at startup`: If checked, automatically displays suggested videos when the player launches
+ - `Reset History`: Clears all recorded data and restores default recommendation settings
 
 - **Version & Info Panel**  
   - Display current and latest versions of yt-dlp and JaTubePlayer  
   - Option to toggle "check for updates at startup"
   - Direct links to yt-dlp and JaTubePlayer websites
 
---
-### Old version (<= v1.6.7)
-- **YouTube API Key**:
-  - Enter via `Enter YouTube API` button
-  - Remove saved key via `Delete Stored API`
-- **Download Selected Video**: Downloads to `download_output/` directory.
-- **Delete System Key**:clear your local key. A new one is generated at next startup.
-- **Login/sys logout Gooele**:login/logout your google account.
-  - Login:Create and store your token inside the player with our encryption logic.
-  - Logout:Delete the stored token, liked video, subscription data.
-- **update liked video/subsciption channel list**:update the stored data.   
-- **Update YouTube Playlists**: Refresh the playlist inside the dropdown from the server manually.
-- **Insert/delete cookie**: 
-  - load the chosen cookie into player/ delete cookie from player, and your `cookie.txt` if you want
-  - Not required if you dont encounter the yt_dlp problem!
-  - > We only use your cookie to bypass the YouTube 'Sign in to confirm you are not a robot' restriction in yt-dlp. The cookie is not used to access or store any other personal data.
-- **show mpv log** :To better observe the error code from mpv if necessary
 ---
 
 ## Yt_dlp Hot update
 - Go https://github.com/yt-dlp/yt-dlp/releases and download both `yt-dlp.exe` and `yt-dlp.tar.gz`
   - Replace the `yt-dlp.exe` in the `_internal` folder
-  - Unzip the `yt-dlp.tar.gz`, and find the `yt_dlp` folder in `yt-dlp.tar.gz/yt-dlp`
+  - Unzip the `yt-dlp.tar.gz`, and find the `yt_dlp` folder in `yt-dlp.tar.gz(or yt-dlp~)/yt-dlp`
   - Replace the `yt_dlp` folder in `_internal`. 
 ---
-## Author Notes
+## 📝 Author Notes
 
-- Built to be robust and secure without sacrificing flexibility. More updates on Sub system, playlist integration, and UI improvements are in progress.
-- Please read the readme and release notes for better experience
-- If player suddenly pauses, please try to click the pause button to try to replay it
-  - If still not playing, try to reload the video
+- When the currently playing stream ends, please select another video or stream to continue playback.
+- Before accessing the subscription list, it’s recommended to update it via `Settings > Update Subscribe Channel List`.
+- We suggest not using the **Recommendation List** too frequently, as it may trigger the request limit of `yt_dlp`.
+- If you open the application frequently, consider disabling **Show Recommendation at Startup** in the `Settings` page to improve startup speed.
+- For the best experience, please read this README and the release notes.
 
-- Although rare, if the yt_dlp asks you to authenticate, please try to simply reload the video
-  - If the problem continues, please go to `setting>select cookie` and select your cookie file, this should solve the problem
+### 🔄 Playback Troubleshooting
+- If the player suddenly pauses:
+  - Try clicking the **pause/play button** again.
+  - If it still doesn't resume, try reloading the video.
+
+- If `yt_dlp` prompts for authentication:
+  - First, try reloading the video.
+  - If the issue persists, go to `Settings > Select Cookie` and load your cookie file. This usually resolves the problem.
 ---
 ## How to Get Google API Key and Client Secrets
 
