@@ -20,6 +20,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 - Play **Online Videos and live streams**
 - Search and **play online videos** directly
 - **Archive**  selected online videos locally from the listbox for personal access
+- **Recommend video** based on video watched recently
 - **Fullscreen mode** support
 - Use **Open With** context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
