@@ -151,6 +151,8 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 - We suggest not using the **Recommendation List** too frequently, as it may trigger the request limit of `yt_dlp`.
 - If you open the application frequently, consider disabling **Show Recommendation at Startup** in the `Settings` page to improve startup speed.
 - For the best experience, please read this README and the release notes.
+- While downloading, don't click on other video as it might cause unexpected error 
+
 
 ### 🔄 Playback Troubleshooting
 - If the player suddenly pauses:
