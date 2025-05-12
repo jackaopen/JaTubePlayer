@@ -11,7 +11,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 
 
 ## Features
-![螢幕擷取畫面 2025-05-05 140325](https://github.com/user-attachments/assets/e7bec5ed-796a-4470-8c7b-5a38e74c7f1e)
+![螢幕擷取畫面 2025-05-12 140527](https://github.com/user-attachments/assets/7dc3686f-16b7-4b76-9869-3f349960b1a0)
 
 
 ### ✅ Core Features (No Google API Required):
@@ -87,7 +87,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 ---
 
 ## Settings Panel:
-![螢幕擷取畫面 2025-04-28 155235](https://github.com/user-attachments/assets/7c8f12fe-823f-437b-aabd-afdb16cbe0cf)
+![螢幕擷取畫面 2025-05-12 140653](https://github.com/user-attachments/assets/6a2b0342-d5ee-4c13-9385-4120876cf6d2)
 
 ### New version (>= v1.6.8)
 - **Update Lists**  
