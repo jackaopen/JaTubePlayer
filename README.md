@@ -103,6 +103,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
   - Select a format (`mp3` or `mp4`)  
   - Choose an available resolution  
   - `Download Selected Video`: Downloads to `download_output/` directory
+  > Note:Do not click on other video while downloading 
 
 - **YouTube API Key**  
   - `Enter YouTube API`: Insert the API key
