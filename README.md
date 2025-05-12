@@ -220,6 +220,11 @@ If you have ideas, suggestions, or improvements, feel free to open an issue firs
 Forking the project and experimenting locally is always welcome.
 ---
 
+## 🧩 Partial Open Source Disclosure
+To help users better understand how JaTubePlayer works, we’ve decided to open-source selected modules of the application.
+You can refer to the corresponding `_summary.md` files and the `.py` source code available in the main branch.
+
+---
 ## Acknowledgements
 
 - YouTube Data API (v3)
