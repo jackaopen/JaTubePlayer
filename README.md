@@ -89,9 +89,10 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 ---
 
 ## Settings Panel:
-![螢幕擷取畫面 2025-05-12 140653](https://github.com/user-attachments/assets/6a2b0342-d5ee-4c13-9385-4120876cf6d2)
 
-### New version (>= v1.6.8)
+
+
+### New version (v1.6.8 or up)
 - **Update Lists**  
   - `update Subscribe channel list`, `update Liked video list`, `Update YouTube playlists`  
   - Fetch the latest data manually from YouTube server
@@ -127,7 +128,6 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
   - `Fullscreen with console`: Toggle between full-frame maximize vs real fullscreen behavior
   - `Show MPV log`: Observe error logs from MPV for troubleshooting
  
-  - 
 - **Recommendation & History** (version >= v1.6.9)
   - `Record History`: When enabled, stores tags and channel info of watched videos locally
   - `Reset History`: Clears all recorded data and restores default recommendation settings
@@ -148,9 +148,6 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
   - `set init ...` buttons: Save your selected mode and parameters  
 
   
-
-
-
 ---
 
 ## Yt_dlp Hot update
