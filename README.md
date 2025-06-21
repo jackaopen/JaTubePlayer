@@ -14,25 +14,30 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 ![螢幕擷取畫面 2025-05-12 140527](https://github.com/user-attachments/assets/7dc3686f-16b7-4b76-9869-3f349960b1a0)
 
 
-### ✅ Core Features (No Google API Required):
+### ✅ Core Features (No Google API Required)
 
-- Play **local files or folders**
-- Play **Online Videos and live streams**
-- Search and **play online videos** directly
-- Supports **more formats** than WMP,and other **uncommon file formats** that WMP often fails to play
-- **Archive**  selected online videos locally from the listbox for personal access
-- **Recommend video** based on video watched recently
-- **Fullscreen mode** support
-- Use **Open With** context menu for direct playback from system explorer
-- **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
-- **Version check system** to check if the `yt_dlp` or the player needs any update
+- 🎵 **Play local files and folders** — enjoy your media directly from disk
+- 🌐 **Stream online videos and live streams** — just search or paste a link
+- 🔍 **Search and play YouTube videos** without leaving the app
+- 🧩 **Supports more formats than WMP** — including rare, broken, or uncommon files WMP can’t play
+- 💾 **Archive selected online videos** from the listbox for offline viewing
+- 🤖 **Get smart video recommendations** based on your recent watch history
+- 🖥️ **Fullscreen mode support** for an immersive playback experience
+- 📂 **“Open With” integration** — launch videos directly from File Explorer
+- 🔄 **Hot-update yt_dlp** — simply replace the `yt_dlp.exe` and folder in `_internal/` to stay updated
+- 🆕 **Automatic version check** — get notified if your `yt_dlp` or player is out of date
 
-### 🔐 Advanced Features (Requires Google API + Client Secrets):
+---
 
-- Retrieve your **personal playlists**
-- Access your **Liked videos** and **Subscribed channel list**
+### 🔐 Advanced Features (Requires Google API + Client Secrets)
 
-> Client secrets and API keys are **only necessary** if you intend to use advanced features (playlists, likes, and subscriptions), and **not required** for basic local playback, video search, or downloads. Enter your API key via `Settings `.
+- 📃 **Access your personal YouTube playlists**
+- ❤️ **Browse your liked videos and subscribed channel list**
+
+> ⚠️ *Client secrets and API keys are only required for these advanced features.*  
+> 🔓 **Basic functionality** — local playback, video search, downloads — works fully **without login**.  
+> You can enter your API key anytime in `Settings`.
+
 ---
 
 ## Other features
@@ -148,7 +153,6 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
     - Requires `Record History` to be ON  
   - `set init ...` buttons: Save your selected mode and parameters  
 
-  
 ---
 
 ## Yt_dlp Hot update
@@ -162,7 +166,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 - When the currently playing stream ends, please select another video or stream to continue playback.
 - Before accessing the subscription list, it’s recommended to update it via `Settings > Update Subscribe Channel List`.
 - We suggest not using the **Recommendation List** too frequently, as it may trigger the request limit of `yt_dlp`.
-- If you open the application frequently, consider disabling **Show Recommendation at Startup** in the `Settings` page to improve startup speed.
+- If you open the application frequently, consider disabling **Quick startup init** in the `Settings` page to improve startup speed and avoid getting rate limited by `ytdlp`.
 - For the best experience, please read this README and the release notes.
 - While downloading, don't click on other video as it might cause unexpected error 
 

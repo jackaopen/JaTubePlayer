@@ -8,7 +8,7 @@ import aiohttp
 import asyncio
 import xml.etree.ElementTree as ET
 import json
-from pprint import pprint
+
 
 modpath = os.path.dirname(os.path.abspath(__file__))
 def dump(filename,content):
