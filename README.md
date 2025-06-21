@@ -19,6 +19,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 - Play **local files or folders**
 - Play **Online Videos and live streams**
 - Search and **play online videos** directly
+- Supports **more formats** than WMP,and other **uncommon file formats** that WMP often fails to play
 - **Archive**  selected online videos locally from the listbox for personal access
 - **Recommend video** based on video watched recently
 - **Fullscreen mode** support
