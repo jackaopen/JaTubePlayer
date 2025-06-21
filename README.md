@@ -90,6 +90,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 
 ## Settings Panel:
 
+![Screenshot 2025-06-21 235916](https://github.com/user-attachments/assets/17b004e3-67e7-4b8c-ba36-7704b0578961)
 
 
 ### New version (v1.6.8 or up)
