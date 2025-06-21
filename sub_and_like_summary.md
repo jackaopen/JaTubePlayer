@@ -22,11 +22,17 @@ This module enables JaTubePlayer to access the user's YouTube subscriptions and 
 
 ## 🔧 Core Functions
 
-### `update_sub_list(api, cred, client_secert_path)`
-- Authenticates using OAuth or passed credentials.
-- Fetches all subscribed channel IDs.
-- Uses `feedparser` to get upload time from channel RSS.
-- Saves sorted list to `sub.json`.
+### `fetch_feed(...)`
+- Uses `aiohttp.ClientSession` for async HTTP requests
+- Parses XML using `xml.etree.ElementTree.fromstring()`
+- The YouTube RSS uses the **Atom XML namespace**, so all tag lookups use `{http://www.w3.org/2005/Atom}` prefix
+- Extracts `<updated>` tag timestamps for each video entry
+- Returns the latest available (past-published) video's upload epoch timestamp
+
+### `get_all_feeds(...)`
+- Runs multiple RSS fetches concurrently via `asyncio.gather(...)`
+- Aggregates and sorts the channels by most recent uploads
+- Outputs results to a `sub.json` file for use in the subscription module
 
 ### `update_like_list(api, cred, client_secert_path)`
 - Authenticates with YouTube Data API.
@@ -40,6 +46,19 @@ This module enables JaTubePlayer to access the user's YouTube subscriptions and 
 ### `_get_timestamp_info(item)`
 - Parses the latest uploaded video timestamp via RSS.
 - Converts published time to UNIX timestamp using `calendar.timegm`.
+
+---
+## 🌐 Atom XML Namespace Parsing
+
+- YouTube's RSS uses the **Atom namespace**: `xmlns="http://www.w3.org/2005/Atom"`
+- ElementTree requires full namespaced tag paths: e.g.,
+
+```python
+entry = root.find('{http://www.w3.org/2005/Atom}entry')
+updated = entry.find('{http://www.w3.org/2005/Atom}updated').text
+```
+
+> Failing to specify the namespace will result in `find()` returning `None`
 
 ---
 

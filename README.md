@@ -26,6 +26,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 - Use **Open With** context menu for direct playback from system explorer
 - **Hot-update** support for `yt_dlp` — simply replace its folder in `_internal/` and the `yt_dlp.exe` to stay up-to-date.
 - **Version check system** to check if the `yt_dlp` or the player needs any update
+
 ### 🔐 Advanced Features (Requires Google API + Client Secrets):
 
 - Retrieve your **personal playlists**
@@ -113,8 +114,8 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 - **Cookie Management**  
   - `Select Cookie`: Load a YouTube cookie into the player  
   - `Remove Stored Cookie`: Delete the loaded cookie from the player
-  - > Cookies are **optional**. Only needed to bypass the error's "Sign in to confirm you are not a robot" restriction.  
-  - > Cookies are used solely for authentication bypass — **no personal data is accessed or stored**.
+  > Cookies are **optional**. Only needed to bypass the error's "Sign in to confirm you are not a robot" restriction.  
+  > Cookies are used solely for authentication bypass — **no personal data is accessed or stored**.
 
 - **Client Secret Management**  
   - `Select Client Secret`: Load your OAuth client_secret.json  
@@ -128,14 +129,27 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
  
   - 
 - **Recommendation & History** (version >= v1.6.9)
- - `Record History`: When enabled, stores tags and channel info of watched videos locally
- - `Show Recommendation at startup`: If checked, automatically displays suggested videos when the player launches
- - `Reset History`: Clears all recorded data and restores default recommendation settings
+  - `Record History`: When enabled, stores tags and channel info of watched videos locally
+  - `Reset History`: Clears all recorded data and restores default recommendation settings
 
 - **Version & Info Panel**  
   - Display current and latest versions of yt-dlp and JaTubePlayer  
   - Option to toggle "check for updates at startup"
   - Direct links to yt-dlp and JaTubePlayer websites
+
+- **Quick Startup Init (Ver 1.7.1 or up)**
+  > (Below the toggle)*: Shows which startup mode is currently active  
+  - `toggle quick startup init`: Enable or disable the startup auto-load feature  
+  - `init search`: Auto-start with a YouTube search (requires pressing `set init search`)  
+  - `init playlist`: Load a selected YouTube playlist at launch (press `get` → select → `set`)  
+  - `init local folder`: Auto-play from a local folder of media files  
+  - `init Recommendation`: Load smart video suggestions  
+    - Requires `Record History` to be ON  
+  - `set init ...` buttons: Save your selected mode and parameters  
+
+  
+
+
 
 ---
 
@@ -222,6 +236,7 @@ Due to sensitive encryption and API mechanisms, pull requests (PRs) are not acce
 If you have ideas, suggestions, or improvements, feel free to open an issue first to discuss proposed changes.
 
 Forking the project and experimenting locally is always welcome.
+
 ---
 
 ## 🧩 Partial Open Source Disclosure

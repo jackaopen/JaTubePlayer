@@ -4,31 +4,39 @@ import json
 import googleapiclient.errors
 from concurrent.futures import ThreadPoolExecutor
 import os ,feedparser,time,calendar
+import aiohttp
+import asyncio
+import xml.etree.ElementTree as ET
+import json
+from pprint import pprint
 
 modpath = os.path.dirname(os.path.abspath(__file__))
 def dump(filename,content):
     with open(filename,'w') as f:        
            json.dump(content,f,indent=4)
 
-def _get_timestamp_info(item:str) -> list:#get timestamp via rss
-    feed = feedparser.parse(f'https://www.youtube.com/feeds/videos.xml?channel_id={item}')
-    if feed.entries:
-        for entry in feed.entries:
-            parsed_time = entry.updated_parsed
-            epoch_local = calendar.timegm(parsed_time)
-            print(entry.title,parsed_time)
-            if epoch_local < time.time():return [item,epoch_local]
-            
-        return[item,0]
-    else:return[item,0]
-    
+async def fetch_feed(session, item):
+    url = f'https://www.youtube.com/feeds/videos.xml?channel_id={item}'
+    async with session.get(url) as response:
+        text = await response.text()
+        try:
+            root = ET.fromstring(text)
+            feed = root.find('{http://www.w3.org/2005/Atom}author')
+            print(feed.find('{http://www.w3.org/2005/Atom}name').text)
+            for entry in root.findall('{http://www.w3.org/2005/Atom}entry'):
+                updated = entry.find('{http://www.w3.org/2005/Atom}updated').text
+                epoch = calendar.timegm(time.strptime(updated, "%Y-%m-%dT%H:%M:%S%z"))
+                if epoch < time.time():
+                    return [item, epoch]
+            return [item, 0]
+        except:0
 
-def _get_sub_timestamp(channel_list:list):
-    with ThreadPoolExecutor() as executor:
-        future = [executor.submit(_get_timestamp_info,item) for item in channel_list]
-        result = [f.result() for f in future]
-    result.sort(key=lambda i : i[1],reverse=True)
-    dump(os.path.join(modpath,f'sub.json'),result)
+async def get_all_feeds(channel_list):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_feed(session, cid) for cid in channel_list]
+        result = await asyncio.gather(*tasks)
+        result.sort(key=lambda i: i[1], reverse=True)
+        dump(os.path.join(modpath, f'sub.json'), result)
 
 
 def update_sub_list(api,cred,client_secert_path)-> bool | str:
@@ -49,7 +57,7 @@ def update_sub_list(api,cred,client_secert_path)-> bool | str:
             for item in subs['items']:
                 list.append(item['snippet']['resourceId']['channelId'])
             if not npt:
-                _get_sub_timestamp(list)
+                asyncio.run(get_all_feeds(list))
                 return True
         except googleapiclient.errors.HttpError as err:return err
 
@@ -107,3 +115,7 @@ def sub_channel() -> list | str:
     except Exception as e :
         print(e)
         return False
+    
+if __name__ == '__main__':
+    lst = ['UCFiIsVOC1p_gfTYDYXXfl4g']
+    asyncio.run(get_all_feeds(lst))
