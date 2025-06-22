@@ -16,36 +16,28 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 
 ### ✅ Core Features (No Google API Required)
 
-- 🎵 **Play local files and folders** — enjoy your media directly from disk
-- 🌐 **Stream online videos and live streams** — just search or paste a link
-- 🔍 **Search and play YouTube videos** without leaving the app
-- 🧩 **Supports more formats than WMP** — including rare, broken, or uncommon files WMP can’t play
-- 💾 **Archive selected online videos** from the listbox for offline viewing
-- 🤖 **Get smart video recommendations** based on your recent watch history
-- 🖥️ **Fullscreen mode support** for an immersive playback experience
-- 📂 **“Open With” integration** — launch videos directly from File Explorer
-- 🔄 **Hot-update yt_dlp** — simply replace the `yt_dlp.exe` and folder in `_internal/` to stay updated
-- 🆕 **Automatic version check** — get notified if your `yt_dlp` or player is out of date
+-  **Play local files and folders** — enjoy your media directly from disk
+-  **Stream online videos and live streams** — just search or paste a link
+-  **Search and play YouTube videos** without leaving the app
+-  **Supports more formats than WMP** — including rare, uncommon file formats WMP can’t play
+-  **Archive selected online videos** from the listbox for offline viewing
+-  **Get smart video recommendations** based on your recent watch history
+-  **Fullscreen mode support** for an immersive playback experience
+-  **“Open With” integration** — launch videos directly from File Explorer
+-  **Hot-update yt_dlp** — simply replace the `yt_dlp.exe` and `yt_dlp `folder in `_internal/` to stay updated
+-  **Automatic version check** — get notified if your `yt_dlp` or player is out of date
 
 ---
 
 ### 🔐 Advanced Features (Requires Google API + Client Secrets)
 
-- 📃 **Access your personal YouTube playlists**
-- ❤️ **Browse your liked videos and subscribed channel list**
+-  **Access your personal YouTube playlists**
+-  **Browse your liked videos and subscribed channel list**
 
 > ⚠️ *Client secrets and API keys are only required for these advanced features.*  
 > 🔓 **Basic functionality** — local playback, video search, downloads — works fully **without login**.  
 > You can enter your API key anytime in `Settings`.
 
----
-
-## Other features
-  - Double click the listbox item to play video
-  - space bar or click the video screen to pause/play
-  - version check system for both Player and yt_dlp
-  - Mouse wheel to adjust volume
-> Note:Please read the brief introduction of the relesase page to better understand more of the features and functions!
 ---
 
 ## ✅ Best For
@@ -55,6 +47,15 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 ## 🛠️ Use Cases
 - Save lectures, music, or VODs for travel
 - Use on low-resource systems (it's fast & lightweight)
+
+---
+
+## Other features
+  - Double click the listbox item to play video
+  - space bar or click the video screen to pause/play
+  - version check system for both Player and yt_dlp
+  - Mouse wheel to adjust volume
+> Note:Please read the brief introduction of the relesase page to better understand more of the features and functions!
 
 ---
 
@@ -144,7 +145,7 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
   - Direct links to yt-dlp and JaTubePlayer websites
 
 - **Quick Startup Init (Ver 1.7.1 or up)**
-  > (Below the toggle)*: Shows which startup mode is currently active  
+  > *(Below the toggle)*: Shows which startup mode is currently active  
   - `toggle quick startup init`: Enable or disable the startup auto-load feature  
   - `init search`: Auto-start with a YouTube search (requires pressing `set init search`)  
   - `init playlist`: Load a selected YouTube playlist at launch (press `get` → select → `set`)  
