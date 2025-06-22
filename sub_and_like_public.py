@@ -15,7 +15,7 @@ def dump(filename,content):
     with open(filename,'w') as f:        
            json.dump(content,f,indent=4)
 
-async def fetch_feed(session, item):
+async def fetch_feed(session, item) -> tuple[str,int]:
     url = f'https://www.youtube.com/feeds/videos.xml?channel_id={item}'
     async with session.get(url) as response:
         text = await response.text()
