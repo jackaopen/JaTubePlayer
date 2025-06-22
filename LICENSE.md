@@ -20,7 +20,9 @@ JaTubePlayer includes and utilizes third-party components under their own respec
 
 The encryption module within this software is **obfuscated** to prevent tampering and safeguard OAuth-related operations.
 
-This software is provided **"as is"**, without warranty of any kind, either expressed or implied. The author shall not be held liable for any damage, data loss, or misuse caused by or related to the use of this software.
+This software is provided **"as is"**, without warranty of any kind, either expressed or implied. The author shall not be held liable for any damage, data loss caused by or related to any improper use of this software.
+
+Users are responsible for safeguarding their personal data. While the author has taken reasonable measures to implement secure data handling (e.g., encrypted token storage), they are not liable for any data loss or leakage.
 
 ---
 
