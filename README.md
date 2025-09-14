@@ -58,6 +58,28 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 > Note:Please read the brief introduction of the relesase page to better understand more of the features and functions!
 
 ---
+## 🖥️ Spec reference 
+
+> These are the minimum recommended specs for reference.
+
+- **Processor (CPU):**
+  - AMD Ryzen 3 1200
+  - Intel Core i3-6100
+
+- **Memory (RAM):**
+  - 8 GB
+
+- **Graphics (GPU / iGPU):**
+  - NVIDIA GeForce GTX 650, or GT1030
+  - AMD Radeon RX 460  
+  - (Integrated options such as Intel UHD 610 are usable, but only for **H.264** and **VP9 8-bit** — no HDR VP9 or AV1.)
+
+- **Storage:**
+  - At least 2 GB available.
+
+- **Operating System:**
+  - Windows 10 / 11 (64-bit)
+
 
 ## Token & Key Management (Security)
 
