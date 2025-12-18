@@ -63,8 +63,8 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 > These are the minimum recommended specs for reference.
 
 - **Processor (CPU):**
-  - AMD Ryzen 3 2200
-  - Intel Core i3-7100
+  - AMD Ryzen 3 3100
+  - Intel Core i3-8100
 
 - **Memory (RAM):**
   - 8 GB
