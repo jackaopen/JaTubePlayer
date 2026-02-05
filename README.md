@@ -26,18 +26,23 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 ### ✅ Core Features 
 
--  **Play local files and folders** — Enjoy your media directly from disk with support for multiple formats
--  **Search and play online videos** — Find and play content without leaving the app
--  **Live streams** — Able to play live streams
--  **Video recommendations** — Discover new content based on your viewing history
--  **Supports more formats than WMP** — Play rare and uncommon file formats that Windows Media Player can't handle
--  **Modern glass/acrylic blur UI** — Embraces Windows 11's design language with translucent panels and blur effects
--  **Hot key shortcuts** — Full keyboard support for play/pause, navigation, volume control, and more
--  **Drag and drop support** — Simply drag files or folders into the app for instant playback
--  **Chrome extension integration** — Receive video links directly from a companion Chrome extension
--  **Discord Rich Presence** — Show your current playback status in Discord with customizable options
--  **Quick startup initialization** — Automatically load your preferred content when the app starts
--  **Hot-update yt_dlp** — Easily update yt_dlp by replacing files in the `_internal/` folder
+**Media Playback**
+- **Play local files and folders** — Enjoy your media directly from disk with support for multiple formats
+- **Search and play online videos** — Find and play content without leaving the app
+- **Live streams** — Able to play live streams
+- **Supports more formats than WMP** — Play rare and uncommon file formats that Windows Media Player can't handle
+
+**User Interface & Experience**
+- **Modern glass/acrylic blur UI** — Embraces Windows 11's design language with translucent panels and blur effects
+- **Hot key shortcuts** — Full keyboard support for play/pause, navigation, volume control, and more
+- **Drag and drop support** — Simply drag files or folders into the app for instant playback
+
+**Integration & Enhancement**
+- **Video recommendations** — Discover new content based on your viewing history
+- **Chrome extension integration** — Receive video links directly from a companion Chrome extension
+- **Discord Rich Presence** — Show your current playback status in Discord with customizable options
+- **Quick startup initialization** — Automatically load your preferred content when the app starts
+- **Hot-update yt_dlp** — Easily update yt_dlp by replacing files in the `_internal/` folder
 
 <br>
 
@@ -70,11 +75,14 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 </div>
 
+**Playback & Control**
 - Double click the listbox item to play video
 - Space bar or click the video screen to pause/play
 - Mouse wheel to adjust volume
 - Adjustable playback speed
 - Selectable resolution for online videos
+
+**System Integration & Convenience**
 - Player buffer/cache information display
 - "Open With" integration — launch videos directly from File Explorer
 - System Media Transport Controls (SMTC) — Windows media controls in taskbar and action center
