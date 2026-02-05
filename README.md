@@ -91,7 +91,9 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
   - Windows 10 / 11 (64-bit)
 
 
----
+
+
+
 
 ## Major Dependencies
 #### Python Libraries
@@ -127,7 +129,7 @@ if you have ideas, suggestions, or improvements, feel free to:
 - **Report bugs** or request features through GitHub Issues
 
 I appreciate all feedback and suggestions! 🚀
-
+>you can check out some code explantion in `docs`folder
 
 
 
