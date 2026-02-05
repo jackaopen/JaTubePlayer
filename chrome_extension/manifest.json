@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Watch Detector",
+  "version": "1.0",
+  "permissions": ["contextMenus","notifications"],
+  "host_permissions": ["http://localhost:5000/*"],
+  "background": {
+    "service_worker": "chrome_test.js"
+  }
+}

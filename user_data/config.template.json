@@ -1,0 +1,36 @@
+{
+    "quickstartup_init": {
+        "mode": 0,
+        "entrymode_entry_content": "",
+        "playlistmode_playlist_ID": "",
+        "playlistmode_playlist_NAME": "",
+        "localfoldermode_folder_Path": "",
+        "playlistmode_playlist_Name": ""
+    },
+    "keyboard_hotkeys": {
+        "play_pause": "<ctrl>+<shift>+p",
+        "next": "<ctrl>+<shift>+n",
+        "previous": "<ctrl>+<shift>+b",
+        "stop": "<ctrl>+<shift>+s",
+        "mode_repeat": "<ctrl>+<shift>+r",
+        "mode_continuous": "<ctrl>+<shift>+c",
+        "mode_random": "<ctrl>+<shift>+x",
+        "volume_up": "<ctrl>+<shift>+<up>",
+        "volume_down": "<ctrl>+<shift>+<down>",
+        "toggle_minimize": "<ctrl>+<shift>+m"
+    },
+    "client_secret_path": "",
+    "cookie_path": "",
+    "vercheck": false,
+    "max_resolution": 1080,
+    "record_history": true,
+    "auto_sub_refresh": true,
+    "auto_like_refresh": true,
+    "blur": true,
+    "run_flask": true,
+    "open_with_fullscreen": false,
+    "enable_drag_and_drop": true,
+    "enable_discord_presence": true,
+    "discord_presence_show_playing": false,
+    "show_cache": true
+}

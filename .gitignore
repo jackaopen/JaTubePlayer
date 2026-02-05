@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.env/
+.venv/
+.vscode/
+
+*.log
+_internal/*
+
+# User data
+user_data/*.enc
+user_data/config.json
+user_data/downloaded_file/
+user_data/liked.json
+user_data/recent_channel_url.json
+user_data/recent_tag.json
+user_data/sub.json
+user_data/channel_info.json
+
+
+build/*
+dist/*
+pyinstaller asset/*
+temp_data/
+
