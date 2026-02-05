@@ -1,10 +1,16 @@
 
 <img width="1143" height="313" alt="canvas" src="https://github.com/user-attachments/assets/e87d5ae2-35cf-4938-9d4d-caa90e2001f4" />
 
-JaTubePlayer is a feature-rich online and local media player built with Python, yt-dlp, and mpv. Designed for both online and offline use, it supports video and live stream playback, playlist access, video archiving, and secure OAuth-based login for personal content integration. The application features a modern GUI built with customtkinter, embracing Windows 11’s glass/acrylic blur aesthetic with a clean, polished interface.
+<div align="center">
 
->This application respects your privacy and encrypts Google credentials and API securely  Fernet+DPAPI system *locally*. 
+### 🎬 A Feature-Rich Media Player for the Modern Era
 
+**JaTubePlayer** seamlessly bridges online streaming and local playback with **Python**, **yt-dlp**, and **mpv**.  
+Stream videos, access playlists, archive content —all through a stunning **Windows 11-inspired** interface featuring **glass/acrylic blur effects** and intuitive **customtkinter** design.
+
+> 🔒 **Privacy-First Architecture** — Your Google credentials and API keys are encrypted locally using **Fernet + DPAPI**.
+
+</div>
 
 <img width="1316" height="709" alt="螢幕擷取畫面 2026-02-05 171250" src="https://github.com/user-attachments/assets/2c213941-edab-427d-8853-06d1386975d9" />
 
