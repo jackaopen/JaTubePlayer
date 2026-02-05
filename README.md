@@ -140,8 +140,7 @@ Due to other ongoing work and commitments, pull requests will not be reviewed or
 
 ### Contribution Guidelines
 
-if you have ideas, suggestions, or improvements, feel free to **Open an issue** first to discuss proposed changes
-I appreciate all feedback and suggestions! 🚀
+if you have ideas, suggestions, or improvements, feel free to **Open an issue** first to discuss proposed changes. I appreciate all feedback and suggestions! 🚀
 >you can check out some code explantion in `docs`folder
 
 
