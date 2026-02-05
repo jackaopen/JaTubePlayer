@@ -146,7 +146,11 @@ if you have ideas, suggestions, or improvements, feel free to **Open an issue** 
 
 
 ---
-> ##### This software is for **personal, research, and educational use**.
+>This project is provided for educational and research purposes. Users are responsible for complying with applicable laws and the terms of service of any platforms they interact with.
+
+
+
+
 
 
 
