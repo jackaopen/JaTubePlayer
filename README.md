@@ -66,7 +66,14 @@ JaTubePlayer is a feature-rich online and local media player built with Python, 
 ### Setup Guides
 - [How to Get Google API Key and Client Secrets](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/BybMxxzPZe)
 
+### Chrome extention install Guides
+- [Chrome Extension Installation Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/By1q6Nzwbg)
+
+
 ---
+
+
+
 
 ## 🖥️ Spec reference 
 
