@@ -12,7 +12,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 </div>
 
-<img width="1316" height="709" alt="螢幕擷取畫面 2026-02-05 171250" src="https://github.com/user-attachments/assets/2c213941-edab-427d-8853-06d1386975d9" />
+<img width="1318" height="710" alt="螢幕擷取畫面 2026-02-06 015335" src="https://github.com/user-attachments/assets/d6d55326-0634-42fb-b1a1-cdad71a3c147" />
 
 
 ## Features
