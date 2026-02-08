@@ -22,6 +22,7 @@ from utils.get_related_video import *
 from utils.download_to_local import download_to_local
 from utils.check_internet import *
 from utils.check_internet import check_internet
+from utils.get_media_info import get_info
 
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
@@ -35,7 +36,6 @@ from system.presence import DiscordPresence
 import ctypes
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
-
 
 
 
@@ -2986,26 +2986,17 @@ def load_thread():  ### add every try except to a new log system for next update
                                     loadingvideo = False
                                     return None #### return if no internet
                                     #the def actually dont need to return anything but just to make sure it wont go futher
-
-
-
-                            player.play(vid_url_in[selected_song_number_in] if not direct_url else direct_url)####
-                            ydl_opts = { 
-                                'quiet': True, 
-                                'skip_download': True,
-                                'ignoreerrors': True,
-                                'ignore_no_formats_error': True,
-                                'no_color': True,
-                                'extract_flat': False,  
-                                'extractor_args': {'youtube': {'skip': ['hls', 'dash']}},
-                            }
-
-                            if cookies_dir:
-                                ydl_opts['cookiefile'] = cookies_dir 
-                            ydl_opts['logger'] = ytdlp_log_handle
                             try:
-                                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                                    playing_vid_info_dict = ydl.extract_info(playing_vid_url, download=False)
+                                m3u8_url, vid_only_url, audio_only_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
+                                                                                                        maxres=maxresolution.get(),
+                                                                                                        target_url=vid_url_in[selected_song_number_in] if not direct_url else direct_url,
+                                                                                                        deno_path=deno_exe,
+                                                                                                        log_handler=ytdlp_log_handle,
+                                                                                                        cookie_path=cookies_dir)
+                                if m3u8_url:player.play(m3u8_url)
+                                elif vid_only_url:player.loadfile(vid_only_url, audio_file=audio_only_url)
+
+                            
                                 
                                 
                                 try:## try to make the vid play info somehow ytdlp fail to get info dict
@@ -3826,22 +3817,6 @@ def create_mpv_player():
             pass
         log_handle(content="killed")
 
-    format_ = f"bv*[height<={maxresolution.get()}]+ba/best"
-
-
-    deno_path = deno_exe.replace("\\", "/")
-
-    base_ytdl_opts = (
-        f'js-runtimes=deno:{deno_path},'
-        f'remote-components=ejs:github,'
-        
-    )
-
-    if cookies_dir:
-        ytdl_opts = f'cookies={cookies_dir.replace("\\", "/")},' + base_ytdl_opts
-    else:
-        ytdl_opts = base_ytdl_opts
-
 
     player = mpv.MPV(
         idle = True,
@@ -3850,10 +3825,7 @@ def create_mpv_player():
         log_handler=log_handle,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
-        ytdl_format=format_,
-        ytdl_raw_options=ytdl_opts,
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
-        script_opts=f'ytdl_hook-ytdl_path="{os.path.join(_internal_dir, "yt-dlp.exe").replace("\\", "/")}"',
         **buf_arg
     )
 
