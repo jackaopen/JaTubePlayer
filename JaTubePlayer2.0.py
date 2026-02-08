@@ -176,6 +176,14 @@ player_speed = tk.DoubleVar()
 player_speed.set(1.0)
 deno_exe = os.path.join(_internal_dir,'deno.exe')
 
+subtitle_namelist = ['No subtitles']
+subtitle_urllist = [None]
+
+subtitle_selection_idx = tk.IntVar()
+subtitle_selection_idx.set(0)
+
+
+
 # ==== UI 控制變數 ====
 
 playlistID = tk.StringVar()
@@ -1127,6 +1135,16 @@ def setting_frame():
             CONFIG['show_cache'] = show_cache.get()
             save_config()
 
+        def subtitle_combobox_callback(event):
+            subtitle_selection_idx.set(subtitlecombobox.cget('values').index(subtitlecombobox.get()))
+            print(f'selected subtitle idx{subtitle_selection_idx.get()}')
+            if subtitle_selection_idx.get() != 0:
+                try:player.sub_add(subtitle_urllist[subtitle_selection_idx.get()-1])
+                except:pass
+            else:
+                try:player["sid"] = 'no'
+                except:pass
+
         def switch_discord_presence():
             CONFIG['enable_discord_presence'] = enable_discord_presence.get()
             save_config()
@@ -1447,6 +1465,8 @@ def setting_frame():
         enable_dnd_btn = ctk.CTkCheckBox(advanced_frame, text='Enable Drag and Drop', variable=enable_drag_and_drop, fg_color='#242424', text_color='white', command=switch_drag_and_drop)
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading Video', width=160, command=set_force_stop_loading, text_color='white', font=('Arial', 13, 'bold'))
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache, fg_color='#242424', text_color='white', command=switch_show_cache)
+        subtitle_label = ctk.CTkLabel(advanced_frame, text='Subtitle:', font=('Arial', 12), text_color='white')
+        subtitlecombobox = ctk.CTkComboBox(advanced_frame, font=('Arial', 12), width=200, state='readonly', values=subtitle_namelist, command=subtitle_combobox_callback)
         
         # External Services Section
         external_services_title = ctk.CTkLabel(external_services_frame, text="External Services Settings", font=('Arial', 14, 'bold'), text_color='white')
@@ -1674,6 +1694,12 @@ def setting_frame():
             except Exception as e:log_handle(content=str(e))
 
 
+
+
+
+
+
+
         def setting_frame_listener():#looping thread to check selected video and quick startup mode
             '''
             looping thread to check selected video and quick startup mode
@@ -1738,8 +1764,11 @@ def setting_frame():
                                     ui_queue.put(lambda: downloadselectedsong.configure(state='normal'))
                                 else:
                                     ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
-                            except Exception as e :pass  
+                            except Exception as e :pass
+
                     except Exception as e :pass
+                    ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
+                    ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
                            
                 except Exception as e :pass
                 time.sleep(1)
@@ -1750,6 +1779,7 @@ def setting_frame():
         threading.Thread(daemon=True,target=get_user_name).start()
         threading.Thread(daemon=True,target=get_hotkey_setting_thread).start()
         threading.Thread(daemon=True,target=setting_frame_listener).start()
+        
     
         if youtubeAPI:root.after(0,apilabel.configure(text=f'{youtubeAPI[:10]}{"*" * (len(youtubeAPI)-10)}'))
         update_cookie_path_textbox()
@@ -1814,8 +1844,10 @@ def setting_frame():
         advanced_title.grid(row=0, column=0, columnspan=2, padx=10, pady=(10,5), sticky="w")
         mpvlogbtn.grid(row=1, column=0, padx=10, pady=5, sticky="w")
         enable_dnd_btn.grid(row=1, column=1, padx=10, pady=5, sticky="w")
-        force_stop_loading_btn.grid(row=2, column=0, padx=10, pady=(0,10), sticky="w")
-        show_cache_btn.grid(row=2, column=1, padx=10, pady=(0,10), sticky="w")
+        force_stop_loading_btn.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        show_cache_btn.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+        subtitle_label.grid(row=3, column=0, padx=10, pady=(0,10), sticky="w")
+        subtitlecombobox.grid(row=3, column=1, padx=10, pady=(0,10), sticky="w")
         
         # Layout External Services Frame
         external_services_frame.grid(row=3, column=0, columnspan=2, padx=20, pady=10, sticky="ew")
@@ -2942,7 +2974,7 @@ def load_thread():  ### add every try except to a new log system for next update
     file_path for folder/file/dnd
     
     """
-    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading
+    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading,subtitle_namelist,subtitle_urllist
     while True:
         while load_thread_queue.empty():
                 time.sleep(0.3)  ### wait for loading command
@@ -2987,18 +3019,31 @@ def load_thread():  ### add every try except to a new log system for next update
                                     return None #### return if no internet
                                     #the def actually dont need to return anything but just to make sure it wont go futher
                             try:
-                                m3u8_url, vid_only_url, audio_only_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
+                                vid_only_url, audio_only_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
                                                                                                         maxres=maxresolution.get(),
                                                                                                         target_url=vid_url_in[selected_song_number_in] if not direct_url else direct_url,
                                                                                                         deno_path=deno_exe,
                                                                                                         log_handler=ytdlp_log_handle,
                                                                                                         cookie_path=cookies_dir)
-                                if m3u8_url:player.play(m3u8_url)
-                                elif vid_only_url:player.loadfile(vid_only_url, audio_file=audio_only_url)
+                                if not vid_only_url and not audio_only_url:
+                                    messagebox.showerror(f'JaTubePlayer {ver}','Failed to extract video info, maybe because of network problem or the video is private or age restricted.\nYou can try to play the video again or check the log for more details.')
+                                    force_stop_loading = True 
 
-                            
-                                
-                                
+                                player.loadfile(vid_only_url, audio_file=audio_only_url)
+                                subtitle_selection_idx.set(0)
+                                subtitle_namelist = ['No subtitles']
+                                subtitle_urllist = []
+
+                                for sub in playing_vid_info_dict.get('subtitles').values():
+                                    try:
+                                        if len(sub) == 7:
+                                            subtitle_namelist.append(sub[6]['name'])
+                                            subtitle_urllist.append(sub[6]['url'])
+                                        
+                                    except Exception as e:
+                                        print(f"Error processing subtitle: {e}")
+                                print(f"Available subtitles: {subtitle_namelist}")
+            
                                 try:## try to make the vid play info somehow ytdlp fail to get info dict
                                     if playing_vid_info_dict.get('live_status') == 'is_live':
                                         global stream
@@ -3795,12 +3840,25 @@ def create_mpv_player():
 
     buf_arg = {
         "cache": True,
-        "cache-secs": 300,
+        "cache-secs": 90,
         "demuxer-max-bytes": "1024MiB",
         "demuxer-max-back-bytes": "256MiB",
+        "demuxer_readahead_secs": 60.0,
         "cache-pause": "yes",
         "cache-pause-wait": 2,
+        "demuxer_thread": True,
+        "audio_wait_open": 5.0,  
     }
+
+    sub_arg = {
+    "sub_font": "Inter Medium",
+    "sub_font_size": 52,
+    "sub_color": "1/1/1/1.0",
+    "sub_border_color": "0.0/0.35/0.8/0.9",
+    "sub_border_size": 5,
+    "sub_scale": 0.9,
+}
+
 
     log_handle("create mpv")
     log_handle(content=f"cookie dir: {cookies_dir}")
@@ -3820,13 +3878,15 @@ def create_mpv_player():
 
     player = mpv.MPV(
         idle = True,
+
         hwdec="auto",
         wid=Frame_for_mpv.winfo_id(),
         log_handler=log_handle,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
-        **buf_arg
+        **buf_arg,
+        **sub_arg
     )
 
     log_handle(content=str(True if playing_vid_mode == 1 else False))
