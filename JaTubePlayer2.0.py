@@ -106,9 +106,9 @@ def log_handle(errtype="",component="main_system",content="") -> None:
     mpv_log.append(f'{datetime.now().strftime("%H:%M:%S")} [{errtype}] <{component}> -- {content}')
     
     
-    if errtype == 'error' and 'ytdl_hook' in component.lower():
+    if errtype == 'error' and component == 'yt-dlp':
         error_msg = str(content.lower())
-        if "this live event will" in error_msg:
+        if "live event will" in error_msg:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','This live event hasn\'t started yet'))
             force_stop_loading = True
         elif "unavailable" in error_msg:
@@ -294,7 +294,8 @@ win32gui.FindWindow(class_name, window_name)
 
 def get_selected_vid(event=None):
     global selected_song_number
-    selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
+    try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
+    except:pass
 
 
 def _extract_file(query):#for threadpool in get sub channel
@@ -1734,29 +1735,26 @@ def setting_frame():
                     except Exception as e:log_handle(content=str(e))
                     ui_queue.put(lambda: init_quick_startup_mode_text.configure(state='disabled'))
 
-                    if download_seleted_title_text.get(1.0,tk.END).strip() == '':prename_setting = None
-                    if selected_song_number != None or playing_vid_mode == 3:
-                        if playing_vid_mode ==3 or prename_setting !=playlisttitles[selected_song_number]:
-                            ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
-                            ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
-                            ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number] if playing_vid_mode !=3 or not playing_vid_info_dict else playing_vid_info_dict["title"]}'))
-                            ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
-
-                    else:
-                        ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
-                        ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
-                        ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
-                        ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
-                    if selected_song_number != None or playing_vid_mode==3 :
-                        if playing_vid_mode !=3:prename_setting = playlisttitles[selected_song_number]
-                        elif playing_vid_info_dict:prename_setting = playing_vid_info_dict['title']
-                    else:prename_setting=None
+                    
+                    ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
+                    ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
+                    
+                    if playing_vid_mode ==3 and playing_vid_info_dict:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
+                    elif selected_song_number:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
+                    else:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
+                    
+                    ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
+                        
+                    
+                        
+                    
                     try:
-                        if playing_vid_mode == 0 and playing_vid_info_dict.get('live_status') == 'is_live':
+                        _info_dict = playing_vid_info_dict if playing_vid_info_dict else {}
+                        if playing_vid_mode == 0 and _info_dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         elif playing_vid_mode ==1 or playing_vid_mode ==2:
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
-                        elif playing_vid_mode ==3 and playing_vid_info_dict.get('live_status') == 'is_live':
+                        elif playing_vid_mode ==3 and _info_dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         else:
                             try:
@@ -3019,63 +3017,62 @@ def load_thread():  ### add every try except to a new log system for next update
                                     return None #### return if no internet
                                     #the def actually dont need to return anything but just to make sure it wont go futher
                             try:
-                                vid_only_url, audio_only_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
-                                                                                                        maxres=maxresolution.get(),
-                                                                                                        target_url=vid_url_in[selected_song_number_in] if not direct_url else direct_url,
-                                                                                                        deno_path=deno_exe,
-                                                                                                        log_handler=ytdlp_log_handle,
-                                                                                                        cookie_path=cookies_dir)
-                                if not vid_only_url and not audio_only_url:
-                                    messagebox.showerror(f'JaTubePlayer {ver}','Failed to extract video info, maybe because of network problem or the video is private or age restricted.\nYou can try to play the video again or check the log for more details.')
-                                    force_stop_loading = True 
+                                final_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
+                                                                        maxres=maxresolution.get(),
+                                                                        target_url=vid_url_in[selected_song_number_in] if not direct_url else direct_url,
+                                                                        deno_path=deno_exe,
+                                                                        log_handler=ytdlp_log_handle,
+                                                                        cookie_path=cookies_dir)
+                                
+                                if final_url:
+                                    player.play(final_url)
+                                    subtitle_selection_idx.set(0)
+                                    subtitle_namelist = ['No subtitles']
+                                    subtitle_urllist = []
 
-                                player.loadfile(vid_only_url, audio_file=audio_only_url)
-                                subtitle_selection_idx.set(0)
-                                subtitle_namelist = ['No subtitles']
-                                subtitle_urllist = []
-
-                                for sub in playing_vid_info_dict.get('subtitles').values():
-                                    try:
-                                        if len(sub) == 7:
-                                            subtitle_namelist.append(sub[6]['name'])
-                                            subtitle_urllist.append(sub[6]['url'])
-                                        
-                                    except Exception as e:
-                                        print(f"Error processing subtitle: {e}")
-                                print(f"Available subtitles: {subtitle_namelist}")
+                                    for sub in playing_vid_info_dict.get('subtitles').values():
+                                        try:
+                                            if len(sub) == 7:
+                                                subtitle_namelist.append(sub[6]['name'])
+                                                subtitle_urllist.append(sub[6]['url'])
+                                            
+                                        except Exception as e:
+                                            print(f"Error processing subtitle: {e}")
+                                    print(f"Available subtitles: {subtitle_namelist}")
+                
+                                    try:## try to make the vid play info somehow ytdlp fail to get info dict
+                                        if playing_vid_info_dict.get('live_status') == 'is_live':
+                                            global stream
+                                            stream = True
             
-                                try:## try to make the vid play info somehow ytdlp fail to get info dict
-                                    if playing_vid_info_dict.get('live_status') == 'is_live':
-                                        global stream
-                                        stream = True
-           
-                                    else:
+                                        else:
+                                            stream = False
+                                    except:
                                         stream = False
-                                except:
-                                    stream = False
-                                    log_handle(type='error',content='failed to get live status')
+                                        log_handle(type='error',content='failed to get live status')
 
 
 
 
-                                try:## try to make the vid play info somehow ytdlp fail to get info dict
-                                    if save_history.get():
-                                        desc = playing_vid_info_dict.get('description')
-                                        infotags = playing_vid_info_dict.get('tags')
-                                        channel_url = playing_vid_info_dict.get('channel_id')
-                                        taglist = re.findall(r"[#＃](\w+)", f"{desc}")
-                                        tag = ''
-                                        if taglist != []:
-                                            for i in range(len(taglist)):
-                                                tag = tag +''.join(taglist[i]) + ' '
-                                                if i >=2:break
-                                        else :
-                                            for i in range(len(infotags)):
-                                                tag = tag +''.join(infotags[i]) + ' '
-                                                if i >=2:break
-                                        log_handle(content=f"{tag} {channel_url}")
-                                        save_recent_vid_info(tag,channel_url,current_dir)
-                                except:pass
+                                    try:## try to make the vid play info somehow ytdlp fail to get info dict
+                                        if save_history.get():
+                                            desc = playing_vid_info_dict.get('description')
+                                            infotags = playing_vid_info_dict.get('tags')
+                                            channel_url = playing_vid_info_dict.get('channel_id')
+                                            taglist = re.findall(r"[#＃](\w+)", f"{desc}")
+                                            tag = ''
+                                            if taglist != []:
+                                                for i in range(len(taglist)):
+                                                    tag = tag +''.join(taglist[i]) + ' '
+                                                    if i >=2:break
+                                            else :
+                                                for i in range(len(infotags)):
+                                                    tag = tag +''.join(infotags[i]) + ' '
+                                                    if i >=2:break
+                                            log_handle(content=f"{tag} {channel_url}")
+                                            save_recent_vid_info(tag,channel_url,current_dir)
+                                    except:pass
+                                else:force_stop_loading = True   
                             except Exception as e :
                                 playing_vid_info_dict = None
                                 threading.Thread(daemon= True,target=lambda:messagebox.showerror(f'JaTubePlayer {ver}',f'we got some problem {e}\n\n we can still play the video, but some information make be missing, and you live streams cannot be played smoothly!')).start()
@@ -3878,12 +3875,14 @@ def create_mpv_player():
 
     player = mpv.MPV(
         idle = True,
-
         hwdec="auto",
+        ytdl = True,
         wid=Frame_for_mpv.winfo_id(),
         log_handler=log_handle,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
+        af='scaletempo',
+        audio_buffer=5.0,  
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
         **buf_arg,
         **sub_arg

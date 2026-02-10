@@ -1,13 +1,44 @@
+def _create_edl_url(video_url, audio_url, duration=None):
+    """
+    Creates an mpv EDL URL with correct duration syntax.
+    Format: !new_stream;%length%url,start_offset,duration_length
+    """
+    
+    def _format_segment(url, duration_sec):
+        escaped_url = f"%{len(url)}%{url}"
+        if duration_sec and duration_sec > 0:
+            return f"{escaped_url},0,{duration_sec}"
+        else:
+            return escaped_url
+
+    parts = [
+        # --- VIDEO TRACK ---
+        "!new_stream",     
+        "!no_clip",        
+        "!no_chapters",    
+        _format_segment(video_url, duration),
+        
+        # --- AUDIO TRACK ---
+        "!new_stream",     
+        "!no_clip", 
+        "!no_chapters",
+        _format_segment(audio_url, duration)
+    ]
+    
+
+    return "edl://" + ";".join(parts)
+
+
 def get_info(yt_dlp:object,
              maxres:int,
              target_url:str,
              deno_path:str,
              log_handler:object,
-             cookie_path:str=None)->tuple[str,str,dict]:
+             cookie_path:str=None)->tuple[str,dict]:
     '''
-    Returns (video_url, audio_url, info_dict)
-    if nomral dash formats are available, video_url will be m3u8 url and audio_url will be None
-    if only separate video and audio formats are available, video_url and audio_url will be direct urls to the media files
+    Returns (final_url, info_dict)
+    if normal dash formats are available, final_url will be m3u8 url
+    if only separate video and audio formats are available, final_url will be an EDL URL
     '''
     
     ydl_opts = { 
@@ -24,26 +55,35 @@ def get_info(yt_dlp:object,
         ydl_opts['cookiefile'] =  cookie_path
     log_handler.info(f'get_info called with {target_url}\n yt_dlp version: {yt_dlp.version}\n maxres: {maxres}\n cookie_path: {cookie_path}\n deno: {deno_path}')
 
-
+    final_url = None
     vid_url = None
     audio_only_url = None
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(target_url, download=True)
-        fmt = info['formats']#list of dict
-        fmt = sorted(fmt,key=lambda x: int(x['height']) if x['height'] else 0,reverse=True)
-        
-        for f in fmt:
-            if not vid_url and f['protocol'] == 'https' and  f['ext'] == 'mp4' and f['audio_ext'] == 'none' and f['vcodec'] != 'none' and f.get('height',0) <= 1080:
-                vid_url = f['url']
-            if not audio_only_url and f['ext'] == 'm4a' and f['vcodec'] == 'none' and f['acodec'] != 'none' and f['quality'] >= 3.0:
-                audio_only_url = f['url']
 
-        if not audio_only_url and not vid_url:
-            for f in fmt:
-                if f['protocol'] == 'm3u8_native' and f.get('height',0) <= 1080:
-                    vid_url = f['url']
-                    break
-            
-    log_handler.info(f'get_info return {vid_url, audio_only_url}')
-    
-    return vid_url, audio_only_url, info
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(target_url, download=True)
+            if info['live_status'] != 'is_live' and 'requested_formats' in info:
+                fmt = info['requested_formats']
+                if len(fmt) == 2:
+                    vid_url = fmt[0]['url']
+                    audio_only_url = fmt[1]['url']
+                    final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
+                else:
+                    final_url = info['url']
+            else:
+                fmt = info.get('formats', [])
+                if fmt:
+                    fmt = sorted(fmt,key = lambda x: x.get('height',0) or 0, reverse=True)
+                    for f in fmt:
+                        if f.get('height',0) <= maxres:
+                            final_url = f'edl://!new_stream;!no_clip;!no_chapters;%{len(f["url"])}%{f["url"]}'
+                            break
+        
+            print('vid_url:', vid_url,'\n')
+            print('audio_only_url:', audio_only_url)
+
+        log_handler.info(f'get_info return { final_url}')
+        return final_url, info
+    except Exception as e:
+        log_handler.error(f'get_info error: {e}')
+        return None, None
