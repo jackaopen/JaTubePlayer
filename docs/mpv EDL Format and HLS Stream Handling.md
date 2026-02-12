@@ -190,11 +190,3 @@ edl_line = f"!new_stream;%{len(url)}%{url},0,196.5"
 * **The Bug:** It is extremely strict about syntax. If the `media_type` is not declared perfectly, or if `mpv` gets confused by the HLS manifest headers, it throws: `Invalid or missing !delay_open media type`.
 * **Fix:** Remove it. The stream loads fine without it, and the error disappears.
 
-### D. Understanding Rounding Warnings
-
-When forcing a duration in EDL, you may see logs like:
-`[demux] EDL: entry 0 uses 197.000 seconds, but file has only 196.681 seconds.`
-
-* **Cause:** You passed `197` (integer) to EDL, but the actual HLS segments only sum up to `196.681`.
-* **Impact:** **Harmless.** `mpv` automatically clamps the playback to the actual file end.
-* **Action:** Ignore this warning. It confirms that `mpv` has successfully recognized your imposed duration logic.

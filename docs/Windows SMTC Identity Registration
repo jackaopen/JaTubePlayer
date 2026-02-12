@@ -7,85 +7,10 @@ The **System Media Transport Controls (SMTC)** in Windows 10/11 rely on the Wind
 
 To fix this, the application must register an **AppUserModelID** (AUMID) via a **Start Menu Shortcut (`.lnk`)** that contains specific metadata in its **Property Store**. This document details the implementation of this registration mechanism.
 
----
-
-## 2. Implementation Code
-
-```python
-import os
-from win32com.shell import shell, shellcon  # type: ignore
-from win32com.propsys import propsys  # type: ignore
-import pythoncom
-
-class ShortcutManager:
-    """
-    Manages the creation of a Windows Start Menu shortcut stamped with
-    AppUserModelID metadata required for SMTC identity resolution.
-    """
-    def __init__(self, app_user_model_id: str, main_path: str):
-        self.app_id = app_user_model_id
-        self.main_path = main_path
-        
-        # Locate the Start Menu "Programs" folder
-        # CSIDL_PROGRAMS = C:\Users\<User>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs
-        start_menu = shell.SHGetFolderPath(0, shellcon.CSIDL_PROGRAMS, None, 0)
-        self.shortcut_path = os.path.join(start_menu, f"JaTubePlayer.lnk")
-        
-    def create(self):
-        try:
-            target = os.path.join(self.main_path)
-            
-            # 1. Create the ShellLink Object
-            shell_link = pythoncom.CoCreateInstance(
-                shell.CLSID_ShellLink, 
-                None,
-                pythoncom.CLSCTX_INPROC_SERVER, 
-                shell.IID_IShellLink
-            )
-            
-            # 2. Set Standard Shell Properties (Visuals)
-            shell_link.SetPath(target)
-            shell_link.SetDescription("JaTube Player")
-            # Icon index 0 = First icon resource in the file
-            shell_link.SetIconLocation(os.path.join(os.path.dirname(self.main_path),'_internal','jtp.ico'), 0)
-            
-            # 3. Inject AppUserModelID (Metadata)
-            # Switch interface to IPropertyStore
-            property_store = shell_link.QueryInterface(propsys.IID_IPropertyStore)
-            
-            # Get the Property Key for System.AppUserModel.ID
-            key = propsys.PSGetPropertyKeyFromName("System.AppUserModel.ID")
-            
-            # Wrap string in PROPVARIANT (VT_LPWSTR)
-            propvar = propsys.PROPVARIANTType(self.app_id)
-            
-            # Write and Commit
-            property_store.SetValue(key, propvar)
-            property_store.Commit()
-            
-            # 4. Save to Disk
-            # Switch interface to IPersistFile
-            persist_file = shell_link.QueryInterface(pythoncom.IID_IPersistFile)
-            persist_file.Save(self.shortcut_path, 0)
-            
-            print(f"[Shortcut] Registered AppID '{self.app_id}' at: {self.shortcut_path}")
-            
-        except Exception as e:
-            print(f"[Shortcut] Failed to register: {e}")
-
-    def cleanup(self):
-        if os.path.exists(self.shortcut_path):
-            try:
-                os.remove(self.shortcut_path)
-                print(f"[Shortcut] Unregistered: {self.shortcut_path}")
-            except Exception as e:
-                print(f"[Shortcut] Cleanup failed: {e}")
-
-```
 
 ---
 
-## 3. Detailed Parameter Documentation
+## 2. Detailed Parameter Documentation
 
 ### A. Initialization (`__init__`)
 
@@ -150,7 +75,7 @@ Writes the final binary object to the disk.
 
 ---
 
-## 4. Architecture: Why This Method?
+## 3. Architecture: Why This Method?
 
 ### The Problem with Alternatives
 

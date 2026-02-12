@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
+ctk.set_appearance_mode("dark")
 
 from utils.get_scaling import get_window_dpi
 from utils.ctk_get_scaling_patch import _apply_google_auth_patch
@@ -1241,9 +1242,15 @@ def setting_frame():
 
         def set_player_speed_setting(event=None):
             try:
-                playerspeed_speed_label.configure(text=f'{player_speed.get():.1f}x')    
+                playerspeed_speed_label.configure(text=f'{player_speed.get():.1f}x')
+            except Exception as e:
+                log_handle(content=str(e))
+        
+        def apply_player_speed_setting(event=None):
+            try:
                 player.speed = player_speed.get()
-            except:pass
+            except Exception as e:
+                log_handle(content=str(e))
         player_tab = setting_tab.add("Advanced Player setting")
         personal_playlist_tab = setting_tab.add("Personal playlist")
         download_tab = setting_tab.add("Download")
@@ -1449,6 +1456,7 @@ def setting_frame():
         audio_only_checkbtn = ctk.CTkCheckBox(playback_frame, text='Audio only mode', variable=audio_only, fg_color='#242424', text_color='white', command=switch_audio_only)
         playerspeed_title_label = ctk.CTkLabel(playback_frame, font=('Arial', 12, 'normal'), text='Player Speed:', text_color='white')
         playerspeed_slider = ctk.CTkSlider(playback_frame,variable=player_speed, from_=0.3, to=3.0, width=200,number_of_steps=27,command=set_player_speed_setting)
+        playerspeed_slider.bind('<ButtonRelease-1>', apply_player_speed_setting)
         playerspeed_speed_label = ctk.CTkLabel(playback_frame, font=('Arial', 12, 'normal'), text='1.0x', text_color='white')
         
         # Interface Settings Section
@@ -1772,6 +1780,8 @@ def setting_frame():
         threading.Thread(daemon=True,target=get_user_name).start()
         threading.Thread(daemon=True,target=get_hotkey_setting_thread).start()
         threading.Thread(daemon=True,target=setting_frame_listener).start()
+        ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
+        ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
         
     
         if youtubeAPI:root.after(0,apilabel.configure(text=f'{youtubeAPI[:10]}{"*" * (len(youtubeAPI)-10)}'))
@@ -3844,7 +3854,7 @@ def create_mpv_player():
         "cache-pause": "yes",
         "cache-pause-wait": 2,
         "demuxer_thread": True,
-        "audio_wait_open": 5.0,  
+        "audio_wait_open": 1.0,  
     }
 
     sub_arg = {
@@ -3876,13 +3886,13 @@ def create_mpv_player():
     player = mpv.MPV(
         idle = True,
         hwdec="auto",
+        profile="fast",
         ytdl = True,
         wid=Frame_for_mpv.winfo_id(),
         log_handler=log_handle,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
         af='scaletempo',
-        audio_buffer=5.0,  
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
         **buf_arg,
         **sub_arg
