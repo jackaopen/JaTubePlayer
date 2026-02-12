@@ -56,7 +56,7 @@ os.environ["PATH"] = _internal_dir + os.pathsep + os.environ["PATH"]
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-ver='2.0'
+ver='2.1'
 root.title(f'JaTubePlayer {ver} by Jackaopen')
 root.geometry('1320x680')
 root.iconbitmap(icondir)
@@ -462,6 +462,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
                         
 
                         try:
+                            ui_queue.put(lambda: info.title('loading info...'))
                             opt = {'quiet': True, 
                                    'skip_download':True,
                                    "extract_flat": True,
@@ -470,13 +471,8 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
                                 opt['cookiefile'] = cookies_dir
                                 
                             with yt_dlp.YoutubeDL(opt) as ydl:
-                                ui_queue.put(lambda: title_text.configure(state='normal'))
-                                ui_queue.put(lambda: title_text.insert(tk.END,f'loading . . .'))
-                                ui_queue.put(lambda: title_text.configure(state='disabled'))
-
-
                                 info_dict = ydl.extract_info(vid_url[selected_song_number], download=False)
-
+                                ui_queue.put(lambda: info.title('Video info '))
                                 ui_queue.put(lambda: title_text.configure(state='normal'))
                                 ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
                                 ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
@@ -552,7 +548,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
 
 
 def setting_frame():
-    global setting_api_entry,maxresolutioncombobox,setting,setting_closed,init_playlist_combobox
+    global setting_api_entry,maxresolutioncombobox,setting,setting_closed,init_playlist_combobox,subtitlecombobox
     try:
         if setting and setting.winfo_exists():
             setting.deiconify()
@@ -1740,7 +1736,7 @@ def setting_frame():
                     ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
                     
                     if playing_vid_mode ==3 and playing_vid_info_dict:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
-                    elif selected_song_number:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
+                    elif selected_song_number != None:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
                     else:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
                     
                     ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
@@ -1765,8 +1761,7 @@ def setting_frame():
                             except Exception as e :pass
 
                     except Exception as e :pass
-                    ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
-                    ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
+                    
                            
                 except Exception as e :pass
                 time.sleep(1)
@@ -2685,7 +2680,7 @@ def update_playing_pos_local_and_chrome():
                         ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
                 else:
                     ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
-            if abs(pos - length ) <= 0.4 and length != -1: ## video ends
+            if player.eof_reached and length != -1: ## video ends
                 
                 if selected_song_number != None:
                     ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
@@ -2753,7 +2748,7 @@ def update_playing_pos_yt():
                     except:
                         pass
                 else:ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
-                if abs(pos - length ) <= 0.2 and length != -1: ## video ends
+                if player.eof_reached and  length != -1: ## video ends
                     log_handle(content=f'video ended detected in yt thread , now do {player_mode_selector.get()}')
                     if selected_song_number != None:
                         if player_mode_selector.get() !='replay':
@@ -2972,7 +2967,7 @@ def load_thread():  ### add every try except to a new log system for next update
     file_path for folder/file/dnd
     
     """
-    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading,subtitle_namelist,subtitle_urllist
+    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading,subtitle_namelist,subtitle_urllist,subtitlecombobox
     while True:
         while load_thread_queue.empty():
                 time.sleep(0.3)  ### wait for loading command
@@ -3035,9 +3030,11 @@ def load_thread():  ### add every try except to a new log system for next update
                                             if len(sub) == 7:
                                                 subtitle_namelist.append(sub[6]['name'])
                                                 subtitle_urllist.append(sub[6]['url'])
-                                            
+                                            ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
+                                            ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
                                         except Exception as e:
                                             print(f"Error processing subtitle: {e}")
+
                                     print(f"Available subtitles: {subtitle_namelist}")
                 
                                     try:## try to make the vid play info somehow ytdlp fail to get info dict
@@ -3054,7 +3051,7 @@ def load_thread():  ### add every try except to a new log system for next update
 
 
 
-                                    try:## try to make the vid play info somehow ytdlp fail to get info dict
+                                    try:# save to history
                                         if save_history.get():
                                             desc = playing_vid_info_dict.get('description')
                                             infotags = playing_vid_info_dict.get('tags')
@@ -3096,10 +3093,8 @@ def load_thread():  ### add every try except to a new log system for next update
                                 if i %2 ==0:
                                     ui_queue.put(lambda: player_loading_label.configure(text='loading..'))
                                 else:ui_queue.put(lambda: player_loading_label.configure(text='loading.'))
-                                if i == 10 or i==20:
 
-                                    mpv_log.append('calling')
-                                    player.play(vid_url_in[selected_song_number_in] if not direct_url else direct_url)
+
                                 if i > 29:
                                     if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
                                         loadingvideo = False
@@ -3385,6 +3380,9 @@ def onclose():
     try:
         asyncio.run_coroutine_threadsafe(asyncio_session.close(),asynceventloop)
     except:pass
+    try:
+        shortcut_manager.cleanup()
+    except:pass
     root.destroy()
 
     
@@ -3573,10 +3571,12 @@ def fullscreen_widget_change(event=None):
             modeforfullscreen = 1
             
             try:
-                if playing_title_textbox.get():root.title(f'JaTubePlayer {ver} by Jackaopen  -  {playing_title_textbox.get(1.0, "end").strip()}')
-                else:root.title(f'JaTubePlayer {ver} by Jackaopen')
-            except:
-                pass
+                if playing_title_textbox.get("1.0", "end").strip():
+                    root.title(f'JaTubePlayer {ver} by Jackaopen  -  {playing_title_textbox.get("1.0", "end").strip()}')
+                else:
+                    root.title(f'JaTubePlayer {ver} by Jackaopen')
+            except Exception as e:
+                log_handle(content=f"Error updating title: {e}")
         
         root.update_idletasks()
         
@@ -4044,6 +4044,7 @@ def _start_up_import():
 def _extra_startup_imports():
     global update_sub_list, update_like_list, liked_channel, sub_channel,download_and_extract_dlp
     global MediaControlOverlay,chrome_extension_flask,requests
+    global shortcut_manager
 
     t = time.time()
     from utils.sub_and_like_public import update_sub_list, update_like_list, liked_channel, sub_channel
@@ -4059,6 +4060,9 @@ def _extra_startup_imports():
     init_ver_check()
     log_handle(content=f'ver_check: {time.time()-t:.3f}s')
 
+    from system.win_shortcut_control import ShortcutManager
+    shortcut_manager = ShortcutManager(app_user_model_id="Jackaopen.JaTubePlayer", main_path=os.path.abspath(__file__))
+    shortcut_manager.create()
 
     # SMTC
     t = time.time()

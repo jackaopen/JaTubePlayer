@@ -67,6 +67,7 @@ def get_info(yt_dlp:object,
                 if len(fmt) == 2:
                     vid_url = fmt[0]['url']
                     audio_only_url = fmt[1]['url']
+                    log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}")
                     final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
                 else:
                     final_url = info['url']
