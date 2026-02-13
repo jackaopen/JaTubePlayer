@@ -26,7 +26,7 @@ class MediaControlOverlay(object):
         self.pause_fun = pause_fun
         
         self.updater = self.smtc.display_updater
-        self.updater.app_media_id = "Jackaopen.JaTubePlayer.2.0"
+        self.updater.app_media_id = "Jackaopen.JaTubePlayer"
 
     def on_button_pressed(self, sender, args):
         btn = args.button
