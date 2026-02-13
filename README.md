@@ -82,12 +82,14 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - Adjustable playback speed
 - Selectable resolution for online videos
 
+
 **System Integration & Convenience**
 - Player buffer/cache information display
 - "Open With" integration — launch videos directly from File Explorer
 - System Media Transport Controls (SMTC) — Windows media controls in taskbar and action center
 - Windows system tray icon
 - Automatic version check
+- Able to display subtitles from online videos
 
 <br>
 
