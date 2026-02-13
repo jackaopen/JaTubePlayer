@@ -24,8 +24,6 @@ class ShortcutManager:
             
             shell_link.SetPath(target)
             shell_link.SetDescription("JaTube Player")
-            shell_link.SetIconLocation(os.path.join(os.path.dirname(self.main_path),'_internal','jtp.ico'), 0)
-            
            
             property_store = shell_link.QueryInterface(propsys.IID_IPropertyStore)
             key = propsys.PSGetPropertyKeyFromName("System.AppUserModel.ID")

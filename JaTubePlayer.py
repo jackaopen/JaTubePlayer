@@ -4263,7 +4263,7 @@ google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center")
 
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 12), text_color='#888888', wrap="none",
-                                   border_width=0, height=1,fg_color="transparent")
+                                   border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
 google_status_text.place(relx=0.715, rely=0.13, relwidth=0.27)
 google_status_text.configure(state='disabled')
 
