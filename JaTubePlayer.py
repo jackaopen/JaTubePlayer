@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
+ctk.set_appearance_mode("dark")
 
 from utils.get_scaling import get_window_dpi
 from utils.ctk_get_scaling_patch import _apply_google_auth_patch
@@ -22,6 +23,7 @@ from utils.get_related_video import *
 from utils.download_to_local import download_to_local
 from utils.check_internet import *
 from utils.check_internet import check_internet
+from utils.get_media_info import get_info
 
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
@@ -35,7 +37,6 @@ from system.presence import DiscordPresence
 import ctypes
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
-
 
 
 
@@ -56,7 +57,7 @@ os.environ["PATH"] = _internal_dir + os.pathsep + os.environ["PATH"]
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-ver='2.0'
+ver='2.1'
 root.title(f'JaTubePlayer {ver} by Jackaopen')
 root.geometry('1320x680')
 root.iconbitmap(icondir)
@@ -106,9 +107,9 @@ def log_handle(errtype="",component="main_system",content="") -> None:
     mpv_log.append(f'{datetime.now().strftime("%H:%M:%S")} [{errtype}] <{component}> -- {content}')
     
     
-    if errtype == 'error' and 'ytdl_hook' in component.lower():
+    if errtype == 'error' and component == 'yt-dlp':
         error_msg = str(content.lower())
-        if "this live event will" in error_msg:
+        if "live event will" in error_msg:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','This live event hasn\'t started yet'))
             force_stop_loading = True
         elif "unavailable" in error_msg:
@@ -175,6 +176,14 @@ playing_vid_info_dict = {}
 player_speed = tk.DoubleVar()
 player_speed.set(1.0)
 deno_exe = os.path.join(_internal_dir,'deno.exe')
+
+subtitle_namelist = ['No subtitles']
+subtitle_urllist = [None]
+
+subtitle_selection_idx = tk.IntVar()
+subtitle_selection_idx.set(0)
+
+
 
 # ==== UI 控制變數 ====
 
@@ -286,7 +295,8 @@ win32gui.FindWindow(class_name, window_name)
 
 def get_selected_vid(event=None):
     global selected_song_number
-    selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
+    try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
+    except:pass
 
 
 def _extract_file(query):#for threadpool in get sub channel
@@ -453,6 +463,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
                         
 
                         try:
+                            ui_queue.put(lambda: info.title('loading info...'))
                             opt = {'quiet': True, 
                                    'skip_download':True,
                                    "extract_flat": True,
@@ -461,13 +472,8 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
                                 opt['cookiefile'] = cookies_dir
                                 
                             with yt_dlp.YoutubeDL(opt) as ydl:
-                                ui_queue.put(lambda: title_text.configure(state='normal'))
-                                ui_queue.put(lambda: title_text.insert(tk.END,f'loading . . .'))
-                                ui_queue.put(lambda: title_text.configure(state='disabled'))
-
-
                                 info_dict = ydl.extract_info(vid_url[selected_song_number], download=False)
-
+                                ui_queue.put(lambda: info.title('Video info '))
                                 ui_queue.put(lambda: title_text.configure(state='normal'))
                                 ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
                                 ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
@@ -543,7 +549,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
 
 
 def setting_frame():
-    global setting_api_entry,maxresolutioncombobox,setting,setting_closed,init_playlist_combobox
+    global setting_api_entry,maxresolutioncombobox,setting,setting_closed,init_playlist_combobox,subtitlecombobox
     try:
         if setting and setting.winfo_exists():
             setting.deiconify()
@@ -1127,6 +1133,16 @@ def setting_frame():
             CONFIG['show_cache'] = show_cache.get()
             save_config()
 
+        def subtitle_combobox_callback(event):
+            subtitle_selection_idx.set(subtitlecombobox.cget('values').index(subtitlecombobox.get()))
+            print(f'selected subtitle idx{subtitle_selection_idx.get()}')
+            if subtitle_selection_idx.get() != 0:
+                try:player.sub_add(subtitle_urllist[subtitle_selection_idx.get()-1])
+                except:pass
+            else:
+                try:player["sid"] = 'no'
+                except:pass
+
         def switch_discord_presence():
             CONFIG['enable_discord_presence'] = enable_discord_presence.get()
             save_config()
@@ -1226,9 +1242,15 @@ def setting_frame():
 
         def set_player_speed_setting(event=None):
             try:
-                playerspeed_speed_label.configure(text=f'{player_speed.get():.1f}x')    
+                playerspeed_speed_label.configure(text=f'{player_speed.get():.1f}x')
+            except Exception as e:
+                log_handle(content=str(e))
+        
+        def apply_player_speed_setting(event=None):
+            try:
                 player.speed = player_speed.get()
-            except:pass
+            except Exception as e:
+                log_handle(content=str(e))
         player_tab = setting_tab.add("Advanced Player setting")
         personal_playlist_tab = setting_tab.add("Personal playlist")
         download_tab = setting_tab.add("Download")
@@ -1434,6 +1456,7 @@ def setting_frame():
         audio_only_checkbtn = ctk.CTkCheckBox(playback_frame, text='Audio only mode', variable=audio_only, fg_color='#242424', text_color='white', command=switch_audio_only)
         playerspeed_title_label = ctk.CTkLabel(playback_frame, font=('Arial', 12, 'normal'), text='Player Speed:', text_color='white')
         playerspeed_slider = ctk.CTkSlider(playback_frame,variable=player_speed, from_=0.3, to=3.0, width=200,number_of_steps=27,command=set_player_speed_setting)
+        playerspeed_slider.bind('<ButtonRelease-1>', apply_player_speed_setting)
         playerspeed_speed_label = ctk.CTkLabel(playback_frame, font=('Arial', 12, 'normal'), text='1.0x', text_color='white')
         
         # Interface Settings Section
@@ -1447,6 +1470,8 @@ def setting_frame():
         enable_dnd_btn = ctk.CTkCheckBox(advanced_frame, text='Enable Drag and Drop', variable=enable_drag_and_drop, fg_color='#242424', text_color='white', command=switch_drag_and_drop)
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading Video', width=160, command=set_force_stop_loading, text_color='white', font=('Arial', 13, 'bold'))
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache, fg_color='#242424', text_color='white', command=switch_show_cache)
+        subtitle_label = ctk.CTkLabel(advanced_frame, text='Subtitle:', font=('Arial', 12), text_color='white')
+        subtitlecombobox = ctk.CTkComboBox(advanced_frame, font=('Arial', 12), width=200, state='readonly', values=subtitle_namelist, command=subtitle_combobox_callback)
         
         # External Services Section
         external_services_title = ctk.CTkLabel(external_services_frame, text="External Services Settings", font=('Arial', 14, 'bold'), text_color='white')
@@ -1674,6 +1699,12 @@ def setting_frame():
             except Exception as e:log_handle(content=str(e))
 
 
+
+
+
+
+
+
         def setting_frame_listener():#looping thread to check selected video and quick startup mode
             '''
             looping thread to check selected video and quick startup mode
@@ -1708,29 +1739,26 @@ def setting_frame():
                     except Exception as e:log_handle(content=str(e))
                     ui_queue.put(lambda: init_quick_startup_mode_text.configure(state='disabled'))
 
-                    if download_seleted_title_text.get(1.0,tk.END).strip() == '':prename_setting = None
-                    if selected_song_number != None or playing_vid_mode == 3:
-                        if playing_vid_mode ==3 or prename_setting !=playlisttitles[selected_song_number]:
-                            ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
-                            ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
-                            ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number] if playing_vid_mode !=3 or not playing_vid_info_dict else playing_vid_info_dict["title"]}'))
-                            ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
-
-                    else:
-                        ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
-                        ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
-                        ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
-                        ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
-                    if selected_song_number != None or playing_vid_mode==3 :
-                        if playing_vid_mode !=3:prename_setting = playlisttitles[selected_song_number]
-                        elif playing_vid_info_dict:prename_setting = playing_vid_info_dict['title']
-                    else:prename_setting=None
+                    
+                    ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
+                    ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
+                    
+                    if playing_vid_mode ==3 and playing_vid_info_dict:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
+                    elif selected_song_number != None:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
+                    else:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
+                    
+                    ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
+                        
+                    
+                        
+                    
                     try:
-                        if playing_vid_mode == 0 and playing_vid_info_dict.get('live_status') == 'is_live':
+                        _info_dict = playing_vid_info_dict if playing_vid_info_dict else {}
+                        if playing_vid_mode == 0 and _info_dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         elif playing_vid_mode ==1 or playing_vid_mode ==2:
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
-                        elif playing_vid_mode ==3 and playing_vid_info_dict.get('live_status') == 'is_live':
+                        elif playing_vid_mode ==3 and _info_dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         else:
                             try:
@@ -1738,8 +1766,10 @@ def setting_frame():
                                     ui_queue.put(lambda: downloadselectedsong.configure(state='normal'))
                                 else:
                                     ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
-                            except Exception as e :pass  
+                            except Exception as e :pass
+
                     except Exception as e :pass
+                    
                            
                 except Exception as e :pass
                 time.sleep(1)
@@ -1750,6 +1780,9 @@ def setting_frame():
         threading.Thread(daemon=True,target=get_user_name).start()
         threading.Thread(daemon=True,target=get_hotkey_setting_thread).start()
         threading.Thread(daemon=True,target=setting_frame_listener).start()
+        ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
+        ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
+        
     
         if youtubeAPI:root.after(0,apilabel.configure(text=f'{youtubeAPI[:10]}{"*" * (len(youtubeAPI)-10)}'))
         update_cookie_path_textbox()
@@ -1814,8 +1847,10 @@ def setting_frame():
         advanced_title.grid(row=0, column=0, columnspan=2, padx=10, pady=(10,5), sticky="w")
         mpvlogbtn.grid(row=1, column=0, padx=10, pady=5, sticky="w")
         enable_dnd_btn.grid(row=1, column=1, padx=10, pady=5, sticky="w")
-        force_stop_loading_btn.grid(row=2, column=0, padx=10, pady=(0,10), sticky="w")
-        show_cache_btn.grid(row=2, column=1, padx=10, pady=(0,10), sticky="w")
+        force_stop_loading_btn.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        show_cache_btn.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+        subtitle_label.grid(row=3, column=0, padx=10, pady=(0,10), sticky="w")
+        subtitlecombobox.grid(row=3, column=1, padx=10, pady=(0,10), sticky="w")
         
         # Layout External Services Frame
         external_services_frame.grid(row=3, column=0, columnspan=2, padx=20, pady=10, sticky="ew")
@@ -2655,7 +2690,7 @@ def update_playing_pos_local_and_chrome():
                         ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
                 else:
                     ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
-            if abs(pos - length ) <= 0.4 and length != -1: ## video ends
+            if player.eof_reached and length != -1: ## video ends
                 
                 if selected_song_number != None:
                     ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
@@ -2723,7 +2758,7 @@ def update_playing_pos_yt():
                     except:
                         pass
                 else:ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
-                if abs(pos - length ) <= 0.2 and length != -1: ## video ends
+                if player.eof_reached and  length != -1: ## video ends
                     log_handle(content=f'video ended detected in yt thread , now do {player_mode_selector.get()}')
                     if selected_song_number != None:
                         if player_mode_selector.get() !='replay':
@@ -2942,7 +2977,7 @@ def load_thread():  ### add every try except to a new log system for next update
     file_path for folder/file/dnd
     
     """
-    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading
+    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading,subtitle_namelist,subtitle_urllist,subtitlecombobox
     while True:
         while load_thread_queue.empty():
                 time.sleep(0.3)  ### wait for loading command
@@ -2986,60 +3021,65 @@ def load_thread():  ### add every try except to a new log system for next update
                                     loadingvideo = False
                                     return None #### return if no internet
                                     #the def actually dont need to return anything but just to make sure it wont go futher
-
-
-
-                            player.play(vid_url_in[selected_song_number_in] if not direct_url else direct_url)####
-                            ydl_opts = { 
-                                'quiet': True, 
-                                'skip_download': True,
-                                'ignoreerrors': True,
-                                'ignore_no_formats_error': True,
-                                'no_color': True,
-                                'extract_flat': False,  
-                                'extractor_args': {'youtube': {'skip': ['hls', 'dash']}},
-                            }
-
-                            if cookies_dir:
-                                ydl_opts['cookiefile'] = cookies_dir 
-                            ydl_opts['logger'] = ytdlp_log_handle
                             try:
-                                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                                    playing_vid_info_dict = ydl.extract_info(playing_vid_url, download=False)
+                                final_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
+                                                                        maxres=maxresolution.get(),
+                                                                        target_url=vid_url_in[selected_song_number_in] if not direct_url else direct_url,
+                                                                        deno_path=deno_exe,
+                                                                        log_handler=ytdlp_log_handle,
+                                                                        cookie_path=cookies_dir)
                                 
-                                
-                                try:## try to make the vid play info somehow ytdlp fail to get info dict
-                                    if playing_vid_info_dict.get('live_status') == 'is_live':
-                                        global stream
-                                        stream = True
-           
-                                    else:
+                                if final_url:
+                                    player.play(final_url)
+                                    subtitle_selection_idx.set(0)
+                                    subtitle_namelist = ['No subtitles']
+                                    subtitle_urllist = []
+
+                                    for sub in playing_vid_info_dict.get('subtitles').values():
+                                        try:
+                                            if len(sub) == 7:
+                                                subtitle_namelist.append(sub[6]['name'])
+                                                subtitle_urllist.append(sub[6]['url'])
+                                            ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
+                                            ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
+                                        except Exception as e:
+                                            print(f"Error processing subtitle: {e}")
+
+                                    print(f"Available subtitles: {subtitle_namelist}")
+                
+                                    try:## try to make the vid play info somehow ytdlp fail to get info dict
+                                        if playing_vid_info_dict.get('live_status') == 'is_live':
+                                            global stream
+                                            stream = True
+            
+                                        else:
+                                            stream = False
+                                    except:
                                         stream = False
-                                except:
-                                    stream = False
-                                    log_handle(type='error',content='failed to get live status')
+                                        log_handle(type='error',content='failed to get live status')
 
 
 
 
-                                try:## try to make the vid play info somehow ytdlp fail to get info dict
-                                    if save_history.get():
-                                        desc = playing_vid_info_dict.get('description')
-                                        infotags = playing_vid_info_dict.get('tags')
-                                        channel_url = playing_vid_info_dict.get('channel_id')
-                                        taglist = re.findall(r"[#＃](\w+)", f"{desc}")
-                                        tag = ''
-                                        if taglist != []:
-                                            for i in range(len(taglist)):
-                                                tag = tag +''.join(taglist[i]) + ' '
-                                                if i >=2:break
-                                        else :
-                                            for i in range(len(infotags)):
-                                                tag = tag +''.join(infotags[i]) + ' '
-                                                if i >=2:break
-                                        log_handle(content=f"{tag} {channel_url}")
-                                        save_recent_vid_info(tag,channel_url,current_dir)
-                                except:pass
+                                    try:# save to history
+                                        if save_history.get():
+                                            desc = playing_vid_info_dict.get('description')
+                                            infotags = playing_vid_info_dict.get('tags')
+                                            channel_url = playing_vid_info_dict.get('channel_id')
+                                            taglist = re.findall(r"[#＃](\w+)", f"{desc}")
+                                            tag = ''
+                                            if taglist != []:
+                                                for i in range(len(taglist)):
+                                                    tag = tag +''.join(taglist[i]) + ' '
+                                                    if i >=2:break
+                                            else :
+                                                for i in range(len(infotags)):
+                                                    tag = tag +''.join(infotags[i]) + ' '
+                                                    if i >=2:break
+                                            log_handle(content=f"{tag} {channel_url}")
+                                            save_recent_vid_info(tag,channel_url,current_dir)
+                                    except:pass
+                                else:force_stop_loading = True   
                             except Exception as e :
                                 playing_vid_info_dict = None
                                 threading.Thread(daemon= True,target=lambda:messagebox.showerror(f'JaTubePlayer {ver}',f'we got some problem {e}\n\n we can still play the video, but some information make be missing, and you live streams cannot be played smoothly!')).start()
@@ -3063,10 +3103,8 @@ def load_thread():  ### add every try except to a new log system for next update
                                 if i %2 ==0:
                                     ui_queue.put(lambda: player_loading_label.configure(text='loading..'))
                                 else:ui_queue.put(lambda: player_loading_label.configure(text='loading.'))
-                                if i == 10 or i==20:
 
-                                    mpv_log.append('calling')
-                                    player.play(vid_url_in[selected_song_number_in] if not direct_url else direct_url)
+
                                 if i > 29:
                                     if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
                                         loadingvideo = False
@@ -3352,6 +3390,9 @@ def onclose():
     try:
         asyncio.run_coroutine_threadsafe(asyncio_session.close(),asynceventloop)
     except:pass
+    try:
+        shortcut_manager.cleanup()
+    except:pass
     root.destroy()
 
     
@@ -3540,10 +3581,12 @@ def fullscreen_widget_change(event=None):
             modeforfullscreen = 1
             
             try:
-                if playing_title_textbox.get():root.title(f'JaTubePlayer {ver} by Jackaopen  -  {playing_title_textbox.get(1.0, "end").strip()}')
-                else:root.title(f'JaTubePlayer {ver} by Jackaopen')
-            except:
-                pass
+                if playing_title_textbox.get("1.0", "end").strip():
+                    root.title(f'JaTubePlayer {ver} by Jackaopen  -  {playing_title_textbox.get("1.0", "end").strip()}')
+                else:
+                    root.title(f'JaTubePlayer {ver} by Jackaopen')
+            except Exception as e:
+                log_handle(content=f"Error updating title: {e}")
         
         root.update_idletasks()
         
@@ -3804,12 +3847,25 @@ def create_mpv_player():
 
     buf_arg = {
         "cache": True,
-        "cache-secs": 300,
+        "cache-secs": 90,
         "demuxer-max-bytes": "1024MiB",
         "demuxer-max-back-bytes": "256MiB",
+        "demuxer_readahead_secs": 60.0,
         "cache-pause": "yes",
         "cache-pause-wait": 2,
+        "demuxer_thread": True,
+        "audio_wait_open": 1.0,  
     }
+
+    sub_arg = {
+    "sub_font": "Inter Medium",
+    "sub_font_size": 52,
+    "sub_color": "1/1/1/1.0",
+    "sub_border_color": "0.0/0.35/0.8/0.9",
+    "sub_border_size": 5,
+    "sub_scale": 0.9,
+}
+
 
     log_handle("create mpv")
     log_handle(content=f"cookie dir: {cookies_dir}")
@@ -3826,35 +3882,20 @@ def create_mpv_player():
             pass
         log_handle(content="killed")
 
-    format_ = f"bv*[height<={maxresolution.get()}]+ba/best"
-
-
-    deno_path = deno_exe.replace("\\", "/")
-
-    base_ytdl_opts = (
-        f'js-runtimes=deno:{deno_path},'
-        f'remote-components=ejs:github,'
-        
-    )
-
-    if cookies_dir:
-        ytdl_opts = f'cookies={cookies_dir.replace("\\", "/")},' + base_ytdl_opts
-    else:
-        ytdl_opts = base_ytdl_opts
-
 
     player = mpv.MPV(
         idle = True,
         hwdec="auto",
+        profile="fast",
+        ytdl = True,
         wid=Frame_for_mpv.winfo_id(),
         log_handler=log_handle,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
-        ytdl_format=format_,
-        ytdl_raw_options=ytdl_opts,
+        af='scaletempo',
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
-        script_opts=f'ytdl_hook-ytdl_path="{os.path.join(_internal_dir, "yt-dlp.exe").replace("\\", "/")}"',
-        **buf_arg
+        **buf_arg,
+        **sub_arg
     )
 
     log_handle(content=str(True if playing_vid_mode == 1 else False))
@@ -4013,6 +4054,7 @@ def _start_up_import():
 def _extra_startup_imports():
     global update_sub_list, update_like_list, liked_channel, sub_channel,download_and_extract_dlp
     global MediaControlOverlay,chrome_extension_flask,requests
+    global shortcut_manager
 
     t = time.time()
     from utils.sub_and_like_public import update_sub_list, update_like_list, liked_channel, sub_channel
@@ -4028,6 +4070,9 @@ def _extra_startup_imports():
     init_ver_check()
     log_handle(content=f'ver_check: {time.time()-t:.3f}s')
 
+    from system.win_shortcut_control import ShortcutManager
+    shortcut_manager = ShortcutManager(app_user_model_id="Jackaopen.JaTubePlayer", main_path=os.path.abspath(__file__))
+    shortcut_manager.create()
 
     # SMTC
     t = time.time()
@@ -4218,7 +4263,7 @@ google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center")
 
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 12), text_color='#888888', wrap="none",
-                                   border_width=0, height=1,fg_color="transparent")
+                                   border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
 google_status_text.place(relx=0.715, rely=0.13, relwidth=0.27)
 google_status_text.configure(state='disabled')
 
