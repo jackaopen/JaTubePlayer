@@ -134,7 +134,7 @@ class google_auth_control(object):
 
     
     @check_internet
-    def get_google_cred_and_save(self)->None:
+    def get_google_cred_and_save(self)->Credentials|None:
         '''
 
         
@@ -148,33 +148,32 @@ class google_auth_control(object):
         ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {self.ver}', msg='Starting Google login process...\nPlease finish the login within 2 minutes.', duration='short', icon='')
         if self.client_secret_path and os.path.exists(self.client_secret_path):
             if self.youtubeAPI: 
-                
+                try:
                     scopes = ["https://www.googleapis.com/auth/youtube.readonly"
                               ,"https://www.googleapis.com/auth/userinfo.profile"]
                     flow = InstalledAppFlow.from_client_secrets_file(self.client_secret_path, scopes=scopes)
-                    try:
-                        html_file_path = os.path.join(self.current_dir,'_internal','google_login_suc_red_page.html')
-                        with open(html_file_path, 'r', encoding='utf-8') as f:
-                            html = f.read()
-                        credentials = flow.run_local_server(
-                            port=0,
-                            timeout_seconds=120,
-                            success_message=html,#changed the flow.py class _RedirectWSGIApp to support html success message
-                            browser='chrome_app'
-                            )
-
-                        self.Fernet_encryptor.encrypt_cred(credentials)
-                        if credentials:
-                            print("Google login successful.")
-                        else:
-                            print("Google login failed or was cancelled.")
-                        return credentials
-
-                    except:pass
                     
+                    html_file_path = os.path.join(self.current_dir,'_internal','google_login_suc_red_page.html')
+                    with open(html_file_path, 'r', encoding='utf-8') as f:
+                        html = f.read()
+                    credentials = flow.run_local_server(
+                        port=0,
+                        timeout_seconds=120,
+                        success_message=html,#changed the flow.py class _RedirectWSGIApp to support html success message
+                        browser='chrome_app'
+                        )
 
+                    self.Fernet_encryptor.encrypt_cred(credentials)
+                    if credentials:
+                        print("Google login successful.")
+                    else:
+                        print("Google login failed or was cancelled.")
+                    return credentials
 
-
+                except Exception as e:
+                    self.ctk_messagebox.showerror("JaTubePlayer","Google login failed or was cancelled.\n"+str(e))
+                    return None
+                    
 
             else:
                 self.ctk_messagebox.showerror("JaTubePlayer","There is no API, please check at setting -> account & authentication.")
