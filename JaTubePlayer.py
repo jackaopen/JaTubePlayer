@@ -57,7 +57,7 @@ os.environ["PATH"] = _internal_dir + os.pathsep + os.environ["PATH"]
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-ver='2.1'
+ver='2.2'
 root.title(f'JaTubePlayer {ver} by Jackaopen')
 root.geometry('1320x680')
 root.iconbitmap(icondir)
@@ -2701,7 +2701,9 @@ def update_playing_pos_local_and_chrome():
                                 selected_song_number = 0
                             else:    
                                 selected_song_number  = selected_song_number + 1
-                        elif player_mode_selector.get() =='replay':player.seek(0,reference='absolute')
+                        elif player_mode_selector.get() =='replay':
+                            player.seek(0,reference='absolute')
+                            root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             selected_song_number = random.randint(0,len(vid_url))
                         download_and_play()
@@ -2772,8 +2774,8 @@ def update_playing_pos_yt():
                                 selected_song_number  = selected_song_number + 1
 
                         elif player_mode_selector.get() =='replay':
-                            player.seek(0,reference='absolute')#### go back instead of recreate mpv obj via dap
-
+                            player.seek(0,reference='absolute')
+                            root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
                             selected_song_number = random.randint(0,len(vid_url))
@@ -3852,7 +3854,8 @@ def create_mpv_player():
         "demuxer-max-back-bytes": "256MiB",
         "demuxer_readahead_secs": 60.0,
         "cache-pause": "yes",
-        "cache-pause-wait": 2,
+        "cache-pause-wait": 3,
+        "cache_pause_initial": "yes", 
         "demuxer_thread": True,
         "audio_wait_open": 1.0,  
     }
