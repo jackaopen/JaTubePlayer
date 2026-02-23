@@ -124,6 +124,9 @@ def log_handle(errtype="",component="main_system",content="") -> None:
         elif "Sign in" in error_msg or "not a bot" in error_msg:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Youtube is asking for sign in or captcha verification, please try to use cookies file'))
             force_stop_loading = True
+        elif " not currently live" in error_msg:
+            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The channel is not currently live'))
+            force_stop_loading = True
     if "cookies are no longer valid" in content:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Your cookies file may be invalid or expired'))
         
@@ -3849,12 +3852,12 @@ def create_mpv_player():
 
     buf_arg = {
         "cache": True,
-        "cache-secs": 90,
-        "demuxer-max-bytes": "1024MiB",
+        "cache-secs": 80,
+        "demuxer-max-bytes": "512MiB",
         "demuxer-max-back-bytes": "256MiB",
         "demuxer_readahead_secs": 60.0,
         "cache-pause": "yes",
-        "cache-pause-wait": 3,
+        "cache-pause-wait": 1,
         "cache_pause_initial": "yes", 
         "demuxer_thread": True,
         "audio_wait_open": 1.0,  
@@ -4443,7 +4446,7 @@ controls_frame.place(relx=0.008, rely=0.757, relwidth=0.602, relheight=0.235)
 progress_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
 progress_frame.place(relx=0.019, rely=0.031, relwidth=0.962, relheight=0.313)
 
-player_pos_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Mono', 14),
+player_pos_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
                                 textvariable=pos_for_label, text_color="#7d9bff", anchor="e")
 player_pos_label.place(relx=0, rely=0.06, relwidth=0.092)
 
@@ -4454,7 +4457,7 @@ player_position_scale.set(0)
 player_position_scale.bind('<ButtonRelease-1>', scale_release)
 player_position_scale.place(relx=0.105, rely=0.1, relwidth=0.784, relheight=0.32)
 
-player_song_length_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Mono', 14),
+player_song_length_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
                                          text_color="#9E9E9E", anchor="w", text='')
 player_song_length_label.place(relx=0.902, rely=0.06, relwidth=0.092)
 
@@ -4529,7 +4532,7 @@ now_playing_frame.place(relx=0.019, rely=0.5, relwidth=0.629, relheight=0.438)
 np_icon = ctk.CTkLabel(now_playing_frame, text='🎶', font=('Segoe UI', 16))
 np_icon.place(relx=0.016, rely=0.171)
 
-playing_title_textbox = tk.Text(now_playing_frame, font=('Segoe UI', 14), width=45, fg='#c5c5c5',
+playing_title_textbox = tk.Text(now_playing_frame, font=('Segoe UI Semibold', 15), width=40, fg='#c5c5c5',
                                 bg='#252525', relief='flat', wrap='word', state='disabled',
                                 height=2, borderwidth=0)
 playing_title_textbox.place(relx=0.07, rely=0.086)

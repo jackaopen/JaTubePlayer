@@ -3,7 +3,7 @@ chrome.runtime.onInstalled.addListener(() => {
         id: "sendToJTP",
         title: "🎬 Send to JTP",
         contexts: ["link","page"],
-        documentUrlPatterns : ["https://www.youtube.com/*"]
+        documentUrlPatterns : ["https://www.youtube.com/*","https://www.twitch.tv/*"]
 
   });
 });
