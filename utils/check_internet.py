@@ -37,7 +37,7 @@ def check_internet_socket():
     for host, port in dns_servers:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(0.05)  # Increased timeout to 1 second
+                sock.settimeout(0.5)  # Increased timeout to 1 second
                 sock.connect((host, port))
                 return True
         except (socket.error, socket.timeout):

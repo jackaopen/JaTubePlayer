@@ -48,7 +48,8 @@ def get_info(yt_dlp:object,
         'extract_flat': False,  
         'logger': log_handler,
         'format': f"bv*[height<={maxres}]+ba/best",
-        'js-runtimes': f'deno:{deno_path}',
+        'js_runtimes': {'deno': {'path': deno_path}},
+        'remote_components': {'ejs:npm'},
     }
     
     if cookie_path:
