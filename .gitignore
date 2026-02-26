@@ -20,7 +20,7 @@ user_data/recent_channel_url.json
 user_data/recent_tag.json
 user_data/sub.json
 user_data/channel_info.json
-
+user_data/starred_vid.json
 cred&api/
 
 build/*

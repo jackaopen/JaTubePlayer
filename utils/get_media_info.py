@@ -97,7 +97,7 @@ def get_info(yt_dlp:object,
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(target_url, download=True)
-                if info['live_status'] != 'is_live' and 'requested_formats' in info:
+                if info.get('live_status', 'not_live') != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
                     if len(fmt) == 2:
                         vid_url = fmt[0]['url']
@@ -125,7 +125,7 @@ def get_info(yt_dlp:object,
                 'thumbnail': info.get('thumbnail'),
                 'tags': info.get('uploader'),# Twitch API doesn't provide tags in the same way YouTube does, so we'll just use uploader name as a placeholder
                 'subtitles': {},# Twitch API doesn't provide subtitles in the same way YouTube does, so we'll leave this empty
-                'live_status': info.get('live_status'),
+                'live_status': info.get('live_status', False),
                 'channel': info.get('uploader'),
                 'uploader_id': info.get('uploader_id'),
                 'upload_date': info.get('upload_date'),

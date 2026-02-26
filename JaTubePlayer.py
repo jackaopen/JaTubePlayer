@@ -9,7 +9,7 @@ import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random
 from PIL import Image, ImageTk 
 from random import shuffle
 import googleapiclient.errors
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, thread
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
@@ -126,6 +126,9 @@ def log_handle(errtype="",component="main_system",content="") -> None:
         elif " not currently live" in error_msg:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The channel is not currently live'))
             force_stop_loading = True
+        elif "does not exist" in error_msg:
+            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The video does not exist'))
+            force_stop_loading = True
     if "cookies are no longer valid" in content:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Your cookies file may be invalid or expired'))
         
@@ -158,7 +161,7 @@ def dump(filename,content):
 
 
 Frame_for_mpv = tk.Frame(root)
-Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.634)
+Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.664)
 Frame_for_mpv.bind('<Button-1>',lambda event :pause(1))
 
 # ==== 播放器控制 ====
@@ -169,6 +172,7 @@ playing_vid_info_dict = ''
 selected_song_number = None
 yt_dlp = None
 youtube = None
+vid_url = []
 playlisttitles = []
 playlist_thumbnails = []
 playlist_channel = []
@@ -302,8 +306,26 @@ win32gui.FindWindow(class_name, window_name)
 
 
 def get_selected_vid(event=None):
-    global selected_song_number
+    global selected_song_number,star_vid_handle
     try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
+    except:pass
+    try:
+        if star_vid_handle.search(vid_url[selected_song_number]):
+            ui_queue.put(lambda: star_btn.configure(
+                text='★',
+                fg_color='#D4A017',
+                hover_color='#E8B820',
+                text_color='#FFFDE7',
+                font=('Segoe UI', 13, 'bold')
+            ))
+        else:
+            ui_queue.put(lambda: star_btn.configure(
+                text='☆',
+                fg_color='#3A3A3A',
+                hover_color='#505050',
+                text_color='#B0B0B0',
+                font=('Segoe UI', 13, 'bold')
+            ))
     except:pass
 
 
@@ -472,29 +494,28 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
 
                         try:
                             ui_queue.put(lambda: info.title('loading info...'))
-                            opt = {'quiet': True, 
-                                   'skip_download':True,
-                                   "extract_flat": True,
-                                   'ignore_no_formats_error': True} 
-                            if cookies_dir:
-                                opt['cookiefile'] = cookies_dir
+                            _,info_dict = get_info(yt_dlp=yt_dlp,
+                                                 maxres=1080,
+                                                 target_url=vid_url[selected_song_number],
+                                                 deno_path=deno_exe,
+                                                 log_handler=ytdlp_log_handle,
+                                                 cookie_path=cookies_dir)
                                 
-                            with yt_dlp.YoutubeDL(opt) as ydl:
-                                info_dict = ydl.extract_info(vid_url[selected_song_number], download=False)
-                                ui_queue.put(lambda: info.title('Video info '))
-                                ui_queue.put(lambda: title_text.configure(state='normal'))
-                                ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
-                                ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
-                                ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
-                                ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
-                                ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
-                                ui_queue.put(lambda: title_text.configure(state='disabled'))
-                                ui_queue.put(lambda: uploader_text.configure(state='disabled'))
-                                ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
-                                ui_queue.put(lambda: url_text.configure(state='disabled'))
-                                ui_queue.put(lambda: description_text.configure(state='disabled'))
+                            
+                            ui_queue.put(lambda: info.title('Video info '))
+                            ui_queue.put(lambda: title_text.configure(state='normal'))
+                            ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
+                            ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
+                            ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
+                            ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
+                            ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
+                            ui_queue.put(lambda: title_text.configure(state='disabled'))
+                            ui_queue.put(lambda: uploader_text.configure(state='disabled'))
+                            ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
+                            ui_queue.put(lambda: url_text.configure(state='disabled'))
+                            ui_queue.put(lambda: description_text.configure(state='disabled'))
 
-                                ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
+                            ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
 
                         except Exception as e : 
                             try:       
@@ -2367,7 +2388,7 @@ def get_sub_channel_thread(mode):
                         playlist_thumbnails.clear()
                         playlist_channel.clear()
                         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-
+                        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                         ydl_opts = {
                                 'quiet': True,
                                 'extract_flat': True,
@@ -2450,6 +2471,7 @@ def get_liked_vid_thread(mode):
                 playlist_thumbnails.clear()
                 vid_url = []
                 ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                 playlist_channel.clear()
                 stop = False#for updating the like list , both auto and user cancel auto load
                 
@@ -2656,6 +2678,7 @@ def get_youtube_playlist_thread(playlistid_input = None): ###### get specifc inf
         playlist_thumbnails.clear()
 
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
         if youtube == None:
             google_control.get_cred()
             ui_queue.put(lambda: google_status_update())
@@ -2757,7 +2780,7 @@ def youtube_search_thread():
             stream_search_results = ydl.extract_info(search_url_stream, download=False)
         
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children())) #########      start to process thumnail and title
-        
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
         vid_url = []
         playlisttitles.clear()
         playlist_thumbnails.clear()
@@ -2812,6 +2835,82 @@ def youtube_search_thread():
 def youtube_search(event=None):
     if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
         threading.Thread(daemon=True,target=youtube_search_thread).start()
+
+@check_internet
+def get_starred_vid(event=None):
+    global vid_url,playlisttitles,playlist_channel,playlist_thumbnails,insert_treeview_quene,star_vid_handle,selected_song_number,playing_vid_mode
+    selected_song_number = None
+    playing_vid_mode = 0
+    ui_queue.put(lambda: modetextbox.configure(state='normal'))
+    ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
+    ui_queue.put(lambda: modetextbox.insert(tk.END,f"Starred Videos"))
+    ui_queue.put(lambda: modetextbox.configure(state='disabled'))
+    ui_queue.put(lambda: page_num_label.configure(text=''))
+    ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+    ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+    star_vid_handle.list_all(
+      
+            treeview_queue=insert_treeview_quene,
+            vid_url=vid_url,
+            playlisttitles=playlisttitles,
+            playlist_channel=playlist_channel,
+            playlist_thumbnails=playlist_thumbnails)
+          
+
+def switch_starred_vid(event=None):
+    global star_vid_handle,selected_song_number,playing_vid_mode,vid_url,playlist_thumbnails,playlisttitles,playlist_channel,cookies_dir,playing_vid_info_dict
+    
+    if playing_vid_mode == 0:
+        if selected_song_number == None:
+            messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!')
+            return
+        else:
+            if star_vid_handle.search(vid_url[selected_song_number]):
+                star_vid_handle.remove(vid_url[selected_song_number])
+                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+                ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
+                if modetextbox.get(0.0,tk.END).strip() == 'Starred Videos':
+                    ui_queue.put(lambda: playlisttreebox.delete(playlisttreebox.selection()[0]))
+                    vid_url.pop(selected_song_number)
+
+                    playlist_thumbnails.pop(selected_song_number)
+                    playlisttitles.pop(selected_song_number)
+                    playlist_channel.pop(selected_song_number)
+
+                    selected_song_number = None
+                
+            else:#add
+                res = star_vid_handle.add(url =vid_url[selected_song_number],
+                                thumb=playlist_thumbnails[selected_song_number],
+                                title=playlisttitles[selected_song_number],
+                                channel=playlist_channel[selected_song_number],
+                                cookie_path=cookies_dir)
+                if res:
+                    ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                    ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
+                else:
+                    ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
+
+
+    elif playing_vid_mode == 3:
+        if star_vid_handle.search(playing_vid_info_dict['original_url']):
+            star_vid_handle.remove(playing_vid_info_dict['original_url'])
+            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
+
+        else:
+            res = star_vid_handle.add(url =playing_vid_info_dict['original_url'],
+                                thumb=playing_vid_info_dict['thumbnail'],
+                                title=playing_vid_info_dict['title'],
+                                channel=playing_vid_info_dict['channel'],
+                                cookie_path=cookies_dir,
+                                )
+            
+            if res:
+                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
+            else:
+                ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
 
 
 
@@ -3461,6 +3560,8 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
             playlist_thumbnails.clear()
             vid_url = []
             playlisttreebox.delete(*playlisttreebox.get_children())
+            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+
             stop_playing_video()
 
             modetextbox.configure(state='normal')
@@ -3670,7 +3771,7 @@ def fullscreen_widget_change(event=None):
                 progress_frame.place_configure(relx=0.008, rely=0.405, relwidth=0.984, relheight=0.230)
                 mode_frame.place_configure(relx=0.008, rely=0.585, relwidth=0.132, relheight=0.375)
                 playback_frame.place_configure(relx=0.150, rely=0.585, relwidth=0.35, relheight=0.375)
-                volume_frame.place_configure(relx=0.535, rely=0.605, relwidth=0.155, relheight=0.350)
+                volume_frame.place_configure(relx=0.585, rely=0.605, relwidth=0.105, relheight=0.350)
                 action_btn_frame.place_configure(relx=0.695, rely=0.585, relwidth=0.300, relheight=0.375)
                 
 
@@ -3694,11 +3795,12 @@ def fullscreen_widget_change(event=None):
                 player_loading_label.place_configure(relx=0.7, rely=0.3, relwidth=0.15)
                 
                 # Volume
-                player_volume_label.place_configure(relx=0, rely=0.14, relwidth=0.160)
-                player_volume_scale.place_configure(relx=0.180, rely=0.25, relwidth=0.780, relheight=0.35)
+                player_volume_label.place_configure(relx=0, rely=0.2, relwidth=0.120)
+                player_volume_scale.place_configure(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
                 
                 # Action buttons
-                setting_btn.place_configure(relx=0, rely=0.06, relwidth=0.445, relheight=0.88)
+                setting_btn.place_configure(relx=0, rely=0.06, relwidth=0.255, relheight=0.88)
+                star_btn.place_configure(relx=0.270, rely=0.06, relwidth=0.175, relheight=0.88)
                 select_info_btn.place_configure(relx=0.460, rely=0.06, relwidth=0.175, relheight=0.88)
                 playing_info_btn.place_configure(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
                 fullscreenbtn.place_configure(relx=0.840, rely=0.06, relwidth=0.150, relheight=0.88)
@@ -3818,7 +3920,7 @@ def full_screen_contorl_hover_thread():
 def fullscreen_change_state(event=None):## for btn
     if root.state() == 'normal':root.state('zoomed')
     elif root.state() == 'zoomed':root.state('normal')
-    if event:time.sleep(0.1)
+    if event:time.sleep(0.05)
 
 
 def fullscreen_detect_thread():## auto drag
@@ -3829,9 +3931,9 @@ def fullscreen_detect_thread():## auto drag
             previous = root.state()
             time.sleep(0.01)  
             if previous != root.state():
-                time.sleep(0.1) 
                 ui_queue.put(lambda: fullscreen_widget_change())
                 hover_fullscreen_last_statue = 1
+                time.sleep(0.1) 
         except:pass
 
 def init_quick_startup(iter:int=0):
@@ -4131,8 +4233,13 @@ def create_mpv_player():
 
 
 
+def init_star_vid_instance():
+    global star_vid_handle
+    star_vid_handle = star_vid_handler(current_dir=current_dir,
+                                        yt_dlp=yt_dlp,
+                                        deno_path=os.path.join(current_dir,'_internal','deno'),
+                                        yt_dlp_log_handler=ytdlp_log_handler())
 
-    
 def init_set_smtc():
     smtc.next_song_fun = playnextsong
     smtc.prev_song_fun = playprevsong
@@ -4192,7 +4299,7 @@ def start_async_eventloop():
     asynceventloop.run_forever()
 
 def init_listen_chromeextension():
-    global playing_vid_mode,selected_song_number,chrome_extension_url
+    global playing_vid_mode,selected_song_number,chrome_extension_url,star_vid_handle
     if setting_run_chrome_extension_server.get():
         if chrome_extension_flask.chrome_extension_url:
             log_handle(content=str(chrome_extension_flask.chrome_extension_url))
@@ -4200,6 +4307,10 @@ def init_listen_chromeextension():
             load_thread_queue.put((None,chrome_extension_url))
             playing_vid_mode = 3
             selected_song_number = None
+            if star_vid_handle.search(chrome_extension_url):
+                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+            else:
+                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
             playlisttreebox.delete(*playlisttreebox.get_children())
             modetextbox.configure(state="normal")
             modetextbox.delete(0.0,tk.END)
@@ -4246,7 +4357,7 @@ def _init_load_smtc_obj():
 
 def _start_up_import():
     """Import heavy modules sequentially with timing"""
-    global aiohttp,build, Credentials,google_auth_control,Ferner_encrptor
+    global aiohttp,build, Credentials,google_auth_control,Ferner_encrptor,star_vid_handler
     global get_latest_player_version,get_latest_dlp_version
     import time
     
@@ -4276,7 +4387,13 @@ def _start_up_import():
     from utils.get_latest_version import get_latest_dlp_version, get_latest_player_version
     log_handle(content=f"version_funcs: {time.time()-t:.3f}s")
     
+    t = time.time()
+    from utils.star_vid import star_vid_handler
+    log_handle(content=f"version_funcs: {time.time()-t:.3f}s")
+
     log_handle(content=f"Total import time: {time.time()-time1:.3f}s")
+
+
 
 
 
@@ -4334,6 +4451,9 @@ def _start_up():
     
     init_read_dlp()
     log_handle(content=f'dlp fin')
+
+    init_star_vid_instance()
+    log_handle(content=f'star vid fin')
 
     _init_load_extra_objs()
     log_handle(content=f'extra obj fin')
@@ -4460,28 +4580,28 @@ status_panel.place(relx=0.665, rely=0.09, relwidth=0.328, relheight=0.82)
 
 chrome_ext_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 14),
                                text_color='#333333')
-chrome_ext_dot.place(relx=0.031, rely=0.168)
+chrome_ext_dot.place(relx=0.031, rely=0.168, relheigh = 0.7)
 
 chrome_ext_text = ctk.CTkLabel(status_panel, text='Chrome Link', 
                                 font=('Segoe UI', 12), text_color='#777777', anchor="w")
-chrome_ext_text.place(relx=0.083, rely=0.158)
+chrome_ext_text.place(relx=0.083, rely=0.158, relheigh = 0.7)
 
 
 
 separator = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 18), text_color='#444444')
-separator.place(relx=0.296, rely=0.149)
+separator.place(relx=0.296, rely=0.149, relheigh = 0.7)
 
 discord_status_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 14),
                                    text_color='#333333')
-discord_status_dot.place(relx=0.345, rely=0.168)
+discord_status_dot.place(relx=0.345, rely=0.168, relheigh = 0.7)
 
 discord_status_text = ctk.CTkLabel(status_panel, text='Discord', 
                                     font=('Segoe UI', 12), text_color='#777777', anchor="w")
-discord_status_text.place(relx=0.397, rely=0.158)
+discord_status_text.place(relx=0.397, rely=0.158, relheigh = 0.7)
 
 
 separator2 = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 18), text_color='#444444')
-separator2.place(relx=0.540, rely=0.149)
+separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
 
 # Google Profile Container - styled circular frame for profile picture
 
@@ -4494,7 +4614,7 @@ google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center")
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 12), text_color='#888888', wrap="none",
                                    border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
-google_status_text.place(relx=0.715, rely=0.05, relwidth=0.27)
+google_status_text.place(relx=0.715, rely=0.05, relwidth=0.27, relheigh = 0.85)
 google_status_text.configure(state='disabled')
 
 def chrome_ext_status_run():
@@ -4560,7 +4680,7 @@ def google_status_update():
 # RIGHT PANEL - Playlist Treeview & Mode Info
 # ─────────────────────────────────────────────────────────────────────────────
 right_panel_frame = ctk.CTkFrame(root, fg_color="#1e1e1e", corner_radius=10, border_width=1, border_color="#333333")
-right_panel_frame.place(relx=0.618, rely=0.070, relwidth=0.377, relheight=0.590)
+right_panel_frame.place(relx=0.618, rely=0.070, relwidth=0.377, relheight=0.560)
 
 mode_header_frame = ctk.CTkFrame(right_panel_frame, fg_color="#252525", corner_radius=8)
 mode_header_frame.place(relx=0.020, rely=0.010, relwidth=0.960, relheight=0.105)
@@ -4596,24 +4716,29 @@ Y_scrollbar.place(relx=0.945, rely=0.125, relheight=0.838)
 X_scrollbar.place(relx=0.020, rely=0.963, relwidth=0.925)
 
 playlist_btn_frame = ctk.CTkFrame(root, fg_color="#1e1e1e", border_color="#333333", border_width=1, corner_radius=10)
-playlist_btn_frame.place(relx=0.618, rely=0.6, relwidth=0.377, relheight=0.162)
+playlist_btn_frame.place(relx=0.618, rely=0.63, relwidth=0.377, relheight=0.13)
 
 # Hero action button
-playselectedsong = ctk.CTkButton(playlist_btn_frame, text='▶  Play Selected',
+playselectedsong = ctk.CTkButton(playlist_btn_frame, text='▶ Play',
                                   command=lambda: download_and_play(), fg_color='#3e62dc',
                                   hover_color='#4a70f0', corner_radius=8, font=('Segoe UI', 13, 'bold'))
-playselectedsong.place(relx=0.6, rely=0.52, relwidth=0.36, relheight=0.39)
+playselectedsong.place(relx=0.212, rely=0.54, relwidth=0.19, relheight=0.33)
 
 # Source buttons in a compact row
-_src_w = 0.183
+_src_w = 0.187
 _src_gap = 0.008
-recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='✨ Rec',
+recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='✨Recommed',
                                     command=lambda: threading.Thread(daemon=True, target=init_get_recommendation).start(),
                                     fg_color='#2E2E2E', hover_color='#404040', corner_radius=6,
                                     font=('Segoe UI', 11), border_width=1, border_color='#444444')
 recommendation_btn.place(relx=0.020, rely=0.1, relwidth=_src_w, relheight=0.33)
 
-sub_btn = ctk.CTkButton(playlist_btn_frame, text='📺 Sub',
+load_star_btn = ctk.CTkButton(playlist_btn_frame, text='★ Star',
+                        command= lambda :threading.Thread(daemon=True, target=get_starred_vid).start(), fg_color='#2E2E2E', hover_color='#404040',
+                        corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
+load_star_btn.place(relx=0.020, rely=0.54, relwidth=_src_w, relheight=0.33)
+
+sub_btn = ctk.CTkButton(playlist_btn_frame, text='📺Subcription',
                         command=lambda: get_sub_channel(0), fg_color='#2E2E2E', hover_color='#404040',
                         corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
 sub_btn.place(relx=0.020+(_src_w+_src_gap)*1, rely=0.1, relwidth=_src_w, relheight=0.33)
@@ -4637,17 +4762,17 @@ playselectedfolder.place(relx=0.020+(_src_w+_src_gap)*4, rely=0.1, relwidth=_src
 
 # Page navigation
 page_nav_frame = ctk.CTkFrame(playlist_btn_frame, fg_color="#262626", corner_radius=8)
-page_nav_frame.place(relx=0.020, rely=0.52, relwidth=(_src_w+_src_gap)*3, relheight=0.40)
+page_nav_frame.place(relx=_src_w*2+_src_gap*2+0.02, rely=0.52, relwidth=_src_w*3+_src_gap*2, relheight=0.38)
 
 prev_page_btn = ctk.CTkButton(page_nav_frame, text='◀ Prev',
                                command=lambda: page_control(2), fg_color='#2E2E2E', hover_color='#404040',
                                corner_radius=8, font=('Segoe UI', 12), border_width=1, border_color='#444444')
-prev_page_btn.place(relx=0.015, rely=0.116, relwidth=0.3, relheight=0.767)
+prev_page_btn.place(relx=0.02, rely=0.116, relwidth=0.28, relheight=0.767)
 
 next_page_btn = ctk.CTkButton(page_nav_frame, text='Next ▶',
                                command=lambda: page_control(1), fg_color='#2E2E2E', hover_color='#404040',
                                corner_radius=8, font=('Segoe UI', 12), border_width=1, border_color='#444444')
-next_page_btn.place(relx=0.32, rely=0.116, relwidth=0.3, relheight=0.767)
+next_page_btn.place(relx=0.32, rely=0.116, relwidth=0.28, relheight=0.767)
 
 liked_page_label = ctk.CTkLabel(page_nav_frame, font=('Segoe UI', 13), text='📄',
                                 anchor="w", fg_color="transparent")
@@ -4661,20 +4786,20 @@ page_num_label.place(relx=0.70, rely=0.15)
 # LEFT PANEL - Video Player
 # ─────────────────────────────────────────────────────────────────────────────
 video_container = ctk.CTkFrame(root, fg_color="#0a0a0a", corner_radius=10, border_width=2, border_color="#3e62dc")
-video_container.place(relx=0.005, rely=0.070, relwidth=0.607, relheight=0.655)
+video_container.place(relx=0.005, rely=0.070, relwidth=0.607, relheight=0.685)
 
-Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.634)
+Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.664)
 Frame_for_mpv.lift()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TRANSPORT BAR - Full-width bottom bar (Now Playing + Progress + Controls)
 # ─────────────────────────────────────────────────────────────────────────────
 controls_frame = ctk.CTkFrame(root, fg_color="#141414", corner_radius=10, border_width=1, border_color="#2a2a2a")
-controls_frame.place(relx=0.005, rely=0.734, relwidth=0.990, relheight=0.250)
+controls_frame.place(relx=0.005, rely=0.764, relwidth=0.990, relheight=0.230)
 
 # ── Now Playing Strip ──
 now_playing_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=8)
-now_playing_frame.place(relx=0.008, rely=0.022, relwidth=0.984, relheight=0.240)
+now_playing_frame.place(relx=0.008, rely=0.102, relwidth=0.984, relheight=0.240)
 
 np_icon = ctk.CTkLabel(now_playing_frame, text='🎶', font=('Segoe UI', 16))
 np_icon.place(relx=0.008, rely=0.14)
@@ -4686,27 +4811,27 @@ playing_title_textbox.place(relx=0.035, rely=0.10)
 
 # ── Progress Bar ──
 progress_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-progress_frame.place(relx=0.008, rely=0.305, relwidth=0.984, relheight=0.210)
+progress_frame.place(relx=0.008, rely=0.405, relwidth=0.984, relheight=0.230)
 
 player_pos_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
                                 textvariable=pos_for_label, text_color="#7d9bff", anchor="e")
-player_pos_label.place(relx=0, rely=0.01, relwidth=0.050)
+player_pos_label.place(relx=0, rely=0.03, relwidth=0.050)
 
 player_position_scale = ctk.CTkSlider(progress_frame, from_=0, command=scale_click,
                                        progress_color='#3e62dc', button_color='#5080ff',
                                        button_hover_color='#6090ff', fg_color='#333333')
 player_position_scale.set(0)
 player_position_scale.bind('<ButtonRelease-1>', scale_release)
-player_position_scale.place(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.35)
+player_position_scale.place(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.50)
 
 player_song_length_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
                                          text_color="#9E9E9E", anchor="w", text='')
-player_song_length_label.place(relx=0.922, rely=0.06, relwidth=0.01)
+player_song_length_label.place(relx=0.922, rely=0.03, relwidth=0.068)
 
 
 # ── Transport Row: Mode | Playback | Volume | Actions ──
 mode_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=10)
-mode_frame.place(relx=0.008, rely=0.555, relwidth=0.132, relheight=0.415)
+mode_frame.place(relx=0.008, rely=0.585, relwidth=0.132, relheight=0.375)
 
 mode_label = ctk.CTkLabel(mode_frame, text='Mode', font=('Segoe UI', 12), text_color="#6A6969")
 mode_label.place(relx=0.06, rely=0.07)
@@ -4727,57 +4852,63 @@ player_mode_random = ctk.CTkRadioButton(mode_frame, text='🔀', variable=player
 player_mode_random.place(relx=0.72, rely=0.45)
 
 playback_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=20)
-playback_frame.place(relx=0.150, rely=0.555, relwidth=0.320, relheight=0.415)
+playback_frame.place(relx=0.150, rely=0.585, relwidth=0.35, relheight=0.375)
 
 prevsong = ctk.CTkButton(playback_frame, text='⏮', command=playprevsong,
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
                          font=('Segoe UI', 17))
-prevsong.place(relx=0.04, rely=0.08, relwidth=0.17, relheight=0.84)
+prevsong.place(relx=0.05, rely=0.08, relwidth=0.15, relheight=0.8)
 
 pausebutton = ctk.CTkButton(playback_frame, textvariable=pauseStr,
                             command=lambda: pause(1), fg_color='#3e62dc', hover_color='#4a70f0',
                             corner_radius=20, font=('Segoe UI', 17, 'bold'))
-pausebutton.place(relx=0.24, rely=0.08, relwidth=0.22, relheight=0.84)
+pausebutton.place(relx=0.22, rely=0.08, relwidth=0.15, relheight=0.8)
 pauseStr.set('▶')
 
 stopbutton = ctk.CTkButton(playback_frame, text='⏹', command=stop_playing_video,
                            fg_color='transparent', hover_color='#333333', corner_radius=20,
                            font=('Segoe UI', 17))
-stopbutton.place(relx=0.49, rely=0.08, relwidth=0.17, relheight=0.84)
+stopbutton.place(relx=0.39, rely=0.08, relwidth=0.15, relheight=0.8)
 
 nextsong = ctk.CTkButton(playback_frame, text='⏭', command=playnextsong,
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
                          font=('Segoe UI', 17))
-nextsong.place(relx=0.69, rely=0.08, relwidth=0.17, relheight=0.84)
+nextsong.place(relx=0.56, rely=0.08, relwidth=0.15, relheight=0.8)
 
 player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 11), text='',
                                      text_color='#FF6B35', anchor="center")
-player_loading_label.place(relx=0.87, rely=0.30, relwidth=0.12)
+player_loading_label.place(relx=0.7, rely=0.3, relwidth=0.15)
 
 volume_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-volume_frame.place(relx=0.485, rely=0.575, relwidth=0.195, relheight=0.380)
+volume_frame.place(relx=0.585, rely=0.605, relwidth=0.105, relheight=0.350)
 
 player_volume_label = ctk.CTkLabel(volume_frame, font=('Segoe UI', 16), text='🔊',
                                    text_color='#888888', anchor="e")
-player_volume_label.place(relx=0, rely=0.14, relwidth=0.160)
+player_volume_label.place(relx=0, rely=0.2, relwidth=0.120)
 
 player_volume_scale = ctk.CTkSlider(volume_frame, from_=0, to=120, command=set_volume,
                                     progress_color='#FF6B35', button_color='#FF8555',
                                     button_hover_color='#FFA575', fg_color='#333333')
 player_volume_scale.set(50)
 player_volume_scale.bind('<MouseWheel>', set_volume_wheel)
-player_volume_scale.place(relx=0.180, rely=0.25, relwidth=0.780, relheight=0.35)
+player_volume_scale.place(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
 
 Frame_for_mpv.bind('<MouseWheel>', set_volume_wheel)
 
 # ── Action Buttons ──
 action_btn_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-action_btn_frame.place(relx=0.695, rely=0.555, relwidth=0.300, relheight=0.415)
+action_btn_frame.place(relx=0.695, rely=0.585, relwidth=0.300, relheight=0.375)
 
 setting_btn = ctk.CTkButton(action_btn_frame, text='⚙️ Settings', command=setting_frame,
                             fg_color='#FF6B35', hover_color='#FF8555', corner_radius=8,
                             font=('Segoe UI', 13, 'bold'))
-setting_btn.place(relx=0, rely=0.06, relwidth=0.445, relheight=0.88)
+setting_btn.place(relx=0, rely=0.06, relwidth=0.255, relheight=0.88)
+
+star_btn = ctk.CTkButton(action_btn_frame, text='☆', command=switch_starred_vid,
+                            fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0',
+                            corner_radius=8, font=('Segoe UI', 13, 'bold'))
+star_btn.place(relx=0.270, rely=0.06, relwidth=0.175, relheight=0.88)
+
 
 select_info_btn = ctk.CTkButton(action_btn_frame, text='ℹ️ Sel',
                                  command=lambda: vid_info_frame(1), fg_color='#2E2E2E',
