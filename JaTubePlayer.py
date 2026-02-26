@@ -3432,6 +3432,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                 
                                 pos_thread.start()
                                 ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                ui_queue.put(lambda: pauseStr.set('||'))
                             
                     except Exception as e:
                         ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play video: {str(err)}"))
@@ -3523,7 +3524,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                     pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
                                     pos_thread.start()
                                     ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                   
+                                    ui_queue.put(lambda: pauseStr.set('||'))
                                     time.sleep(0.1)
                                     loadingvideo = False
                     except Exception as e:
@@ -3792,7 +3793,7 @@ def fullscreen_widget_change(event=None):
                 pausebutton.place_configure(relx=0.22, rely=0.08, relwidth=0.15, relheight=0.8)
                 stopbutton.place_configure(relx=0.39, rely=0.08, relwidth=0.15, relheight=0.8)
                 nextsong.place_configure(relx=0.56, rely=0.08, relwidth=0.15, relheight=0.8)
-                player_loading_label.place_configure(relx=0.7, rely=0.3, relwidth=0.15)
+                player_loading_label.place_configure(relx=0.75, rely=0.25, relwidth=0.2)
                 
                 # Volume
                 player_volume_label.place_configure(relx=0, rely=0.2, relwidth=0.120)
@@ -4534,7 +4535,7 @@ title.place(relx=0.012, rely=0.19)
 
 searchlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 13), text='🔍',
                                text_color='#888888', anchor="w", bg_color='transparent')
-searchlistlabel.place(relx=0.148, rely=0.26)
+searchlistlabel.place(relx=0.148, rely=0.18)
 
 searchentry = ctk.CTkEntry(header_frame, font=('Segoe UI', 13), corner_radius=8,
                            placeholder_text="Search YouTube...",
@@ -4548,7 +4549,7 @@ search_btn.place(relx=0.391, rely=0.17, relwidth=0.028, relheight=0.66)
 
 playlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 13), text='📁',
                              text_color='#888888', anchor="w", bg_color='transparent')
-playlistlabel.place(relx=0.432, rely=0.26)
+playlistlabel.place(relx=0.432, rely=0.18)
 
 userplaylistcombobox = ctk.CTkComboBox(header_frame, font=('Segoe UI', 13),
                                         values=user_playlists_name, state='readonly', corner_radius=8,
@@ -4609,7 +4610,7 @@ separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
 google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='X', font=('Segoe UI', 14),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
-google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center")
+google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center", relheigh = 0.9)
 
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 12), text_color='#888888', wrap="none",
@@ -4875,9 +4876,9 @@ nextsong = ctk.CTkButton(playback_frame, text='⏭', command=playnextsong,
                          font=('Segoe UI', 17))
 nextsong.place(relx=0.56, rely=0.08, relwidth=0.15, relheight=0.8)
 
-player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 11), text='',
+player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 12), text='',
                                      text_color='#FF6B35', anchor="center")
-player_loading_label.place(relx=0.7, rely=0.3, relwidth=0.15)
+player_loading_label.place(relx=0.75, rely=0.25, relwidth=0.2)
 
 volume_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
 volume_frame.place(relx=0.585, rely=0.605, relwidth=0.105, relheight=0.350)
