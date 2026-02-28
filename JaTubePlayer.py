@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, thread
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
+import ctypes
 ctk.set_appearance_mode("dark")
 
 from utils.get_scaling import get_window_dpi
@@ -33,7 +34,7 @@ from system.tray import Playertray
 from system.dnd_winsys import *
 from system.keyboard import *
 from system.presence import DiscordPresence
-import ctypes
+
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
 
@@ -129,9 +130,12 @@ def log_handle(errtype="",component="main_system",content="") -> None:
         elif "does not exist" in error_msg:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The video does not exist'))
             force_stop_loading = True
+        elif "No video formats found!" in error_msg:
+            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','No video formats found!'))
+            force_stop_loading = True
     if "cookies are no longer valid" in content:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Your cookies file may be invalid or expired'))
-        
+
     
     try:
         print(f'{datetime.now().strftime("%H:%M:%S")} [{errtype}] <{component}> -- {content}')
@@ -167,7 +171,15 @@ Frame_for_mpv.bind('<Button-1>',lambda event :pause(1))
 # ==== 播放器控制 ====
 player = None
 stream = False
-playing_vid_mode = 0 #0 =youtube 1 = single/openwith 2 = folder 3=chrome
+playing_vid_mode = 0
+"""
+Playing video mode:
+  0 = YouTube
+  1 = Single / Open With
+  2 = Folder
+  3 = Chrome
+  4 = Starred video (mixed mode — local or online, determined by URL schema)
+"""
 playing_vid_info_dict = ''
 selected_song_number = None
 yt_dlp = None
@@ -178,6 +190,9 @@ playlist_thumbnails = []
 playlist_channel = []
 user_playlists_name = []
 load_thread_queue = queue.Queue()
+'''
+This accept a tuple (chosen_file,direct_url)
+'''
 playing_vid_info_dict = {}
 player_speed = tk.DoubleVar()
 player_speed.set(1.0)
@@ -199,7 +214,6 @@ fullscreenwithconsole = tk.BooleanVar()
 maxresolution = tk.IntVar()
 selected_song_title = tk.StringVar()
 downloadhooktext = tk.StringVar()
-chrome_extension_url = None
 ytdlp_log_handle = ytdlp_log_handler()
 info = None
 
@@ -243,9 +257,9 @@ hover_fullscreen = tk.BooleanVar()
 cache_secs = tk.IntVar()
 demuxer_max_bytes = tk.IntVar()
 demuxer_max_back_bytes = tk.IntVar()
-demuxer_readahead_secs = tk.IntVar()
+cache_pause_wait = tk.DoubleVar()
 audio_wait_open= tk.IntVar()
-
+download_path = tk.StringVar()
 enable_discord_presence = tk.BooleanVar()
 discord_presence_show_playing = tk.BooleanVar()
 
@@ -260,6 +274,9 @@ client_secret_path = None
 
 
 def save_config():
+    '''
+    This function saves the current configuration to the config.json file. It gathers the current values of all relevant configuration variables and writes them to the file in JSON format.
+    '''
     global CONFIG
     with open(os.path.join(current_dir,'user_data','config.json'),'w') as f:
         json.dump(CONFIG,f,indent=4)
@@ -404,12 +421,12 @@ def _switch_local_server(mode:int)->None|str:
 temp = []# to prevent garbage collection of images
 async def load_thumbnail_thread(session,id,thumburl):
     try:
-        if playing_vid_mode == 0:
+        if playing_vid_mode == 0 or playing_vid_mode == 4:
             async with session.get(thumburl) as response:
                 imgdata = await response.read()
                 img = Image.open(io.BytesIO(imgdata))
-                img = img.resize((140, 105), Image.LANCZOS)
-                img1 = img.crop((0,14,140,90))
+                img = img.resize((int(140*tkinter_scaling/1.25), int(105*tkinter_scaling/1.25)), Image.LANCZOS)
+                img1 = img.crop((0,int(14*tkinter_scaling/1.25),int(140*tkinter_scaling/1.25),int(90*tkinter_scaling/1.25)))
                 thumbnailpic = ImageTk.PhotoImage(img1)
                 temp.append(thumbnailpic)
                 ui_queue.put(lambda id=id, pic=thumbnailpic: playlisttreebox.item(id, image=pic))
@@ -486,20 +503,22 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
 
         def loadselectedinfo():
             global info
+            print(f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number != None and len(vid_url) > 0 else 'N/A'}")
             try:
-                if playing_vid_mode == 0:
-                    
+                if playing_vid_mode == 0 or playing_vid_mode == 4 or (playing_vid_mode == 3 and len(vid_url) > 0):
+                    if playing_vid_mode == 4 and  not vid_url[selected_song_number].startswith(('https://','https://')):
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The selected video is a local file, video info function is only available for online videos'))
+                        ui_queue.put(lambda: info.destroy())
+                        return
                     if selected_song_number != None:
-                        
-
                         try:
                             ui_queue.put(lambda: info.title('loading info...'))
                             _,info_dict = get_info(yt_dlp=yt_dlp,
-                                                 maxres=1080,
-                                                 target_url=vid_url[selected_song_number],
-                                                 deno_path=deno_exe,
-                                                 log_handler=ytdlp_log_handle,
-                                                 cookie_path=cookies_dir)
+                                                maxres=1080,
+                                                target_url=vid_url[selected_song_number],
+                                                deno_path=deno_exe,
+                                                log_handler=ytdlp_log_handle,
+                                                cookie_path=cookies_dir)
                                 
                             
                             ui_queue.put(lambda: info.title('Video info '))
@@ -525,12 +544,13 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
                             except:pass
 
 
+                    
                     else:
-                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','please select a video first'))
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The function is not available under file selection'))
                         ui_queue.put(lambda: info.destroy())
                 else:
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The function is not available under file selection'))
-                    ui_queue.put(lambda: info.destroy())
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The function is not available under file selection'))
+                        ui_queue.put(lambda: info.destroy())
             except googleapiclient.errors.HttpError as err: ######  handle stupid api
                 ui_queue.put(lambda e=err: messagebox.showerror(f'JaTubePlayer {ver}', f"An error occurred: {e}"))
                 ui_queue.put(lambda: info.destroy())
@@ -650,10 +670,14 @@ def setting_frame():
             
         @check_internet
         def get_resolution_setting():
-            if playing_vid_mode == 0:
+            if playing_vid_mode == 0 or playing_vid_mode == 4:
+                if playing_vid_mode == 4 and not vid_url[selected_song_number].startswith(('https://','http://')):
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The selected video is a local file, downloading is not supported'))
+                    return
                 try:
                     if selected_song_number != None:
                         ui_queue.put(lambda: resolution_title.configure(text='⏳ Loading resolutions...'))
+                        ui_queue.put(lambda: get_resoltion_btn.configure(state='disabled'))
                         res = get_resoltion(vid_url[selected_song_number])
                         ui_queue.put(lambda r=res: resoltion_combox.configure(values=r))
                         ui_queue.put(lambda: resoltion_combox._open_dropdown_menu())
@@ -662,15 +686,20 @@ def setting_frame():
                         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','selected a video first'))
 
                 except Exception as e:log_handle(content=str(e))
+                finally:
+                    ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
             elif playing_vid_mode == 3:
                 try:
                     ui_queue.put(lambda: resolution_title.configure(text='⏳ Loading resolutions...'))
-                    res = get_resoltion(chrome_extension_url)
+                    ui_queue.put(lambda: get_resoltion_btn.configure(state='disabled'))
+                    res = get_resoltion(playing_vid_info_dict.get('original_url'))
                     ui_queue.put(lambda r=res: resoltion_combox.configure(values=r))
                     ui_queue.put(lambda: resoltion_combox._open_dropdown_menu())
                     ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
 
                 except Exception as e :log_handle(content=str(e))
+                finally:
+                    ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
                 
             else:
                    
@@ -701,61 +730,81 @@ def setting_frame():
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Another download is in progress, please wait until it finishes'))
                 return
             else:
-                if playing_vid_mode == 0 or playing_vid_mode == 3:
+                if not playing_vid_mode == 1 and not playing_vid_mode == 2:
                     
-                    if formats.get() == 0:
-                        ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
-                        download_to_local(res=0,
-                                        mode=formats.get(),
-                                        cookies_dir=cookies_dir,
-                                        yt_dlp=yt_dlp,
-                                        target_vid_url=vid_url[selected_song_number] if playing_vid_mode ==0 else chrome_extension_url,
-                                        playing_vid_mode=playing_vid_mode,
-                                        target_playlisttitle=playlisttitles[selected_song_number]if playing_vid_mode ==0 else '',
-                                        current_dir=current_dir,
-                                        icondir=icondir,
-                                        info_dict=playing_vid_info_dict,
-                                        ver=ver,
-                                        chrome_extension_url=chrome_extension_url,
-                                        root=root,
-                                        ffmpeg=ffmpeg,
-                                        ytdlp_log_handle=ytdlp_log_handle,
-                                        is_downloading = is_downloading,
-                                        deno_path=deno_exe,
-                                        ctk_messagebox=messagebox
-                                        )
-                        ui_queue.put(lambda: is_downloading.set(True))
-                        
-                        time.sleep(2)
-                        ui_queue.put(lambda: downloadselectedsong.configure(state = "normal"))
-                    elif formats.get() == 1:
-                        if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:
-                                ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
-                                download_to_local(
-                                    res=resoltion_combox.get(),
-                                    mode=formats.get(),
-                                    cookies_dir=cookies_dir,
-                                    yt_dlp=yt_dlp,
-                                    target_vid_url=vid_url[selected_song_number] if  playing_vid_mode == 0 else chrome_extension_url,
-                                    playing_vid_mode=playing_vid_mode,
-                                    target_playlisttitle=playlisttitles[selected_song_number] if playing_vid_mode ==0 else '',
-                                    current_dir=current_dir,
-                                    icondir=icondir,
-                                    info_dict=playing_vid_info_dict,
-                                    ver=ver,
-                                    chrome_extension_url=chrome_extension_url,
-                                    root=root,   
-                                    ffmpeg=ffmpeg,
-                                    ytdlp_log_handle=ytdlp_log_handle,
-                                    is_downloading = is_downloading,
-                                    deno_path=deno_exe,
-                                    ctk_messagebox=messagebox
-                                        )
-                                ui_queue.put(lambda: is_downloading.set(True))
-                                time.sleep(2)
-                                ui_queue.put(lambda: downloadselectedsong.configure(state = "normal"))
-                        else:ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select resolution or enter a valid number\nmust >= 144 '))
-                    else:ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select resolution and format first'))
+                    if formats.get() == -1:
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select resolution and format first'))
+                        return
+                    if playing_vid_mode == 0 or playing_vid_mode == 4:
+                        if selected_song_number== None:
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video first'))
+                            return
+                        if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:pass
+                        else:
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
+                            return
+                        if vid_url[selected_song_number].startswith(('https://','http://')):
+                            ToastNotification().notify(
+                            title=f"JaTubePlayer {ver}",
+                            msg="Preparing to download...\n Checking video valiability and fetching info",
+                            icon=icondir,
+                            )
+                            _,info_dict = get_info(yt_dlp=yt_dlp,
+                                            maxres=1080,
+                                            target_url=vid_url[selected_song_number],
+                                            deno_path=deno_exe,
+                                            log_handler=ytdlp_log_handle,
+                                            cookie_path=cookies_dir)
+                            if not info_dict:
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to fetch video info, the video may be unavailable or private\nPlease check the log for more details'))
+                                return
+                            if info_dict.get('is_live'):
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
+                                return
+                            else:
+                                url = vid_url[selected_song_number]
+                                title = playlisttitles[selected_song_number]
+                        else:
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The selected video is a local file, downloading is not supported'))
+                            return
+                    
+                    elif playing_vid_mode == 3:
+                        if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:pass
+                        else:
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
+                            return
+                        if playing_vid_info_dict['is_live'] == 'is_live':
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
+                            return
+                        else:
+                            url = playing_vid_info_dict.get('original_url')
+                            title = playing_vid_info_dict.get('title','unknown_title')
+                    if download_path.get() != '[player]/user_data/downloaded_file':
+                        if not os.path.exists(download_path.get()):
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
+                            return
+                    ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
+                    download_to_local(
+                        res=resoltion_combox.get(),
+                        mode=formats.get(),
+                        cookies_dir=cookies_dir,
+                        yt_dlp=yt_dlp,
+                        target_vid_url=url,
+                        title=title,
+                        download_path=download_path.get(),
+                        current_dir=current_dir,
+                        icondir=icondir,
+                        ver=ver,
+                        root=root,   
+                        ffmpeg=ffmpeg,
+                        ytdlp_log_handle=ytdlp_log_handle,
+                        is_downloading = is_downloading,
+                        deno_path=deno_exe,
+                        ctk_messagebox=messagebox
+                        )
+                    ui_queue.put(lambda: is_downloading.set(True))
+                    time.sleep(2)
+                    ui_queue.put(lambda: downloadselectedsong.configure(state = "normal"))
                     ui_queue.put(lambda: downloadhooktext.set(''))
                 else:
                     
@@ -933,7 +982,22 @@ def setting_frame():
                 result,e = init_history(current_dir)
                 if result:messagebox.showinfo(f'JaTubePlayer {ver}','Succeed')
                 else:messagebox.showerror(f'JaTubePlayer {ver}',f'opps we got some error \n{e}')
-            
+
+        def remove_selected_from_playlist_setting():
+            global selected_song_number
+            if selected_song_number is None:
+                messagebox.showerror(f'JaTubePlayer {ver}', 'No item selected in the playlist!')
+                return
+            try:
+                item_id = playlisttreebox.get_children()[selected_song_number]
+                playlisttreebox.delete(item_id)
+                vid_url.pop(selected_song_number)
+                playlisttitles.pop(selected_song_number)
+                playlist_thumbnails.pop(selected_song_number)
+                playlist_channel.pop(selected_song_number)
+                selected_song_number = None
+            except Exception as e:
+                messagebox.showerror(f'JaTubePlayer {ver}', f'Failed to remove item from playlist:\n{e}')
 
         def leave():
             global setting_closed
@@ -1170,7 +1234,7 @@ def setting_frame():
             CONFIG['cache']['cache_secs'] = int(cache_secs.get())
             CONFIG['cache']['demuxer_max_bytes'] = int(demuxer_max_bytes.get())
             CONFIG['cache']['demuxer_max_back_bytes'] = int(demuxer_max_back_bytes.get())
-            CONFIG['cache']['demuxer_readahead_secs'] = int(demuxer_readahead_secs.get())
+            CONFIG['cache']['cache_pause_wait'] = int(cache_pause_wait.get())
             CONFIG['cache']['audio_wait_open'] = int(audio_wait_open.get())
             save_config()
 
@@ -1186,9 +1250,9 @@ def setting_frame():
             demuxer_max_back_bytes.set(int(float(value)))
             demuxer_max_back_bytes_value_label.configure(text=f'{demuxer_max_back_bytes.get()}M')
 
-        def _demuxer_readahead_secs_slider_change(value):
-            demuxer_readahead_secs.set(int(float(value)))
-            demuxer_readahead_secs_value_label.configure(text=f'{demuxer_readahead_secs.get()}s')
+        def _cache_pause_wait_slider_change(value):
+            cache_pause_wait.set(float(value))
+            cache_pause_wait_value_label.configure(text=f'{cache_pause_wait.get():.1f}s')
 
         def _audio_wait_open_slider_change(value):
             audio_wait_open.set(int(value))
@@ -1315,6 +1379,35 @@ def setting_frame():
                 player.speed = player_speed.get()
             except Exception as e:
                 log_handle(content=str(e))
+
+        def select_download_path():
+            path =filedialog.askdirectory()
+            if path:
+                CONFIG['download_path'] = path
+                download_path.set(path)
+                save_config()
+                ui_queue.put(lambda:download_path_textbox.configure(state='normal'))
+                ui_queue.put(lambda:download_path_textbox.delete(0.0,tk.END))
+                ui_queue.put(lambda:download_path_textbox.insert(tk.END,download_path.get()))
+                ui_queue.put(lambda:download_path_textbox.configure(state='disabled'))
+                
+                messagebox.showinfo(f'JaTubePlayer {ver}',f'Download path set to {path}')
+            else:messagebox.showinfo(f'JaTubePlayer {ver}','Cancelled!')
+            setting.focus_force()
+
+        def set_default_download_path():
+            if messagebox.askyesno(f'JaTubePlayer {ver}','This will reset the download path to default\nProcceed?'):
+                CONFIG['download_path'] = "[player]/user_data/downloaded_file" 
+                download_path.set("[player]/user_data/downloaded_file")
+                save_config()
+                ui_queue.put(lambda:download_path_textbox.configure(state='normal'))
+                ui_queue.put(lambda:download_path_textbox.delete(0.0,tk.END))
+                ui_queue.put(lambda:download_path_textbox.insert(tk.END,download_path.get()))
+                ui_queue.put(lambda:download_path_textbox.configure(state='disabled'))
+                
+                messagebox.showinfo(f'JaTubePlayer {ver}',f'Download path reset to default\n{CONFIG["download_path"]}')
+            setting.focus_force()
+
         player_tab = setting_tab.add("Advanced Player setting")
         personal_playlist_tab = setting_tab.add("Personal playlist")
         download_tab = setting_tab.add("Download")
@@ -1358,26 +1451,39 @@ def setting_frame():
         history_frame.grid_columnconfigure(1, weight=1)
         
         # YouTube Data Section
-        youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 13, 'bold'), text_color='#FF6B8A', anchor='w')
+        youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
         updatelike_btn = ctk.CTkButton(youtube_data_frame, text='Update Liked Videos', width=160, command=lambda:threading.Thread(daemon=True,target=update_like_list_local).start(),
-                                        text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                        text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         auto_like_refresh_checkbtn = ctk.CTkCheckBox(youtube_data_frame, text='Auto-update liked videos', variable=auto_like_refresh, command=setting_auto_like_refresh,
-                                                      fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11))
+                                                      fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         
         updatesub_btn = ctk.CTkButton(youtube_data_frame, text='Update Subscriptions', width=160, command=lambda:threading.Thread(daemon=True,target=update_sub_list_local).start(),
-                                       text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         auto_sub_refresh_checkbtn = ctk.CTkCheckBox(youtube_data_frame, text='Auto-update subscriptions', variable=auto_sub_refresh, command=setting_auto_sub_refresh,
-                                                     fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11))
+                                                     fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         
         updateuserplaylists_btn = ctk.CTkButton(youtube_data_frame, text='Update Playlists', width=160, command=updateplaylists,
-                                                 text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                 text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         
         # History Management Section
-        history_title = ctk.CTkLabel(history_frame, text='  \u25b8 History', font=('Arial', 13, 'bold'), text_color='#7EDAE0', anchor='w')
+        history_title = ctk.CTkLabel(history_frame, text='  \u25b8 History', font=('Arial', 14, 'bold'), text_color='#7EDAE0', anchor='w')
         record_history_btn = ctk.CTkCheckBox(history_frame, text='Record playback history', variable=save_history, command=save_his_and_rec_option,
-                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11))
+                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         reset_history_btn = ctk.CTkButton(history_frame, text='Reset History', width=160, command=reset_history_setting,
-                                           text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+
+        # Playlist Item Removal Section
+        playlist_remove_frame = ctk.CTkFrame(personal_playlist_tab, fg_color='#2B2B2B', corner_radius=8)
+        playlist_remove_frame.grid_columnconfigure(0, weight=1)
+        playlist_remove_frame.grid_columnconfigure(1, weight=1)
+
+        playlist_remove_title = ctk.CTkLabel(playlist_remove_frame, text='  \u25b8 Remove from Playlist', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
+        playlist_remove_btn = ctk.CTkButton(playlist_remove_frame, text='Remove Selected', width=160,
+                                             command=remove_selected_from_playlist_setting,
+                                             text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+        playlist_remove_note = ctk.CTkLabel(playlist_remove_frame,
+                                             text='Note: Removing an item only clears it from the current playlist view\nand does not affect the original source (YouTube, local folder, etc.).',
+                                             font=('Arial', 13), text_color="#9A9999", anchor='w', justify='left')
 
         auth_scrollable_frame = ctk.CTkScrollableFrame(Authentication_tab, width=680, height=400, fg_color='#242424')
         auth_scrollable_frame.grid(row=0, column=0)
@@ -1389,15 +1495,15 @@ def setting_frame():
         google_frame.grid_columnconfigure(2, weight=1)
         google_frame.grid(row=0, column=0, padx=8, pady=(8, 4), sticky="ew")
 
-        google_title = ctk.CTkLabel(google_frame, text='  \u25b8 Google Account  \u00b7  API & Client Secret required', font=('Arial', 13, 'bold'), text_color='#FFB347', anchor='w')
+        google_title = ctk.CTkLabel(google_frame, text='  \u25b8 Google Account  \u00b7  API & Client Secret required', font=('Arial', 14, 'bold'), text_color='#FFB347', anchor='w')
         googlelogin_btn = ctk.CTkButton(google_frame, text='Login Google', width=200,
                                          command=lambda:threading.Thread(daemon=True,target=lambda:google_login_setting(0)).start(),
-                                         text_color='white', font=('Arial', 12, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
+                                         text_color='white', font=('Arial', 13, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
         googlelogout_btn = ctk.CTkButton(google_frame, text='Logout Google', width=200, command=google_logout_setting,
-                                          text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         deletesyskey_btn = ctk.CTkButton(google_frame, text='Delete System Key', width=200, command=deletesyskey,
-                                          text_color='white', font=('Arial', 12, 'bold'), fg_color='#8B0000', hover_color='#A52A2A')
-        googleaccountname_text = ctk.CTkTextbox(google_frame, font=('Arial', 12), state='disabled', fg_color='#1a1a1a', text_color='#C8C8C8', height=1, corner_radius=6)
+                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+        googleaccountname_text = ctk.CTkTextbox(google_frame, font=('Arial', 13), state='disabled', fg_color='#1a1a1a', text_color='#C8C8C8', height=1, corner_radius=6)
 
         google_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
         googleaccountname_text.grid(row=1, column=0, padx=12, pady=6, columnspan=3, sticky="ew")
@@ -1411,15 +1517,15 @@ def setting_frame():
         api_frame.grid_columnconfigure(1, weight=1)
         api_frame.grid_columnconfigure(2, weight=0)
         
-        api_title = ctk.CTkLabel(api_frame, text='  \u25b8 API Key', font=('Arial', 13, 'bold'), text_color='#7EB8E0', anchor='w')
+        api_title = ctk.CTkLabel(api_frame, text='  \u25b8 API Key', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
         deleteapi_btn = ctk.CTkButton(api_frame, text='Delete Stored API', width=160, command=deleteapi,
-                                       text_color='white', font=('Arial', 12, 'bold'), fg_color='#8B0000', hover_color='#A52A2A')
-        setting_api_label = ctk.CTkLabel(api_frame, font=('Arial', 11), text='YouTube API:', text_color='#B0B0B0')
-        setting_api_entry = ctk.CTkEntry(api_frame, font=('Arial', 12), width=160, text_color='#C8C8C8', placeholder_text="Enter API here",
+                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+        setting_api_label = ctk.CTkLabel(api_frame, font=('Arial', 12), text='YouTube API:', text_color='#B0B0B0')
+        setting_api_entry = ctk.CTkEntry(api_frame, font=('Arial', 13), width=160, text_color='#C8C8C8', placeholder_text="Enter API here",
                                           fg_color='#1a1a1a', border_color='#444444')
         set_api_btn = ctk.CTkButton(api_frame, text='Set API', width=120, command=enter_youtube_api,
-                                     text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        apilabel = ctk.CTkLabel(api_frame, font=('Arial', 11, 'bold'), text='None', text_color='#7EB8E0')
+                                     text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+        apilabel = ctk.CTkLabel(api_frame, font=('Arial', 12, 'bold'), text='None', text_color='#7EB8E0')
 
         api_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
         setting_api_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="e")
@@ -1435,13 +1541,13 @@ def setting_frame():
         cookie_frame.grid_columnconfigure(1, weight=1)
         cookie_frame.grid_columnconfigure(2, weight=0)
         
-        cookie_title = ctk.CTkLabel(cookie_frame, text='  \u25b8 Cookie', font=('Arial', 13, 'bold'), text_color='#7EE0A8', anchor='w')
-        setting_cookie_label = ctk.CTkLabel(cookie_frame, font=('Arial', 11), text='Cookie:', text_color='#B0B0B0')
+        cookie_title = ctk.CTkLabel(cookie_frame, text='  \u25b8 Cookie', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
+        setting_cookie_label = ctk.CTkLabel(cookie_frame, font=('Arial', 12), text='Cookie:', text_color='#B0B0B0')
         insert_cookie_btn = ctk.CTkButton(cookie_frame, text='Select Cookie', width=160, command=read_cookie_setting,
-                                           text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         deletecookie_btn = ctk.CTkButton(cookie_frame, text='Remove Cookie', width=160, command=delete_cookie,
-                                          text_color='white', font=('Arial', 12, 'bold'), fg_color='#8B0000', hover_color='#A52A2A')
-        cookiepath_text = ctk.CTkTextbox(cookie_frame, font=('Arial', 11), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
+                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+        cookiepath_text = ctk.CTkTextbox(cookie_frame, font=('Arial', 12), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
         cookiepath_text.configure(state='disabled')
 
         cookie_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
@@ -1457,13 +1563,13 @@ def setting_frame():
         client_secrets_frame.grid_columnconfigure(1, weight=1)
         client_secrets_frame.grid_columnconfigure(2, weight=0)
     
-        client_secrets_title = ctk.CTkLabel(client_secrets_frame, text='  \u25b8 Client Secrets', font=('Arial', 13, 'bold'), text_color='#C0A0E0', anchor='w')
-        setting_client_secret_label = ctk.CTkLabel(client_secrets_frame, font=('Arial', 11), text='Client Secrets:', text_color='#B0B0B0')
+        client_secrets_title = ctk.CTkLabel(client_secrets_frame, text='  \u25b8 Client Secrets', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
+        setting_client_secret_label = ctk.CTkLabel(client_secrets_frame, font=('Arial', 12), text='Client Secrets:', text_color='#B0B0B0')
         insert_client_secrets_btn = ctk.CTkButton(client_secrets_frame, text='Select Client Secret', width=160, command=read_client_secret_setting,
-                                                    text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                    text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         deleteclient_secrets_btn = ctk.CTkButton(client_secrets_frame, text='Remove Client Secret', width=160, command=delete_client_secrets,
-                                                   text_color='white', font=('Arial', 12, 'bold'), fg_color='#8B0000', hover_color='#A52A2A')
-        client_secrets_text = ctk.CTkTextbox(client_secrets_frame, font=('Arial', 11), height=1, text_color='#C8C8C8', fg_color='#1a1a1a',
+                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+        client_secrets_text = ctk.CTkTextbox(client_secrets_frame, font=('Arial', 12), height=1, text_color='#C8C8C8', fg_color='#1a1a1a',
                                               wrap="none", activate_scrollbars=False, corner_radius=6)
         client_secrets_text.configure(state='disabled')
 
@@ -1488,30 +1594,48 @@ def setting_frame():
         resolution_frame.grid_columnconfigure(1, weight=1)
         
         # Video Info Section
-        info_title = ctk.CTkLabel(download_info_frame, text='  \u25b8 Selected Video', font=('Arial', 13, 'bold'), text_color='#E0A07E', anchor='w')
-        download_seleted_title_text = ctk.CTkTextbox(download_info_frame, font=('Arial', 13), width=650, height=55, fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
+        info_title = ctk.CTkLabel(download_info_frame, text='  \u25b8 Selected Video', font=('Arial', 14, 'bold'), text_color='#E0A07E', anchor='w')
+        download_seleted_title_text = ctk.CTkTextbox(download_info_frame, font=('Arial', 14), width=650, height=55, fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
         download_seleted_title_text.configure(state='disabled')
         
         # Format Selection Section
-        format_title = ctk.CTkLabel(format_frame, text='  \u25b8 Format', font=('Arial', 13, 'bold'), text_color='#D4A0E0', anchor='w')
+        format_title = ctk.CTkLabel(format_frame, text='  \u25b8 Format', font=('Arial', 14, 'bold'), text_color='#D4A0E0', anchor='w')
         download_mp3 = ctk.CTkRadioButton(format_frame, text='Audio (MP3)', variable=formats, value=0, command=lambda:download_select_mode_setting(0),
-                                           font=('Arial', 11), text_color='#C8C8C8')
+                                           font=('Arial', 12), text_color='#C8C8C8')
         download_mp4 = ctk.CTkRadioButton(format_frame, text='Video (MP4)', variable=formats, value=1, command=lambda:download_select_mode_setting(1),
-                                           font=('Arial', 11), text_color='#C8C8C8')
+                                           font=('Arial', 12), text_color='#C8C8C8')
         
         # Resolution Section
-        resolution_title = ctk.CTkLabel(resolution_frame, text='  \u25b8 Resolution', font=('Arial', 13, 'bold'), text_color='#80C8E0', anchor='w')
-        resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 11), width=200, state='readonly', values=[],
+        resolution_title = ctk.CTkLabel(resolution_frame, text='  \u25b8 Resolution', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
+        resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 12), width=200, state='readonly', values=[],
                                             dropdown_fg_color='#333333', button_color='#444444')
         get_resoltion_btn = ctk.CTkButton(resolution_frame, text='Get Available', width=140,
                                            command=lambda:threading.Thread(daemon=True,target=get_resolution_setting).start(),
-                                           text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         
+        # ── Download Path Card ──
+        download_path_frame = ctk.CTkFrame(download_tab, fg_color='#2B2B2B', corner_radius=8)
+        download_path_frame.grid_columnconfigure(0, weight=0)
+        download_path_frame.grid_columnconfigure(1, weight=1)
+        download_path_frame.grid_columnconfigure(2, weight=0)
+
+        download_path_title = ctk.CTkLabel(download_path_frame, text='  \u25b8 Download Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
+        download_path_label = ctk.CTkLabel(download_path_frame, font=('Arial', 12), text='Save to:', text_color='#B0B0B0')
+        download_path_textbox = ctk.CTkTextbox(download_path_frame, font=('Arial', 12), height=28, text_color='#C8C8C8',
+                                               fg_color='#1a1a1a', corner_radius=6, wrap='none', activate_scrollbars=False)
+        download_path_textbox.configure(state='disabled')
+        select_download_path_btn = ctk.CTkButton(download_path_frame, text='Select Path', width=130,
+                                                  command=select_download_path,
+                                                  text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+        set_default_download_path_btn = ctk.CTkButton(download_path_frame, text='Set Default', width=130,
+                                                       command=set_default_download_path,
+                                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+
         # Download Action
         downloadselectedsong = ctk.CTkButton(download_tab, text='Download Selected Video', width=400,
                                               command=lambda:threading.Thread(daemon=True,target=download_to_loacl_setting).start(),
-                                              text_color='white', font=('Arial', 13, 'bold'), fg_color='#2E7D32', hover_color='#388E3C', corner_radius=8)
-        downloadhooklabel = ctk.CTkLabel(download_tab, font=('Arial', 11), textvariable=downloadhooktext, text_color='#80C8E0')
+                                              text_color='white', font=('Arial', 14, 'bold'), fg_color='#2E7D32', hover_color='#388E3C', corner_radius=8)
+        downloadhooklabel = ctk.CTkLabel(download_tab, font=('Arial', 12), textvariable=downloadhooktext, text_color='#80C8E0')
 
 
         # Create scrollable frame for player settings
@@ -1529,19 +1653,19 @@ def setting_frame():
         general_frame.grid_columnconfigure(0, weight=0, minsize=180)
         general_frame.grid_columnconfigure(1, weight=1)
 
-        general_header = ctk.CTkLabel(general_frame, text='  ▸ General', font=('Arial', 13, 'bold'), text_color='#7EB8E0', anchor='w')
-        maxresolutionlabel = ctk.CTkLabel(general_frame, font=('Arial', 11), text='Max Resolution', text_color='#B0B0B0')
-        maxresolutioncombobox = ctk.CTkComboBox(general_frame, font=('Arial', 11), width=130, state='readonly',
+        general_header = ctk.CTkLabel(general_frame, text='  ▸ General', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
+        maxresolutionlabel = ctk.CTkLabel(general_frame, font=('Arial', 12), text='Max Resolution', text_color='#B0B0B0')
+        maxresolutioncombobox = ctk.CTkComboBox(general_frame, font=('Arial', 12), width=130, state='readonly',
                                                  values=['480', '720', '1080', '1440', '2160', '4320'],
                                                  dropdown_fg_color='#333333', button_color='#444444')
         maxresolutioncombobox.set(str(maxresolution.get()))
         maxresolutioncombobox.configure(command=max_resolution_select)
         autoretry_btn = ctk.CTkCheckBox(general_frame, text='Auto retry on error', variable=autoretry,
-                                         fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11))
+                                         fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         audio_only_checkbtn = ctk.CTkCheckBox(general_frame, text='Audio only mode', variable=audio_only,
-                                               fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=switch_audio_only)
+                                               fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_audio_only)
         hover_fullscreen_btn = ctk.CTkCheckBox(general_frame, text='Hover Fullscreen', variable=hover_fullscreen,
-                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=switch_hover_fullscreen)
+                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_hover_fullscreen)
 
         # ── Speed & Subtitle Card ──
         speed_subtitle_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
@@ -1549,15 +1673,15 @@ def setting_frame():
         speed_subtitle_frame.grid_columnconfigure(1, weight=1)
         speed_subtitle_frame.grid_columnconfigure(2, weight=0, minsize=50)
 
-        speed_subtitle_header = ctk.CTkLabel(speed_subtitle_frame, text='  ▸ Speed & Subtitle', font=('Arial', 13, 'bold'), text_color='#7EE0A8', anchor='w')
-        playerspeed_title_label = ctk.CTkLabel(speed_subtitle_frame, font=('Arial', 11), text='Playback Speed', text_color='#B0B0B0')
+        speed_subtitle_header = ctk.CTkLabel(speed_subtitle_frame, text='  ▸ Speed & Subtitle', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
+        playerspeed_title_label = ctk.CTkLabel(speed_subtitle_frame, font=('Arial', 12), text='Playback Speed', text_color='#B0B0B0')
         playerspeed_slider = ctk.CTkSlider(speed_subtitle_frame, variable=player_speed, from_=0.3, to=3.0, width=200,
                                             number_of_steps=27, command=set_player_speed_setting,
                                             progress_color='#4A9E6E', button_color='#7EE0A8', button_hover_color='#98F0C0')
         playerspeed_slider.bind('<ButtonRelease-1>', apply_player_speed_setting)
-        playerspeed_speed_label = ctk.CTkLabel(speed_subtitle_frame, font=('Arial', 11, 'bold'), text='1.0x', text_color='#7EE0A8')
-        subtitle_label = ctk.CTkLabel(speed_subtitle_frame, text='Subtitle', font=('Arial', 11), text_color='#B0B0B0')
-        subtitlecombobox = ctk.CTkComboBox(speed_subtitle_frame, font=('Arial', 11), width=220, state='readonly',
+        playerspeed_speed_label = ctk.CTkLabel(speed_subtitle_frame, font=('Arial', 12, 'bold'), text='1.0x', text_color='#7EE0A8')
+        subtitle_label = ctk.CTkLabel(speed_subtitle_frame, text='Subtitle', font=('Arial', 12), text_color='#B0B0B0')
+        subtitlecombobox = ctk.CTkComboBox(speed_subtitle_frame, font=('Arial', 12), width=220, state='readonly',
                                             values=subtitle_namelist, command=subtitle_combobox_callback,
                                             dropdown_fg_color='#333333', button_color='#444444')
 
@@ -1568,77 +1692,77 @@ def setting_frame():
         cache_buffer_frame.grid_columnconfigure(2, weight=0, minsize=50)
 
         _slider_kw = dict(progress_color='#8E7A4A', button_color='#E0C48C', button_hover_color='#F0D8A0')
-        cache_buffer_header = ctk.CTkLabel(cache_buffer_frame, text='  ▸ Cache & Buffer', font=('Arial', 13, 'bold'), text_color='#E0C48C', anchor='w')
+        cache_buffer_header = ctk.CTkLabel(cache_buffer_frame, text='  ▸ Cache & Buffer', font=('Arial', 14, 'bold'), text_color='#E0C48C', anchor='w')
 
-        cache_secs_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11), text='Cache Duration', text_color='#B0B0B0')
+        cache_secs_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Cache Duration', text_color='#B0B0B0')
         cache_secs_slider = ctk.CTkSlider(cache_buffer_frame, variable=cache_secs, from_=10, to=300, width=200,
                                            number_of_steps=290, command=_cache_secs_slider_change, **_slider_kw)
         cache_secs_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        cache_secs_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11, 'bold'), text=f'{cache_secs.get()}s', text_color='#E0C48C')
+        cache_secs_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{cache_secs.get()}s', text_color='#E0C48C')
 
-        demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11), text='Max Buffer Size', text_color='#B0B0B0')
+        demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max Buffer Size', text_color='#B0B0B0')
         demuxer_max_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_bytes, from_=16, to=2048, width=200,
                                                   number_of_steps=2032, command=_demuxer_max_bytes_slider_change, **_slider_kw)
         demuxer_max_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        demuxer_max_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11, 'bold'), text=f'{demuxer_max_bytes.get()}M', text_color='#E0C48C')
+        demuxer_max_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{demuxer_max_bytes.get()}M', text_color='#E0C48C')
 
-        demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11), text='Max Back Buffer', text_color='#B0B0B0')
+        demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max Back Buffer', text_color='#B0B0B0')
         demuxer_max_back_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_back_bytes, from_=16, to=2048, width=200,
                                                        number_of_steps=2032, command=_demuxer_max_back_bytes_slider_change, **_slider_kw)
         demuxer_max_back_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        demuxer_max_back_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11, 'bold'), text=f'{demuxer_max_back_bytes.get()}M', text_color='#E0C48C')
+        demuxer_max_back_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{demuxer_max_back_bytes.get()}M', text_color='#E0C48C')
 
-        demuxer_readahead_secs_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11), text='Read-ahead Duration', text_color='#B0B0B0')
-        demuxer_readahead_secs_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_readahead_secs, from_=5, to=300, width=200,
-                                                       number_of_steps=295, command=_demuxer_readahead_secs_slider_change, **_slider_kw)
-        demuxer_readahead_secs_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        demuxer_readahead_secs_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11, 'bold'), text=f'{demuxer_readahead_secs.get()}s', text_color='#E0C48C')
+        cache_pause_wait_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Cache Pause Wait', text_color='#B0B0B0')
+        cache_pause_wait_slider = ctk.CTkSlider(cache_buffer_frame, variable=cache_pause_wait, from_=0.1, to=20.0, width=200,
+                                                       number_of_steps=199, command=_cache_pause_wait_slider_change, **_slider_kw)
+        cache_pause_wait_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
+        cache_pause_wait_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{cache_pause_wait.get()}s', text_color='#E0C48C')
 
-        audio_wait_open_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11), text='Audio Wait Open', text_color='#B0B0B0')
+        audio_wait_open_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Audio Wait Open', text_color='#B0B0B0')
         audio_wait_open_slider = ctk.CTkSlider(cache_buffer_frame, variable=audio_wait_open, from_=1, to=10, width=200,
                                                 number_of_steps=9, command=_audio_wait_open_slider_change, **_slider_kw)
         audio_wait_open_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        audio_wait_open_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 11, 'bold'), text=f'{audio_wait_open.get()}s', text_color='#E0C48C')
+        audio_wait_open_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{audio_wait_open.get()}s', text_color='#E0C48C')
 
         # ── Interface Settings Card ──
         interface_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
         interface_frame.grid_columnconfigure(0, weight=1)
         interface_frame.grid_columnconfigure(1, weight=1)
 
-        interface_title = ctk.CTkLabel(interface_frame, text='  ▸ Interface', font=('Arial', 13, 'bold'), text_color='#C0A0E0', anchor='w')
+        interface_title = ctk.CTkLabel(interface_frame, text='  ▸ Interface', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
         blurbtn = ctk.CTkCheckBox(interface_frame, text='Acrylic blur effect', variable=blur_window,
-                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=switch_blur_window)
+                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
         openwith_fullscreen_btn = ctk.CTkCheckBox(interface_frame, text='Auto fullscreen on open', variable=open_with_fullscreen,
-                                                    fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=autofullscreen_setting)
+                                                    fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=autofullscreen_setting)
 
         # ── Advanced Settings Card ──
         advanced_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
         advanced_frame.grid_columnconfigure(0, weight=1)
         advanced_frame.grid_columnconfigure(1, weight=1)
 
-        advanced_title = ctk.CTkLabel(advanced_frame, text='  ▸ Advanced', font=('Arial', 13, 'bold'), text_color='#E08080', anchor='w')
+        advanced_title = ctk.CTkLabel(advanced_frame, text='  ▸ Advanced', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
         mpvlogbtn = ctk.CTkButton(advanced_frame, text='Show MPV Log', width=160, command=show_mpv_log,
-                                   text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         enable_dnd_btn = ctk.CTkCheckBox(advanced_frame, text='Enable Drag and Drop', variable=enable_drag_and_drop,
-                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=switch_drag_and_drop)
+                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_drag_and_drop)
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading', width=160, command=set_force_stop_loading,
-                                                text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache,
-                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=switch_show_cache)
+                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_show_cache)
 
         # ── External Services Card ──
         external_services_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
         external_services_frame.grid_columnconfigure(0, weight=1)
         external_services_frame.grid_columnconfigure(1, weight=1)
 
-        external_services_title = ctk.CTkLabel(external_services_frame, text='  ▸ External Services', font=('Arial', 13, 'bold'), text_color='#80C0E0', anchor='w')
+        external_services_title = ctk.CTkLabel(external_services_frame, text='  ▸ External Services', font=('Arial', 14, 'bold'), text_color='#80C0E0', anchor='w')
         chrome_extension_server_checkbtn = ctk.CTkSwitch(external_services_frame, text='Chrome extension server', variable=setting_run_chrome_extension_server,
-                                                          command=switch_flask_server, text_color='#C8C8C8', font=('Arial', 11))
+                                                          command=switch_flask_server, text_color='#C8C8C8', font=('Arial', 12))
         enable_discord_presence_btn = ctk.CTkSwitch(external_services_frame, text='Discord Rich Presence', variable=enable_discord_presence,
-                                                     text_color='#C8C8C8', font=('Arial', 11),
+                                                     text_color='#C8C8C8', font=('Arial', 12),
                                                      command=lambda:threading.Thread(daemon=True,target=switch_discord_presence).start())
         discord_presence_show_playing_btn = ctk.CTkCheckBox(external_services_frame, text='Show playing on Discord', variable=discord_presence_show_playing,
-                                                             fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11), command=switch_discord_presence_show_playing)
+                                                             fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_discord_presence_show_playing)
 
 
         # ══════════ Version Info — Card-style sections ══════════
@@ -1651,19 +1775,19 @@ def setting_frame():
         player_frame.grid_columnconfigure(1, weight=1)
 
         # YT-DLP Section
-        ytdlp_title = ctk.CTkLabel(ytdlp_frame, text='  \u25b8 YT-DLP', font=('Arial', 13, 'bold'), text_color='#7EE0A8', anchor='w')
+        ytdlp_title = ctk.CTkLabel(ytdlp_frame, text='  \u25b8 YT-DLP', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
         go_ytdlp_web = ctk.CTkButton(ytdlp_frame, text='Visit Website', width=120,
                                       command=lambda:webbrowser.open('https://github.com/yt-dlp/yt-dlp/releases'),
-                                      text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                      text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         auto_update_ytdlp_btn = ctk.CTkButton(ytdlp_frame, text='Update', width=120,
                                                command=lambda:threading.Thread(daemon=True,target=update_ytdlp).start(),
-                                               text_color='white', font=('Arial', 12, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
+                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
 
         # JaTubePlayer Section
-        player_title = ctk.CTkLabel(player_frame, text='  \u25b8 JaTubePlayer', font=('Arial', 13, 'bold'), text_color='#7EB8E0', anchor='w')
+        player_title = ctk.CTkLabel(player_frame, text='  \u25b8 JaTubePlayer', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
         go_player_web = ctk.CTkButton(player_frame, text='Visit Website', width=120,
                                        command=lambda:webbrowser.open('https://github.com/jackaopen/JaTubePlayer/releases'),
-                                       text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # Version Sub-frames
         ytdlp_current_versions_frame = ctk.CTkFrame(ytdlp_frame, fg_color='#1a1a1a', corner_radius=6)
@@ -1671,20 +1795,20 @@ def setting_frame():
         player_current_versions_frame = ctk.CTkFrame(player_frame, fg_color='#1a1a1a', corner_radius=6)
         player_latest_versions_frame = ctk.CTkFrame(player_frame, fg_color='#1a1a1a', corner_radius=6)
 
-        ytdlp_current_versions_frame_title = ctk.CTkLabel(ytdlp_current_versions_frame, text='Current', font=('Arial', 11, 'bold'), text_color='#B0B0B0')
-        ytdlp_latest_versions_frame_title = ctk.CTkLabel(ytdlp_latest_versions_frame, text='Latest', font=('Arial', 11, 'bold'), text_color='#B0B0B0')
-        player_current_versions_frame_title = ctk.CTkLabel(player_current_versions_frame, text='Current', font=('Arial', 11, 'bold'), text_color='#B0B0B0')
-        player_latest_versions_frame_title = ctk.CTkLabel(player_latest_versions_frame, text='Latest', font=('Arial', 11, 'bold'), text_color='#B0B0B0')
+        ytdlp_current_versions_frame_title = ctk.CTkLabel(ytdlp_current_versions_frame, text='Current', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
+        ytdlp_latest_versions_frame_title = ctk.CTkLabel(ytdlp_latest_versions_frame, text='Latest', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
+        player_current_versions_frame_title = ctk.CTkLabel(player_current_versions_frame, text='Current', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
+        player_latest_versions_frame_title = ctk.CTkLabel(player_latest_versions_frame, text='Latest', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
 
-        ytdlp_ver_current_label = ctk.CTkLabel(ytdlp_current_versions_frame, font=('Arial', 13), text_color='#7EE0A8', anchor='w')
-        ytdlp_ver_lastest_label = ctk.CTkLabel(ytdlp_latest_versions_frame, font=('Arial', 13), text_color='#80C8E0', anchor='w')
+        ytdlp_ver_current_label = ctk.CTkLabel(ytdlp_current_versions_frame, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
+        ytdlp_ver_lastest_label = ctk.CTkLabel(ytdlp_latest_versions_frame, font=('Arial', 14), text_color='#80C8E0', anchor='w')
 
-        player_ver_current_label = ctk.CTkLabel(player_current_versions_frame, font=('Arial', 13), text_color='#7EE0A8', anchor='w')
-        player_ver_latest_label = ctk.CTkLabel(player_latest_versions_frame, font=('Arial', 13), text_color='#80C8E0', anchor='w')
+        player_ver_current_label = ctk.CTkLabel(player_current_versions_frame, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
+        player_ver_latest_label = ctk.CTkLabel(player_latest_versions_frame, font=('Arial', 14), text_color='#80C8E0', anchor='w')
 
         # Settings
         auto_check_ver_btn = ctk.CTkCheckBox(version_info_tab, text='Check version at startup', variable=auto_check_ver, command=save_autovercheck_option_ver,
-                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11))
+                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
 
 
 
@@ -1696,7 +1820,7 @@ def setting_frame():
         hotkey_scrollable_frame.grid_columnconfigure(0, weight=1)
 
         _hk_card_kw = dict(fg_color='#2B2B2B', corner_radius=8)
-        _hk_textbox_kw = dict(font=('Arial', 11), width=200, height=1, state='disabled', fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
+        _hk_textbox_kw = dict(font=('Arial', 12), width=200, height=1, state='disabled', fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
 
         hotkey_playback_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
         hotkey_mode_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
@@ -1704,32 +1828,32 @@ def setting_frame():
         hotkey_player_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
         hotkey_set_keymem_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
 
-        hotkey_set_keymem_title = ctk.CTkLabel(hotkey_set_keymem_frame, text='  \u25b8 Set Hotkey', font=('Arial', 13, 'bold'), text_color='#E0C48C', anchor='w')
-        hotkey_set_keymem_function_combobox = ctk.CTkComboBox(hotkey_set_keymem_frame, font=('Arial', 11), width=200, state='readonly',
+        hotkey_set_keymem_title = ctk.CTkLabel(hotkey_set_keymem_frame, text='  \u25b8 Set Hotkey', font=('Arial', 14, 'bold'), text_color='#E0C48C', anchor='w')
+        hotkey_set_keymem_function_combobox = ctk.CTkComboBox(hotkey_set_keymem_frame, font=('Arial', 12), width=200, state='readonly',
                                                                values=['play_pause','next','previous','stop', 'volume_up','volume_down','mode_random','mode_continuous','mode_repeat','toggle_minimize'],
                                                                dropdown_fg_color='#333333', button_color='#444444')
         hotkey_set_keymem_startlisten_btn = ctk.CTkButton(hotkey_set_keymem_frame, text='Set Hotkey', width=160, command=set_keymem_setting_thread,
-                                                            text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                            text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         hotkey_set_keymem_set_default_btn = ctk.CTkButton(hotkey_set_keymem_frame, text='Reset All to Default', width=160, command=set_keymem_default_setting,
-                                                            text_color='white', font=('Arial', 12, 'bold'), fg_color='#8B0000', hover_color='#A52A2A')
+                                                            text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
 
-        hotkey_playback_frame_title = ctk.CTkLabel(hotkey_playback_frame, text='  \u25b8 Playback', font=('Arial', 13, 'bold'), text_color='#FF6B8A', anchor='w')
-        hotkey_mode_frame_title = ctk.CTkLabel(hotkey_mode_frame, text='  \u25b8 Playback Mode', font=('Arial', 13, 'bold'), text_color='#7EE0A8', anchor='w')
-        hotkey_volume_frame_title = ctk.CTkLabel(hotkey_volume_frame, text='  \u25b8 Volume', font=('Arial', 13, 'bold'), text_color='#80C8E0', anchor='w')
-        hotkey_player_frame_title = ctk.CTkLabel(hotkey_player_frame, text='  \u25b8 Player', font=('Arial', 13, 'bold'), text_color='#C0A0E0', anchor='w')
+        hotkey_playback_frame_title = ctk.CTkLabel(hotkey_playback_frame, text='  \u25b8 Playback', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
+        hotkey_mode_frame_title = ctk.CTkLabel(hotkey_mode_frame, text='  \u25b8 Playback Mode', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
+        hotkey_volume_frame_title = ctk.CTkLabel(hotkey_volume_frame, text='  \u25b8 Volume', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
+        hotkey_player_frame_title = ctk.CTkLabel(hotkey_player_frame, text='  \u25b8 Player', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
 
-        hotkey_playback_play_pause_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 11), text='Play / Pause', text_color='#B0B0B0')
-        hotkey_playback_stop_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 11), text='Stop', text_color='#B0B0B0')
-        hotkey_playback_next_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 11), text='Next Video', text_color='#B0B0B0')
-        hotkey_playback_prev_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 11), text='Previous Video', text_color='#B0B0B0')
+        hotkey_playback_play_pause_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Play / Pause', text_color='#B0B0B0')
+        hotkey_playback_stop_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Stop', text_color='#B0B0B0')
+        hotkey_playback_next_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Next Video', text_color='#B0B0B0')
+        hotkey_playback_prev_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Previous Video', text_color='#B0B0B0')
     
-        hotkey_mode_repeat_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 11), text='Repeat Mode', text_color='#B0B0B0')
-        hotkey_mode_random_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 11), text='Random Mode', text_color='#B0B0B0')
-        hotkey_mode_continuous_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 11), text='Continuous Play', text_color='#B0B0B0')
+        hotkey_mode_repeat_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 12), text='Repeat Mode', text_color='#B0B0B0')
+        hotkey_mode_random_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 12), text='Random Mode', text_color='#B0B0B0')
+        hotkey_mode_continuous_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 12), text='Continuous Play', text_color='#B0B0B0')
 
-        hotkey_volume_up_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 11), text='Volume Up', text_color='#B0B0B0')
-        hotkey_volume_down_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 11), text='Volume Down', text_color='#B0B0B0')
-        hotkey_toggle_minimize_label = ctk.CTkLabel(hotkey_player_frame, font=('Arial', 11), text='Toggle Minimize', text_color='#B0B0B0')
+        hotkey_volume_up_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 12), text='Volume Up', text_color='#B0B0B0')
+        hotkey_volume_down_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 12), text='Volume Down', text_color='#B0B0B0')
+        hotkey_toggle_minimize_label = ctk.CTkLabel(hotkey_player_frame, font=('Arial', 12), text='Toggle Minimize', text_color='#B0B0B0')
 
         hotkey_playback_play_pause_textbox = ctk.CTkTextbox(hotkey_playback_frame, **_hk_textbox_kw)
         hotkey_playback_stop_textbox = ctk.CTkTextbox(hotkey_playback_frame, **_hk_textbox_kw)
@@ -1910,7 +2034,7 @@ def setting_frame():
                     ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
                     
                     if playing_vid_mode ==3 and playing_vid_info_dict:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
-                    elif selected_song_number != None:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
+                    elif selected_song_number != None and playlisttitles:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
                     else:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
                     
                     ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
@@ -1925,6 +2049,8 @@ def setting_frame():
                         elif playing_vid_mode ==1 or playing_vid_mode ==2:
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         elif playing_vid_mode ==3 and _info_dict.get('live_status') == 'is_live':
+                            ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
+                        elif playing_vid_mode ==4 and not vid_url[selected_song_number].startswith(('http://','https://')):
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         else:
                             try:
@@ -1946,8 +2072,14 @@ def setting_frame():
         threading.Thread(daemon=True,target=get_user_name).start()
         threading.Thread(daemon=True,target=get_hotkey_setting_thread).start()
         threading.Thread(daemon=True,target=setting_frame_listener).start()
+
         ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
         ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
+
+        ui_queue.put(lambda:download_path_textbox.configure(state='normal'))
+        ui_queue.put(lambda:download_path_textbox.delete(0.0,tk.END))
+        ui_queue.put(lambda:download_path_textbox.insert(tk.END,download_path.get()))
+        ui_queue.put(lambda:download_path_textbox.configure(state='disabled'))
         
     
         if youtubeAPI:root.after(0,apilabel.configure(text=f'{youtubeAPI[:10]}{"*" * (len(youtubeAPI)-10)}'))
@@ -1970,6 +2102,11 @@ def setting_frame():
         record_history_btn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
         reset_history_btn.grid(row=1, column=1, padx=8, pady=(5, 12), sticky="w")
 
+        playlist_remove_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        playlist_remove_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
+        playlist_remove_btn.grid(row=1, column=0, padx=(24, 8), pady=(5, 4), sticky="w")
+        playlist_remove_note.grid(row=1, column=1, columnspan=2, padx=(24, 8), pady=(2, 12), sticky="w")
+
 
 
         # ══════════ Layout: Download Tab ══════════
@@ -1987,8 +2124,15 @@ def setting_frame():
         resoltion_combox.grid(row=1, column=0, padx=(24, 8), pady=(5, 12), sticky="ew")
         get_resoltion_btn.grid(row=1, column=1, padx=(8, 12), pady=(5, 12), sticky="w")
         
-        downloadselectedsong.grid(row=2, column=0, columnspan=2, padx=20, pady=(16, 8))
-        downloadhooklabel.grid(row=3, column=0, columnspan=2, padx=20, pady=(0, 10))
+        download_path_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        download_path_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
+        download_path_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="e")
+        download_path_textbox.grid(row=1, column=1, padx=(8, 8), pady=5, sticky="ew")
+        select_download_path_btn.grid(row=2, column=1, padx=(8, 4), pady=(4, 12), sticky="w")
+        set_default_download_path_btn.grid(row=2, column=2, padx=(4, 24), pady=(4, 12), sticky="e")
+
+        downloadselectedsong.grid(row=3, column=0, columnspan=2, padx=20, pady=(16, 8))
+        downloadhooklabel.grid(row=4, column=0, columnspan=2, padx=20, pady=(0, 10))
 
         # ══════════ Layout: Advanced Player Settings Tab ══════════
 
@@ -2022,9 +2166,9 @@ def setting_frame():
         demuxer_max_back_bytes_label.grid(row=3, column=0, padx=(24, 8), pady=4, sticky="w")
         demuxer_max_back_bytes_slider.grid(row=3, column=1, padx=8, pady=4, sticky="ew")
         demuxer_max_back_bytes_value_label.grid(row=3, column=2, padx=(4, 14), pady=4, sticky="w")
-        demuxer_readahead_secs_label.grid(row=4, column=0, padx=(24, 8), pady=4, sticky="w")
-        demuxer_readahead_secs_slider.grid(row=4, column=1, padx=8, pady=4, sticky="ew")
-        demuxer_readahead_secs_value_label.grid(row=4, column=2, padx=(4, 14), pady=4, sticky="w")
+        cache_pause_wait_label.grid(row=4, column=0, padx=(24, 8), pady=4, sticky="w")
+        cache_pause_wait_slider.grid(row=4, column=1, padx=8, pady=4, sticky="ew")
+        cache_pause_wait_value_label.grid(row=4, column=2, padx=(4, 14), pady=4, sticky="w")
         audio_wait_open_label.grid(row=5, column=0, padx=(24, 8), pady=(4, 12), sticky="w")
         audio_wait_open_slider.grid(row=5, column=1, padx=8, pady=(4, 12), sticky="ew")
         audio_wait_open_value_label.grid(row=5, column=2, padx=(4, 14), pady=(4, 12), sticky="w")
@@ -2083,12 +2227,12 @@ def setting_frame():
         # ── Quick Init Header Card ──
         header_frame = ctk.CTkFrame(quick_init_tab, fg_color='#2B2B2B', corner_radius=8)
         header_frame.grid_columnconfigure(0, weight=1)
-        header_title = ctk.CTkLabel(header_frame, text='  \u25b8 Quick Startup', font=('Arial', 13, 'bold'), text_color='#90D080', anchor='w')
+        header_title = ctk.CTkLabel(header_frame, text='  \u25b8 Quick Startup', font=('Arial', 14, 'bold'), text_color='#90D080', anchor='w')
         header_title.grid(row=0, column=0, padx=8, pady=(10, 6), sticky="w")
         init_toggle_quickstartup_checkbtn = ctk.CTkCheckBox(header_frame, text='Enable quick startup', variable=init_toggle_quickstartup, command=setting_init_toggle_quickstartup,
-                                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 11))
+                                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         init_toggle_quickstartup_checkbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        init_quick_startup_mode_text = ctk.CTkTextbox(header_frame, font=('Arial', 12), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
+        init_quick_startup_mode_text = ctk.CTkTextbox(header_frame, font=('Arial', 13), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
         init_quick_startup_mode_text.grid(row=2, column=0, padx=12, pady=(4, 12), sticky="ew")
         init_quick_startup_mode_text.configure(state='disabled')
         header_frame.grid(row=0, column=0, columnspan=2, padx=16, pady=(10, 4), sticky="ew")
@@ -2096,56 +2240,56 @@ def setting_frame():
         # ── Search Card ──
         search_frame = ctk.CTkFrame(quick_init_tab, fg_color='#2B2B2B', corner_radius=8)
         search_frame.grid_columnconfigure((0,1), weight=1)
-        search_title = ctk.CTkLabel(search_frame, text='  \u25b8 Search', font=('Arial', 13, 'bold'), text_color='#E0C48C', anchor='w')
+        search_title = ctk.CTkLabel(search_frame, text='  \u25b8 Search', font=('Arial', 14, 'bold'), text_color='#E0C48C', anchor='w')
         search_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
         init_search_btn = ctk.CTkRadioButton(search_frame, text='Init search', variable=init_quickstartup_mode, value='search', command=init_search_select,
-                                              text_color='#C8C8C8', font=('Arial', 11))
+                                              text_color='#C8C8C8', font=('Arial', 12))
         init_search_btn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        init_search_entry = ttk.Entry(search_frame, font=('Arial', 12), width=14)
+        init_search_entry = ttk.Entry(search_frame, font=('Arial', 13), width=14)
         init_search_entry.grid(row=1, column=1, padx=(8, 12), pady=5, sticky="ew")
         init_search_set_btn = ctk.CTkButton(search_frame, text='Set Init Search', command=init_search_set, width=160,
-                                              text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                              text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_search_set_btn.grid(row=2, column=0, columnspan=2, padx=12, pady=(4, 12), sticky="ew")
         search_frame.grid(row=1, column=0, padx=(16, 4), pady=4, sticky="nsew")
         
         # ── Playlist Card ──
         playlist_frame = ctk.CTkFrame(quick_init_tab, fg_color='#2B2B2B', corner_radius=8)
         playlist_frame.grid_columnconfigure((0,1), weight=1)
-        playlist_title = ctk.CTkLabel(playlist_frame, text='  \u25b8 Playlist', font=('Arial', 13, 'bold'), text_color='#80C8E0', anchor='w')
+        playlist_title = ctk.CTkLabel(playlist_frame, text='  \u25b8 Playlist', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
         playlist_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
         init_playlist_btn = ctk.CTkRadioButton(playlist_frame, text='Init playlist', variable=init_quickstartup_mode, value='playlist', command=init_playlist_select,
-                                                text_color='#C8C8C8', font=('Arial', 11))
+                                                text_color='#C8C8C8', font=('Arial', 12))
         init_playlist_btn.grid(row=1, column=0, padx=(24, 4), pady=5, sticky="w")
-        init_playlist_combobox = ttk.Combobox(playlist_frame, font=('Arial', 12), width=14, state='readonly')
+        init_playlist_combobox = ttk.Combobox(playlist_frame, font=('Arial', 13), width=14, state='readonly')
         init_playlist_combobox.grid(row=1, column=1, padx=(4, 12), pady=5, sticky="ew")
         init_get_playlist_btn = ctk.CTkButton(playlist_frame, text='Get Playlist', command=init_playlist_get, width=100,
-                                               text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_get_playlist_btn.grid(row=2, column=0, padx=(24, 4), pady=(4, 12), sticky="ew")
         init_playlist_set_btn = ctk.CTkButton(playlist_frame, text='Set Playlist', command=init_playlist_set, width=100,
-                                               text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_playlist_set_btn.grid(row=2, column=1, padx=(4, 12), pady=(4, 12), sticky="ew")
         playlist_frame.grid(row=1, column=1, padx=(4, 16), pady=4, sticky="nsew")
 
         # ── Local Folder Card ──
         local_folder_frame = ctk.CTkFrame(quick_init_tab, fg_color='#2B2B2B', corner_radius=8)
         local_folder_frame.grid_columnconfigure((0,1), weight=1)
-        local_folder_title = ctk.CTkLabel(local_folder_frame, text='  \u25b8 Local Folder', font=('Arial', 13, 'bold'), text_color='#C0A0E0', anchor='w')
+        local_folder_title = ctk.CTkLabel(local_folder_frame, text='  \u25b8 Local Folder', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
         local_folder_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
         init_local_folder_btn = ctk.CTkRadioButton(local_folder_frame, text='Init local folder', variable=init_quickstartup_mode, value='local_playlist', command=init_local_playlist,
-                                                     text_color='#C8C8C8', font=('Arial', 11))
+                                                     text_color='#C8C8C8', font=('Arial', 12))
         init_local_folder_btn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
         init_select_local_folder_btn = ctk.CTkButton(local_folder_frame, text='Select Folder', command=init_select_local_folder, width=160,
-                                                       text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_select_local_folder_btn.grid(row=1, column=1, padx=(8, 12), pady=(5, 12), sticky="ew")
         local_folder_frame.grid(row=2, column=0, padx=(16, 4), pady=4, sticky="nsew")
         
         # ── Recommendation Card ──
         rec_frame = ctk.CTkFrame(quick_init_tab, fg_color='#2B2B2B', corner_radius=8)
         rec_frame.grid_columnconfigure(0, weight=1)
-        rec_title = ctk.CTkLabel(rec_frame, text='  \u25b8 Recommendation', font=('Arial', 13, 'bold'), text_color='#E08080', anchor='w')
+        rec_title = ctk.CTkLabel(rec_frame, text='  \u25b8 Recommendation', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
         rec_title.grid(row=0, column=0, padx=8, pady=(10, 6), sticky="w")
         init_rec_at_startbtn = ctk.CTkRadioButton(rec_frame, text='Init recommendation', variable=init_quickstartup_mode, value='recommendation', command=setting_init_recommendation_select,
-                                                    text_color='#C8C8C8', font=('Arial', 11))
+                                                    text_color='#C8C8C8', font=('Arial', 12))
         init_rec_at_startbtn.grid(row=1, column=0, padx=(24, 8), pady=(5, 12), sticky="w")
         rec_frame.grid(row=2, column=1, padx=(4, 16), pady=4, sticky="nsew")
 
@@ -2840,7 +2984,8 @@ def youtube_search(event=None):
 def get_starred_vid(event=None):
     global vid_url,playlisttitles,playlist_channel,playlist_thumbnails,insert_treeview_quene,star_vid_handle,selected_song_number,playing_vid_mode
     selected_song_number = None
-    playing_vid_mode = 0
+    playing_vid_mode = 4
+    log_handle(content="start to get starred videos")
     ui_queue.put(lambda: modetextbox.configure(state='normal'))
     ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
     ui_queue.put(lambda: modetextbox.insert(tk.END,f"Starred Videos"))
@@ -2848,42 +2993,83 @@ def get_starred_vid(event=None):
     ui_queue.put(lambda: page_num_label.configure(text=''))
     ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
     ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-    star_vid_handle.list_all(
+    ui_queue.put(lambda:star_vid_handle.list_all(
       
             treeview_queue=insert_treeview_quene,
             vid_url=vid_url,
             playlisttitles=playlisttitles,
             playlist_channel=playlist_channel,
-            playlist_thumbnails=playlist_thumbnails)
+            playlist_thumbnails=playlist_thumbnails))
           
 
 def switch_starred_vid(event=None):
     global star_vid_handle,selected_song_number,playing_vid_mode,vid_url,playlist_thumbnails,playlisttitles,playlist_channel,cookies_dir,playing_vid_info_dict
     
-    if playing_vid_mode == 0:
-        if selected_song_number == None:
-            messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!')
-            return
+    if playing_vid_mode == 0 or playing_vid_mode == 1 or playing_vid_mode == 3:
+        if playing_vid_mode == 1 or playing_vid_mode == 4:
+            if selected_song_number == None:
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
+                return
         else:
-            if star_vid_handle.search(vid_url[selected_song_number]):
-                star_vid_handle.remove(vid_url[selected_song_number])
+            if selected_song_number is None:
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
+                return
+            if playing_vid_mode == 0 or playing_vid_mode == 4:
+                url_or_path = vid_url[selected_song_number]
+                title = playlisttitles[selected_song_number]
+                thumb = playlist_thumbnails[selected_song_number]
+                channel = playlist_channel[selected_song_number]
+            elif playing_vid_mode == 1:
+                url_or_path = playing_title_textbox.get(0.0,tk.END).strip()
+                title = os.path.basename(url_or_path)
+                thumb = None
+                channel = 'local file'
+            elif playing_vid_mode == 2:
+                url_or_path = vid_url[selected_song_number]
+                title = playlisttitles[selected_song_number]
+                thumb = None
+                channel = 'local file'
+            elif playing_vid_mode == 3:
+                url_or_path = playing_vid_info_dict['original_url']
+                title = playing_vid_info_dict['title']
+                try:thumb = playing_vid_info_dict['thumbnails'][0]['url'] if playing_vid_info_dict['thumbnails'] else None
+                except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
+                finally:thumb = thumb if thumb else None
+                channel = playing_vid_info_dict['channel']
+                
+                    
+
+            
+            if star_vid_handle.search(url_or_path):
+                star_vid_handle.remove(url_or_path)
                 ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                 ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
-                if modetextbox.get(0.0,tk.END).strip() == 'Starred Videos':
-                    ui_queue.put(lambda: playlisttreebox.delete(playlisttreebox.selection()[0]))
-                    vid_url.pop(selected_song_number)
 
-                    playlist_thumbnails.pop(selected_song_number)
-                    playlisttitles.pop(selected_song_number)
-                    playlist_channel.pop(selected_song_number)
-
-                    selected_song_number = None
+                if playing_vid_mode == 4:
+                    try:
+                        vid_url.pop(selected_song_number)
+                        playlisttitles.pop(selected_song_number)
+                        playlist_thumbnails.pop(selected_song_number)
+                        playlist_channel.pop(selected_song_number)
+                        ui_queue.put(lambda i=selected_song_number: playlisttreebox.delete(playlisttreebox.get_children()[i]))
+                    except Exception as e:
+                        log_handle(content=str(e))
+                        
                 
             else:#add
-                res = star_vid_handle.add(url =vid_url[selected_song_number],
-                                thumb=playlist_thumbnails[selected_song_number],
-                                title=playlisttitles[selected_song_number],
-                                channel=playlist_channel[selected_song_number],
+                if "twitch.tv" in url_or_path.lower():
+                    if "videos" in url_or_path.lower():
+                        if not messagebox.askyesno(f'JaTubePlayer {ver}','Twitch VOD detected,The VOD might be removed when Twitch expiring the VOD link, do you still want to add it to starred video?'):
+                            return
+                    elif "clip" not in url_or_path.lower():
+                        if not messagebox.askyesno(f'JaTubePlayer {ver}','This might be a Twitch streamer, if the streamer is not streaming when you try to play the video, it might not work, do you still want to add it to starred video?'):
+                            return
+
+                        
+                res = star_vid_handle.add(url =url_or_path,
+                                thumb=thumb,
+                                title=title,
+                                channel=channel,
                                 cookie_path=cookies_dir)
                 if res:
                     ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
@@ -2891,28 +3077,8 @@ def switch_starred_vid(event=None):
                 else:
                     ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
 
-
-    elif playing_vid_mode == 3:
-        if star_vid_handle.search(playing_vid_info_dict['original_url']):
-            star_vid_handle.remove(playing_vid_info_dict['original_url'])
-            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
-
-        else:
-            res = star_vid_handle.add(url =playing_vid_info_dict['original_url'],
-                                thumb=playing_vid_info_dict['thumbnail'],
-                                title=playing_vid_info_dict['title'],
-                                channel=playing_vid_info_dict['channel'],
-                                cookie_path=cookies_dir,
-                                )
-            
-            if res:
-                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
-                ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
-            else:
-                ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
-
-
+    
+    
 
 
 
@@ -2971,7 +3137,7 @@ def update_playing_pos_local_and_chrome():
                 
                 if selected_song_number != None:
                     ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
-                    if playing_vid_mode == 2:
+                    if playing_vid_mode == 2 or playing_vid_mode == 4:
                         ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
                         if player_mode_selector.get() =='continue':
                             if selected_song_number == len(vid_url) -1:
@@ -2979,21 +3145,27 @@ def update_playing_pos_local_and_chrome():
                             else:    
                                 selected_song_number  = selected_song_number + 1
                         elif player_mode_selector.get() =='replay':
-                            player.seek(0,reference='absolute')
+                            player.seek(0.1,reference='absolute')
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             selected_song_number = random.randint(0,len(vid_url))
                         download_and_play()
                         ui_queue.put(lambda s=selected_song_number: playlisttreebox.selection_set(playlisttreebox.get_children()[s]))
-
+                        if star_vid_handle.search(vid_url[selected_song_number]):
+                            ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                        else:
+                            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                         break
 
                 elif playing_vid_mode == 1 or playing_vid_mode == 3:### MPV option keep_open
                     if player_mode_selector.get() =='replay':
-                        player.seek(0,reference='absolute')
+                        player.seek(0.1,reference='absolute')
+                        root.after(200, lambda: setattr(player, 'pause', False))
+                    elif player_mode_selector.get() =='continue' and len(vid_url) > 0:
+                        ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','Please choose a video again!'))
+                        
                 elif playing_vid_mode == 2:ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer{ver}','Choose a video again'))
             if stoped: 
-                #print('ajksdbasjd')
                 finish_break = True
                 break
         except:pass
@@ -3051,7 +3223,7 @@ def update_playing_pos_yt():
                                 selected_song_number  = selected_song_number + 1
 
                         elif player_mode_selector.get() =='replay':
-                            player.seek(0,reference='absolute')
+                            player.seek(0.1,reference='absolute')
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
@@ -3061,7 +3233,12 @@ def update_playing_pos_yt():
                             ui_queue.put(lambda s=selected_song_number: playlisttreebox.selection_set(playlisttreebox.get_children()[s])) ## get selection
                             finish_break = True  ### so set it before enfter d.a.p fun
                             download_and_play() ### will stuck here bc of watiing while loop
+                            if star_vid_handle.search(vid_url[selected_song_number]):
+                                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                            else:
+                                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                             break
+                            
                     else:
                         stop_playing_video()
                         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer{ver}','Choose a video again'))
@@ -3213,6 +3390,10 @@ def playnextsong():
                 playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number])
                 time.sleep(0.5)
                 download_and_play()
+                if star_vid_handle.search(vid_url[selected_song_number]):
+                            ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                else:
+                    ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
         else:messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
     else:messagebox.showerror(f'JaTubePlayer {ver}','You cant use the function with file playing mode')
 
@@ -3232,6 +3413,11 @@ def playprevsong():
                     selected_song_number  = selected_song_number - 1
                 time.sleep(0.5)
                 download_and_play()
+                if star_vid_handle.search(vid_url[selected_song_number]):
+                            ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                else:
+                    ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+                
                 playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number])
         else:messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
     else:messagebox.showerror(f'JaTubePlayer {ver}','You cant use the function with file playing mode')
@@ -3271,14 +3457,6 @@ def load_thread():  ### add every try except to a new log system for next update
             create_mpv_player()
 
 
-            if playing_vid_mode == 0 or playing_vid_mode == 2:
-
-                vid_url_in = vid_url.copy()
-                playlisttitles_in = playlisttitles.copy()
-
-                playing_vid_url = vid_url_in[selected_song_number]
-                selected_song_number_in = int(selected_song_number)
-
             if not chosen_file:  
                 
                     loadingvideo = True
@@ -3291,7 +3469,7 @@ def load_thread():  ### add every try except to a new log system for next update
                     player.volume =int(player_volume_scale.get())
                     
                     try:    
-                            if direct_url:
+                            if direct_url and playing_vid_mode == 3:
                                 if check_internet_socket():
                                     playing_vid_url = direct_url
                                     ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Playing video from chrome\n{direct_url}', duration='short', icon=icondir)
@@ -3303,7 +3481,7 @@ def load_thread():  ### add every try except to a new log system for next update
                             try:
                                 final_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
                                                                         maxres=maxresolution.get(),
-                                                                        target_url=vid_url_in[selected_song_number_in] if not direct_url else direct_url,
+                                                                        target_url=direct_url,
                                                                         deno_path=deno_exe,
                                                                         log_handler=ytdlp_log_handle,
                                                                         cookie_path=cookies_dir)
@@ -3405,30 +3583,30 @@ def load_thread():  ### add every try except to a new log system for next update
                             if succed:
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
                                 try:
-                                    ui_queue.put(lambda: playing_title_textbox.insert(tk.END, playlisttitles_in[selected_song_number_in] if not direct_url else playing_vid_info_dict['title']))
+                                    ui_queue.put(lambda: playing_title_textbox.insert(tk.END, playing_vid_info_dict['title']))
                                     if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
-                                    else:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen - {playlisttitles_in[selected_song_number_in] if not direct_url else playing_vid_info_dict["title"]}')) 
+                                    else:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen - {playing_vid_info_dict["title"]}')) 
 
                                 except Exception as e:
                                     log_handle(content=f"Error inserting title: {e}")
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
                                 
                                 ui_queue.put(lambda: smtc.update_media_info(
-                                    title = playlisttitles_in[selected_song_number_in] if not direct_url else playing_vid_info_dict['title'],
-                                    artist = playlist_channel[selected_song_number_in] if not direct_url else playing_vid_info_dict['uploader'],
+                                    title = playing_vid_info_dict['title'],
+                                    artist = playing_vid_info_dict['uploader'],
                                     album = 'JaTubePlayer',
-                                    thumbnail_url = playlist_thumbnails[selected_song_number_in] if not direct_url else playing_vid_info_dict['thumbnail']
+                                    thumbnail_url = playing_vid_info_dict['thumbnail']
                                 ))
                                 if enable_discord_presence.get():
                                     try:
                                         if discord_presence_show_playing.get():
-                                            discord_presence.update(song_title=playlisttitles_in[selected_song_number_in] if not direct_url else playing_vid_info_dict['title'])
+                                            discord_presence.update(song_title=playing_vid_info_dict['title'])
                                         else:discord_presence.idle()
                                     except:pass
 
                                 player.volume = (int(player_volume_scale.get()))
-                                if playing_vid_mode == 0:pos_thread = threading.Thread(daemon = True,target=update_playing_pos_yt)
-                                else:pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
+                                if playing_vid_mode == 3:pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
+                                else :pos_thread = threading.Thread(daemon = True,target=update_playing_pos_yt)
                                 
                                 pos_thread.start()
                                 ui_queue.put(lambda: player_loading_label.configure(text=''))
@@ -3448,94 +3626,103 @@ def load_thread():  ### add every try except to a new log system for next update
                                 loadingvideo = True
                                 succed = False
                                 ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
-                                player.play(chosen_file)
-                                player.volume =int(player_volume_scale.get())
-                                log_handle(content=str(chosen_file))
-                                time.sleep(0.1)
-                                
-                                if player.duration == None:
-                                    for i in range(31):
-                                        log_handle(content='testing point')
-                                        if force_stop_loading:
-                                            loadingvideo = False
-                                            ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                            force_stop_loading = False
-                                            succed = False
-                                            break
-                                        if player.duration != None:
-                                            succed = True
-                                            break
-                                        log_handle(content=str(i))
-                                        if i > 29:
-                                            if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
-                                                loadingvideo = False
-                                                ui_queue.put(lambda: player_loading_label.configure(text='retrying...'))
-                                                load_thread_queue.put((chosen_file,direct_url)) #put it back to queue to retry
-                                                succed = False
-                                                break
-                                            else:
-                                                ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                                succed = False
-                                                loadingvideo = False
-                                                break
-                                        log_handle(content='loading')
-                                        time.sleep(0.1)
-
-                                        
-                                else:succed = True   
-
-                                if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
-                                else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {os.path.basename(cf)}')) 
-                                                                   
-
-                                if succed:
-                                    ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
-                                    log_handle(content=f"playing mode {playing_vid_mode}")
-                                    if playing_vid_mode == 1:
-                                        ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, str(cf)))  
-                                    else:
-                                        ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, os.path.basename(str(cf))))
-                                    ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
+                                if os.path.exists(chosen_file):
+                                    ui_queue.put(lambda:messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
                                     
+                                    player.play(chosen_file)
+                                    player.volume =int(player_volume_scale.get())
+                                    log_handle(content=str(chosen_file))
+                                    time.sleep(0.1)
+                                    
+                                    if player.duration == None:
+                                        for i in range(31):
+                                            log_handle(content='testing point')
+                                            if force_stop_loading:
+                                                loadingvideo = False
+                                                ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                                force_stop_loading = False
+                                                succed = False
+                                                break
+                                            if player.duration != None:
+                                                succed = True
+                                                break
+                                            log_handle(content=str(i))
+                                            if i > 29:
+                                                if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
+                                                    loadingvideo = False
+                                                    ui_queue.put(lambda: player_loading_label.configure(text='retrying...'))
+                                                    load_thread_queue.put((chosen_file,direct_url)) #put it back to queue to retry
+                                                    succed = False
+                                                    break
+                                                else:
+                                                    ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                                    succed = False
+                                                    loadingvideo = False
+                                                    break
+                                            log_handle(content='loading')
+                                            time.sleep(0.1)
 
+                                            
+                                    else:succed = True   
 
                                     if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
-                                    else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}')) 
-                                    try:
-                                        ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
-                                            title = os.path.basename(cf),
-                                            artist = '-local file',
-                                            album = 'JaTubePlayer',
-                                            thumbnail_url = None
+                                    else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {os.path.basename(cf)}')) 
+                                                                    
 
-                                        ))
-                                    except Exception as e:
-                                        log_handle(content=f"Error updating media info: {e}")    
+                                    if succed:
+                                        ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
+                                        log_handle(content=f"playing mode {playing_vid_mode}")
+                                        if playing_vid_mode == 1:
+                                            ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, str(cf)))  
+                                        else:
+                                            ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, os.path.basename(str(cf))))
+                                        ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
+                                        
 
-                                    if enable_discord_presence.get():
+
+                                        if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                        else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}')) 
                                         try:
-                                            if discord_presence_show_playing.get():
-                                                discord_presence.update(song_title="A Local media file :)")
-                                            else:discord_presence.idle()
-                                        except:pass
-                                    
-                                    
-                                    player.volume = int(player_volume_scale.get())
-                                    pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
-                                    pos_thread.start()
-                                    ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                    ui_queue.put(lambda: pauseStr.set('||'))
-                                    time.sleep(0.1)
+                                            ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
+                                                title = os.path.basename(cf),
+                                                artist = '-local file',
+                                                album = 'JaTubePlayer',
+                                                thumbnail_url = None
+
+                                            ))
+                                        except Exception as e:
+                                            log_handle(content=f"Error updating media info: {e}")    
+
+                                        if enable_discord_presence.get():
+                                            try:
+                                                if discord_presence_show_playing.get():
+                                                    discord_presence.update(song_title="A Local media file :)")
+                                                else:discord_presence.idle()
+                                            except:pass
+                                        
+                                        
+                                        player.volume = int(player_volume_scale.get())
+                                        pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
+                                        pos_thread.start()
+                                        ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                        ui_queue.put(lambda: pauseStr.set('||'))
+                                        time.sleep(0.1)
+                                        loadingvideo = False
+                                else:
+                                    ui_queue.put(lambda:messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
                                     loadingvideo = False
+                                    ui_queue.put(lambda: player_loading_label.configure(text=''))
                     except Exception as e:
                         ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play local file:  {str(err)}"))
                         loadingvideo = False
+                        ui_queue.put(lambda: player_loading_label.configure(text=''))
+
 
 
 
 def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_files_path_lists:list=None):
     '''
-    mode 0 == single file mode
+    mode 0 == single file mode and dnd single file
     mode 1 == folder mode and dnd folder(must have muti files for better single file control balance)
     mode 2 == dnd multi files
     local_folder_path for quick startup local folder and dnd folder
@@ -3634,12 +3821,19 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
 
 
 def download_and_play(event=None):### button and double click event
+    '''
+    for youtube video, the direct url is needed to make mpv play it, 
+    so the load thread will get the direct url and put it in the queue, 
+    and the load thread will handle the rest of the process, 
+    for local file/folder, the file path is directly put in the queue, 
+    and the load thread will handle the rest of the process.
+    '''
     
     if playing_vid_mode == 0:
         if check_internet_socket():
             #load from youtube
             if selected_song_number != None:
-                load_thread_queue.put((None,None))
+                load_thread_queue.put((None,vid_url[selected_song_number]))
         
             else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
         else:
@@ -3649,10 +3843,27 @@ def download_and_play(event=None):### button and double click event
                 msg='Internet connection failed, please check your internet connection',
                 duration='short',            
             )
-    else:       
+    elif playing_vid_mode == 1 or playing_vid_mode == 2:       
         # load local file/folder
         if selected_song_number != None:
             load_thread_queue.put((vid_url[selected_song_number],None))
+        else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
+
+    elif playing_vid_mode == 4:
+        if selected_song_number != None:
+            url_or_path = vid_url[selected_song_number]
+            if url_or_path.startswith(('http://', 'https://')):
+                if check_internet_socket():
+                    load_thread_queue.put((None,url_or_path))
+                else:
+                    ToastNotification().notify(
+                        app_id="JaTubePlayer",
+                        title="JaTubePlayer",
+                        msg='Internet connection failed, please check your internet connection',
+                        duration='short',            
+                    )
+            else:
+                load_thread_queue.put((url_or_path,None))
         else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
 
 
@@ -3748,7 +3959,7 @@ def fullscreen_widget_change(event=None):
             
             # Tkinter widgets need DPI scaling
             playlisttreebox.configure(height=int(20*window_dpi))
-            if playing_vid_mode == 0:
+            if playing_vid_mode == 0 or playing_vid_mode == 4:
                 playlisttreebox.column("#0", width=180, anchor='center')
             else:
                 playlisttreebox.column("#0", width=0, anchor='center')
@@ -4086,7 +4297,7 @@ def init_read_dlp():
         
 
 def init_read_config():
-    global cookies_dir,client_secret_path,auto_like_refresh,auto_sub_refresh,auto_check_ver,save_history,maxresolution,listen_chromeextension_thread,enable_drag_and_drop,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,demuxer_readahead_secs,audio_wait_open
+    global cookies_dir,client_secret_path,auto_like_refresh,auto_sub_refresh,auto_check_ver,save_history,maxresolution,listen_chromeextension_thread,enable_drag_and_drop,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open
     cookies_dir= CONFIG['cookie_path']
     client_secret_path = CONFIG['client_secret_path']
     log_handle(content=f"cookie {cookies_dir}")
@@ -4121,11 +4332,13 @@ def init_read_config():
 
         if CONFIG['hover_fullscreen']:hover_fullscreen.set(True)
         else:hover_fullscreen.set(False)
+
         
+        download_path.set(CONFIG['download_path'])
         cache_secs.set(CONFIG['cache']['cache_secs'])
         demuxer_max_bytes.set(CONFIG['cache']['demuxer_max_bytes'])
         demuxer_max_back_bytes.set(CONFIG['cache']['demuxer_max_back_bytes'])
-        demuxer_readahead_secs.set(CONFIG['cache']['demuxer_readahead_secs'])
+        cache_pause_wait.set(CONFIG['cache']['cache_pause_wait'])
         audio_wait_open.set(CONFIG['cache']['audio_wait_open'])
 
 
@@ -4166,6 +4379,11 @@ def init_ver_check():
             ui_queue.put(lambda lp=latest_player: ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Your JaTubePlayer is not the newest!\nlatest: {lp}  yours: {ver}', duration='short', icon=icondir))
 
 
+
+
+
+
+
 def create_mpv_player():
     global player,deno_exe
 
@@ -4173,7 +4391,7 @@ def create_mpv_player():
     cache_secs_val = int(cache_secs.get() or cache_cfg.get("cache_secs", 80))
     demuxer_max_bytes_val = int(demuxer_max_bytes.get() or cache_cfg.get("demuxer_max_bytes", 512))
     demuxer_max_back_bytes_val = int(demuxer_max_back_bytes.get() or cache_cfg.get("demuxer_max_back_bytes", 256))
-    demuxer_readahead_secs_val = int(demuxer_readahead_secs.get() or cache_cfg.get("demuxer_readahead_secs", 60))
+    cache_pause_wait_val = int(cache_pause_wait.get() or cache_cfg.get("cache_pause_wait", 3))
     audio_wait_open_val = float(audio_wait_open.get() or cache_cfg.get("audio_wait_open", 1))
 
     buf_arg = {
@@ -4181,12 +4399,13 @@ def create_mpv_player():
     "cache-secs": cache_secs_val,
     "demuxer-max-bytes": f"{demuxer_max_bytes_val}M",
     "demuxer-max-back-bytes": f"{demuxer_max_back_bytes_val}M",
-    "demuxer-readahead-secs": demuxer_readahead_secs_val,
     "cache-pause": "yes",
-    "cache-pause-wait": 1,
+    "cache-pause-wait": cache_pause_wait_val,
     "cache-pause-initial": "yes",
     "demuxer-thread": "yes",
     "audio-wait-open": audio_wait_open_val,
+    "demuxer-hysteresis-secs": 0
+
 }
 
     sub_arg = {
@@ -4234,6 +4453,9 @@ def create_mpv_player():
 
 
 
+
+    
+
 def init_star_vid_instance():
     global star_vid_handle
     star_vid_handle = star_vid_handler(current_dir=current_dir,
@@ -4279,11 +4501,11 @@ def init_tree_view_quene():
         while not insert_treeview_quene.empty():
             thumb, title, ch = insert_treeview_quene.get_nowait()
             id = playlisttreebox.insert('', 'end', values=(f'{title}\n{ch}',))
-            if playing_vid_mode == 0 :
+            if playing_vid_mode == 0 or playing_vid_mode == 4:
                 async_task.append(load_thumbnail_thread(asyncio_session,id,thumb))
 
             #adjust column width in playlisttreebox insert thread
-            if playing_vid_mode ==0:
+            if playing_vid_mode ==0 or playing_vid_mode == 4:
                 playlisttreebox.column("#0", width=180,anchor='center')
             else:
                 playlisttreebox.column("#0", width=0,anchor='center')
@@ -4300,27 +4522,109 @@ def start_async_eventloop():
     asynceventloop.run_forever()
 
 def init_listen_chromeextension():
-    global playing_vid_mode,selected_song_number,chrome_extension_url,star_vid_handle
+    global playing_vid_mode,selected_song_number,star_vid_handle
     if setting_run_chrome_extension_server.get():
+
+
+
+
         if chrome_extension_flask.chrome_extension_url:
-            log_handle(content=str(chrome_extension_flask.chrome_extension_url))
+            log_handle(content=f"chrome extension url: {chrome_extension_flask.chrome_extension_url}")
             chrome_extension_url = chrome_extension_flask.chrome_extension_url.split("&")[0]
-            load_thread_queue.put((None,chrome_extension_url))
             playing_vid_mode = 3
+            load_thread_queue.put((None,chrome_extension_url))
             selected_song_number = None
+
             if star_vid_handle.search(chrome_extension_url):
                 ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             else:
                 ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+            
             playlisttreebox.delete(*playlisttreebox.get_children())
             modetextbox.configure(state="normal")
             modetextbox.delete(0.0,tk.END)
             modetextbox.insert(tk.END,"Chrome extension video")
             modetextbox.configure(state="disabled")
-
-
-
             chrome_extension_flask.chrome_extension_url = None
+
+        elif chrome_extension_flask.chrome_extension_star_video:
+            url = chrome_extension_flask.chrome_extension_star_video.split("&")[0]
+            log_handle(content=f"chrome extension star video url: {url}")
+            if not star_vid_handle.search(url):
+                star_vid_handle.add(url)
+                if playing_vid_mode == 4:
+                    try:
+                        ToastNotification().notify(app_id="JaTubePlayer", 
+                                                   title=f'JaTubePlayer {ver}', 
+                                                   msg='Added starred video to playlist\nFetching data...', 
+                                                   duration='short', 
+                                                   icon=icondir)
+                        _,info = get_info(
+                            yt_dlp=yt_dlp,
+                            maxres=1080,
+                            target_url=url,
+                            deno_path=deno_exe,
+                            log_handler=ytdlp_log_handler()
+                        )
+                        insert_treeview_quene.put((info['thumbnails'][0]['url'],info['title'],info['uploader']))
+                        vid_url.append(url)
+                        playlisttitles.append(info['title'])
+                        playlist_channel.append(info['uploader'])
+                        playlist_thumbnails.append(info['thumbnails'][0]['url'])
+                    except Exception as e:
+                        log_handle(content=f"Error adding starred video to playlist: {e}")
+                        messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add starred video to playlist.\nError: {e}")
+            else:
+                messagebox.showinfo(f'JaTubePlayer {ver}', "This video is already in your starred list.")
+            chrome_extension_flask.chrome_extension_star_video = None
+        elif chrome_extension_flask.chrome_extension_add_to_end:
+            if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
+                url = chrome_extension_flask.chrome_extension_add_to_end.split("&")[0]
+                log_handle(content=f"Adding video to playlist from chrome extension: {url}")
+                try:
+                    modetitle = modetextbox.get("1.0", "end").strip()
+
+
+                    modetextbox.configure(state="normal")
+                    if "[with added video]" not in modetitle:
+                        modetextbox.delete(1.0,tk.END)
+                        modetextbox.insert(tk.END,f"{modetitle} [with added video]")
+                    
+                    modetextbox.configure(state="disabled")
+
+
+
+                    if playing_vid_mode == 3:
+                        playing_vid_mode = 0
+                        selected_song_number = None
+
+                    ToastNotification().notify(app_id="JaTubePlayer", 
+                                               title=f'JaTubePlayer {ver}', 
+                                               msg='Added video to playlist\nFetching data...', 
+                                               duration='short', 
+                                               icon=icondir)
+                    _,info = get_info(
+                        yt_dlp=yt_dlp,
+                        maxres=1080,
+                        target_url=url,
+                        deno_path=deno_exe,
+                        log_handler=ytdlp_log_handler()
+                    )
+                    insert_treeview_quene.put((info['thumbnails'][0]['url'],f"[ADDED]{info['title']}",info['uploader']))
+                    vid_url.append(url)
+                    playlisttitles.append(info['title'])
+                    playlist_channel.append(info['uploader'])
+                    playlist_thumbnails.append(info['thumbnails'][0]['url'])
+                except Exception as e:
+                    log_handle(content=f"Error adding video to playlist: {e}")
+                    messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add video to playlist.\nError: {e}")    
+                finally:
+                    chrome_extension_flask.chrome_extension_add_to_end = None
+            else:
+                messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it.")
+        
+        
+        
         root.after(500,init_listen_chromeextension)
 
 def check_keyboard():
@@ -4435,7 +4739,8 @@ def _extra_startup_imports():
     
         # Flask
     t = time.time()
-    import chrome_extension.chrome_extension_flask as chrome_extension_flask
+    import chrome_extension.chrome_extension_flask as cef
+    chrome_extension_flask = cef.ChromeExtensionServer()
     log_handle(content=f"flask: {time.time()-t:.3f}s")
 
     if CONFIG["run_flask"]:_switch_local_server(0)

@@ -40,14 +40,23 @@ def get_info(yt_dlp:object,
     if normal dash formats are available, final_url will be m3u8 url
     if only separate video and audio formats are available, final_url will be an EDL URL
     '''
-    
+    fmt = (
+    f"(bv*[height<={maxres}][protocol=https][ext=mp4][vcodec^=avc1]"
+    f"+ba[protocol=https][ext=m4a][acodec^=mp4a])"
+    f"/(bv*[height<={maxres}][protocol=https]+ba[protocol=https])"
+    f"/(b[height<={maxres}][protocol=https])"
+    f"/(bv*[height<={maxres}]+ba/b[height<={maxres}])"
+    )
+
+
     ydl_opts = { 
         'skip_download': True,
         'ignoreerrors': True,
         'no_color': True,
         'extract_flat': False,  
         'logger': log_handler,
-        'format': f"bv*[height<={maxres}]+ba/best",
+        'format': fmt,
+        "extractor_args": {"youtube": {"player_client": ["default", "web_embedded", "android"]}},
         'js_runtimes': {'deno': {'path': deno_path}},
         'remote_components': {'ejs:npm'},
     }
@@ -63,14 +72,18 @@ def get_info(yt_dlp:object,
     if "youtube" in target_url:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(target_url, download=True)
+                info = ydl.extract_info(target_url)
                 if info['live_status'] != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
+                    import pprint
+                    pprint.pprint(fmt)
                     if len(fmt) == 2:
                         vid_url = fmt[0]['url']
                         audio_only_url = fmt[1]['url']
-                        log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}")
+                        log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}, fmt {fmt[1].get('container','N/A')}")
                         final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
+
+                    
                     else:
                         final_url = info['url']
                 else:

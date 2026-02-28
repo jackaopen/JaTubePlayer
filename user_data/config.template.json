@@ -23,7 +23,7 @@
         "cache_secs" :80,
         "demuxer_max_bytes" :512,
         "demuxer_max_back_bytes":256,
-        "demuxer_readahead_secs" :60,
+        "cache_pause_wait": 3,
         "audio_wait_open":1
     },
     "client_secret_path": "",
@@ -40,5 +40,6 @@
     "enable_discord_presence": true,
     "discord_presence_show_playing": false,
     "show_cache": true,
-    "hover_fullscreen" : true
+    "hover_fullscreen" : true,
+    "download_path": "[player]/user_data/downloaded_file"
 }
