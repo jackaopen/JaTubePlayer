@@ -78,7 +78,7 @@ def _process_ui_queue():
     root.after(20, _process_ui_queue)
 root.after(20, _process_ui_queue)
 
-messagebox = ctk_messagebox(root)
+messagebox = ctk_messagebox(root,_internal_path=_internal_dir)
 
 mpv_log = []
 def _toggle_minimize():
@@ -3642,7 +3642,6 @@ def load_thread():  ### add every try except to a new log system for next update
                                 succed = False
                                 ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
                                 if os.path.exists(chosen_file):
-                                    ui_queue.put(lambda:messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
                                     
                                     player.play(chosen_file)
                                     player.volume =int(player_volume_scale.get())
