@@ -3023,79 +3023,75 @@ def get_starred_vid(event=None):
 def switch_starred_vid(event=None):
     global star_vid_handle,selected_song_number,playing_vid_mode,vid_url,playlist_thumbnails,playlisttitles,playlist_channel,cookies_dir,playing_vid_info_dict
     
-    if playing_vid_mode == 0 or playing_vid_mode == 1 or playing_vid_mode == 3:
-        if playing_vid_mode == 1 or playing_vid_mode == 4:
-            if selected_song_number == None:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
-                return
-        else:
-            if selected_song_number is None:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
-                return
-            if playing_vid_mode == 0 or playing_vid_mode == 4:
-                url_or_path = vid_url[selected_song_number]
-                title = playlisttitles[selected_song_number]
-                thumb = playlist_thumbnails[selected_song_number]
-                channel = playlist_channel[selected_song_number]
-            elif playing_vid_mode == 1:
-                url_or_path = playing_title_textbox.get(0.0,tk.END).strip()
-                title = os.path.basename(url_or_path)
-                thumb = None
-                channel = 'local file'
-            elif playing_vid_mode == 2:
-                url_or_path = vid_url[selected_song_number]
-                title = playlisttitles[selected_song_number]
-                thumb = None
-                channel = 'local file'
-            elif playing_vid_mode == 3:
-                url_or_path = playing_vid_info_dict['original_url']
-                title = playing_vid_info_dict['title']
-                try:thumb = playing_vid_info_dict['thumbnails'][0]['url'] if playing_vid_info_dict['thumbnails'] else None
-                except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
-                finally:thumb = thumb if thumb else None
-                channel = playing_vid_info_dict['channel']
-                
-                    
+    if playing_vid_mode == 0 or playing_vid_mode == 2 or playing_vid_mode == 4:
+        if selected_song_number == None:
+            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
+            return
 
+        
+    if playing_vid_mode == 0 or playing_vid_mode == 4:
+        url_or_path = vid_url[selected_song_number]
+        title = playlisttitles[selected_song_number]
+        thumb = playlist_thumbnails[selected_song_number]
+        channel = playlist_channel[selected_song_number]
+    elif playing_vid_mode == 1:
+        url_or_path = playing_title_textbox.get(0.0,tk.END).strip()
+        title = os.path.basename(url_or_path)
+        thumb = None
+        channel = 'local file'
+    elif playing_vid_mode == 2:
+        url_or_path = vid_url[selected_song_number]
+        title = playlisttitles[selected_song_number]
+        thumb = None
+        channel = 'local file'
+    elif playing_vid_mode == 3:
+        url_or_path = playing_vid_info_dict['original_url']
+        title = playing_vid_info_dict['title']
+        try:thumb = playing_vid_info_dict['thumbnails'][0]['url'] if playing_vid_info_dict['thumbnails'] else None
+        except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
+        finally:thumb = thumb if thumb else None
+        channel = playing_vid_info_dict['channel']
+        
             
-            if star_vid_handle.search(url_or_path):
-                star_vid_handle.remove(url_or_path)
-                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-                ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
 
-                if playing_vid_mode == 4:
-                    try:
-                        vid_url.pop(selected_song_number)
-                        playlisttitles.pop(selected_song_number)
-                        playlist_thumbnails.pop(selected_song_number)
-                        playlist_channel.pop(selected_song_number)
-                        ui_queue.put(lambda i=selected_song_number: playlisttreebox.delete(playlisttreebox.get_children()[i]))
-                    except Exception as e:
-                        log_handle(content=str(e))
-                        
+    if star_vid_handle.search(url_or_path):
+        star_vid_handle.remove(url_or_path)
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
+
+        if playing_vid_mode == 4:
+            try:
+                vid_url.pop(selected_song_number)
+                playlisttitles.pop(selected_song_number)
+                playlist_thumbnails.pop(selected_song_number)
+                playlist_channel.pop(selected_song_number)
+                ui_queue.put(lambda i=selected_song_number: playlisttreebox.delete(playlisttreebox.get_children()[i]))
+            except Exception as e:
+                log_handle(content=str(e))
                 
-            else:#add
-                if "twitch.tv" in url_or_path.lower():
-                    if "videos" in url_or_path.lower():
-                        if not messagebox.askyesno(f'JaTubePlayer {ver}','Twitch VOD detected,The VOD might be removed when Twitch expiring the VOD link, do you still want to add it to starred video?'):
-                            return
-                    elif "clip" not in url_or_path.lower():
-                        if not messagebox.askyesno(f'JaTubePlayer {ver}','This might be a Twitch streamer, if the streamer is not streaming when you try to play the video, it might not work, do you still want to add it to starred video?'):
-                            return
+        
+    else:#add
+        if "twitch.tv" in url_or_path.lower():
+            if "videos" in url_or_path.lower():
+                if not messagebox.askyesno(f'JaTubePlayer {ver}','Twitch VOD detected,The VOD might be removed when Twitch expiring the VOD link, do you still want to add it to starred video?'):
+                    return
+            elif "clip" not in url_or_path.lower():
+                if not messagebox.askyesno(f'JaTubePlayer {ver}','This might be a Twitch streamer, if the streamer is not streaming when you try to play the video, it might not work, do you still want to add it to starred video?'):
+                    return
 
-                        
-                res = star_vid_handle.add(url =url_or_path,
-                                thumb=thumb,
-                                title=title,
-                                channel=channel,
-                                cookie_path=cookies_dir)
-                if res:
-                    ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
-                    ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
-                else:
-                    ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
+                
+        res = star_vid_handle.add(url =url_or_path,
+                        thumb=thumb,
+                        title=title,
+                        channel=channel,
+                        cookie_path=cookies_dir)
+        if res:
+            ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
+        else:
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
 
-    
+
     
 
 
@@ -3180,6 +3176,8 @@ def update_playing_pos_local_and_chrome():
                         root.after(200, lambda: setattr(player, 'pause', False))
                     elif player_mode_selector.get() =='continue' and len(vid_url) > 0:
                         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','Please choose a video again!'))
+                        player.seek(0.1,reference='absolute')
+                        root.after(200, lambda: setattr(player, 'pause', True))
                         
                 elif playing_vid_mode == 2:ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer{ver}','Choose a video again'))
             if stoped: 
@@ -4021,8 +4019,8 @@ def fullscreen_widget_change(mode:int=0):
                 pausebutton.place_configure(relx=0.18, rely=0.08, relwidth=0.15, relheight=0.8)
                 stopbutton.place_configure(relx=0.34, rely=0.08, relwidth=0.15, relheight=0.8)
                 nextsong.place_configure(relx=0.50, rely=0.08, relwidth=0.15, relheight=0.8)
-                fullscreenbtn.place_configure(relx=0.66, rely=0.06, relwidth=0.13, relheight=0.88)
-                player_loading_label.place_configure(relx=0.81, rely=0.25, relwidth=0.18)
+                fullscreenbtn.place_configure(relx=0.66, rely=0.08, relwidth=0.13, relheight=0.8)
+                player_loading_label.place_configure(relx=0.8, rely=0.25, relwidth=0.18)
                 
                 # Volume
                 player_volume_label.place_configure(relx=0, rely=0.2, relwidth=0.120)
@@ -4079,8 +4077,8 @@ def fullscreen_widget_change(mode:int=0):
                     pausebutton.place_configure(relx=0.24, rely=0.1, relwidth=0.13, relheight=0.95)
                     stopbutton.place_configure(relx=0.38, rely=0.1, relwidth=0.13, relheight=0.95)
                     nextsong.place_configure(relx=0.52, rely=0.1, relwidth=0.13, relheight=0.95)
-                    fullscreenbtn.place_configure(relx=0.66, rely=0.06, relwidth=0.13, relheight=0.88)
-                    player_loading_label.place_configure(relx=0.81, rely=0.25, relwidth=0.18)
+                    fullscreenbtn.place_configure(relx=0.66, rely=0.1, relwidth=0.13, relheight=0.88)
+                    player_loading_label.place_configure(relx=0.81, rely=0.07, relwidth=0.18)
                     # Volume
                     volume_frame.place_configure(relx=0.75, rely=0.5, relwidth=0.2, relheight=0.75)
                     player_volume_label.place_configure(relx=0, rely=0.05, relwidth=0.15)
@@ -4565,6 +4563,10 @@ def init_listen_chromeextension():
             load_thread_queue.put((None,chrome_extension_url))
             selected_song_number = None
 
+            vid_url.clear()
+            playlisttitles.clear()
+            playlist_thumbnails.clear()
+            playlist_channel.clear()
             if star_vid_handle.search(chrome_extension_url):
                 ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             else:
@@ -4646,6 +4648,7 @@ def init_listen_chromeextension():
                     try:thumb = info['thumbnails'][0]['url']
                     except:thumb = info['thumbnail']
                     finally:thumb = thumb if thumb else None 
+                    log_handle(content=f"Added video to playlist: {info['title']} thumbnail: {thumb}")
                     insert_treeview_quene.put((thumb,f"[ADDED]{info['title']}",info['uploader']))
                     vid_url.append(url)
                     playlisttitles.append(info['title'])
@@ -5222,7 +5225,7 @@ fullscreenbtn = ctk.CTkButton(playback_frame, text='⛶', command=fullscreen_cha
                                fg_color='transparent', hover_color='#333333', corner_radius=20,
                                font=('Segoe UI', 17))
 # slightly narrower so it doesn't crowd the playback buttons
-fullscreenbtn.place(relx=0.66, rely=0.06, relwidth=0.13, relheight=0.88)
+fullscreenbtn.place(relx=0.66, rely=0.08, relwidth=0.15, relheight=0.8)
 
 player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 12), text='',
                                      text_color='#FF6B35', anchor="center",
