@@ -50,7 +50,7 @@ else:
     icondir = os.path.join(os.path.dirname(__file__), '_internal','jtp.ico')
     current_dir = os.path.dirname(__file__)
     _internal_dir = os.path.join(os.path.dirname(__file__), '_internal')
-#print(_internal_dir)
+
 
 
 os.environ["PATH"] = _internal_dir + os.pathsep + os.environ["PATH"]
@@ -262,7 +262,17 @@ audio_wait_open= tk.IntVar()
 download_path = tk.StringVar()
 enable_discord_presence = tk.BooleanVar()
 discord_presence_show_playing = tk.BooleanVar()
-
+fullscreenmode = tk.IntVar()
+'''
+0 = normal 
+1 = fullscreen with all widget
+2 = fullscreen to window (not monitor)
+'''
+fullscreen_status = 0
+'''
+0 = normal
+1 = zoomed
+'''
 
 
 # ==== 系統相關 ====
@@ -396,9 +406,9 @@ def _switch_local_server(mode:int)->None|str:
             return str(e)
         
     elif mode == 1:
-
+        log_handle(content="Shutting down local server for chrome extension communication...")
         try:
-            listen_chromeextension_thread.join()
+
 
             res = requests.post('http://localhost:5000/Shutdown',headers={'X-auth':'Jatubeplayerextensionbyjackaopen','X-icon':icondir},timeout=1)
             log_handle(content=str(res.text))
@@ -438,7 +448,7 @@ async def load_thumbnail_thread(session,id,thumburl):
 @check_internet
 def vid_info_frame(mode):## 1 = selextd ;2 = playing
     global info
-    print(f"info frame mode: {info}")
+    log_handle(content=f"info frame mode: {info}")
     try:
         if info and info.winfo_exists():
             info.lift()
@@ -503,7 +513,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
 
         def loadselectedinfo():
             global info
-            print(f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number != None and len(vid_url) > 0 else 'N/A'}")
+            log_handle(content=f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number != None and len(vid_url) > 0 else 'N/A'}")
             try:
                 if playing_vid_mode == 0 or playing_vid_mode == 4 or (playing_vid_mode == 3 and len(vid_url) > 0):
                     if playing_vid_mode == 4 and  not vid_url[selected_song_number].startswith(('https://','https://')):
@@ -643,7 +653,7 @@ def setting_frame():
         @check_internet
         def google_login_setting(mode):
             global credentials
-            print('google login setting called')
+            log_handle(content='google login setting called')
             if os.path.exists(os.path.join(current_dir,'user_data','sub.json')):
                 
                 if messagebox.askyesno(f'JaTubePlayer {ver}','The system has detected an existing subscription, do you want to delete it?\n(If you choose No, the subscription will be kept but it may cause some problems if the subscription is not related to the new login account)'):
@@ -1263,7 +1273,7 @@ def setting_frame():
 
         def subtitle_combobox_callback(event):
             subtitle_selection_idx.set(subtitlecombobox.cget('values').index(subtitlecombobox.get()))
-            print(f'selected subtitle idx{subtitle_selection_idx.get()}')
+            log_handle(f'selected subtitle idx{subtitle_selection_idx.get()}')
             if subtitle_selection_idx.get() != 0:
                 try:player.sub_add(subtitle_urllist[subtitle_selection_idx.get()-1])
                 except:pass
@@ -1407,6 +1417,10 @@ def setting_frame():
                 
                 messagebox.showinfo(f'JaTubePlayer {ver}',f'Download path reset to default\n{CONFIG["download_path"]}')
             setting.focus_force()
+
+        def SetFullscreenmode(event=None):
+            CONFIG['fullscreenmode'] = fullscreenmode.get()
+            save_config()
 
         player_tab = setting_tab.add("Advanced Player setting")
         personal_playlist_tab = setting_tab.add("Personal playlist")
@@ -1664,8 +1678,6 @@ def setting_frame():
                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         audio_only_checkbtn = ctk.CTkCheckBox(general_frame, text='Audio only mode', variable=audio_only,
                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_audio_only)
-        hover_fullscreen_btn = ctk.CTkCheckBox(general_frame, text='Hover Fullscreen', variable=hover_fullscreen,
-                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_hover_fullscreen)
 
         # ── Speed & Subtitle Card ──
         speed_subtitle_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
@@ -1724,16 +1736,24 @@ def setting_frame():
         audio_wait_open_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
         audio_wait_open_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{audio_wait_open.get()}s', text_color='#E0C48C')
 
-        # ── Interface Settings Card ──
-        interface_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
-        interface_frame.grid_columnconfigure(0, weight=1)
-        interface_frame.grid_columnconfigure(1, weight=1)
+        # ── Fullscreen Settings Card ──
+        fullscreen_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
+        fullscreen_frame.grid_columnconfigure(0, weight=1)
+        fullscreen_frame.grid_columnconfigure(1, weight=1)
+        fullscreen_frame.grid_columnconfigure(2, weight=1)
 
-        interface_title = ctk.CTkLabel(interface_frame, text='  ▸ Interface', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
-        blurbtn = ctk.CTkCheckBox(interface_frame, text='Acrylic blur effect', variable=blur_window,
-                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
-        openwith_fullscreen_btn = ctk.CTkCheckBox(interface_frame, text='Auto fullscreen on open', variable=open_with_fullscreen,
+        fullscreen_title = ctk.CTkLabel(fullscreen_frame, text='  ▸ Fullscreen', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
+        openwith_fullscreen_btn = ctk.CTkCheckBox(fullscreen_frame, text='Auto fullscreen on open', variable=open_with_fullscreen,
                                                     fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=autofullscreen_setting)
+        hover_fullscreen_btn = ctk.CTkCheckBox(fullscreen_frame, text='Hover Fullscreen', variable=hover_fullscreen,
+                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=lambda:switch_hover_fullscreen)
+        fullscreen_mode_label = ctk.CTkLabel(fullscreen_frame, text='Fullscreen Mode:', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
+        fullscreen_mode_normal_btn = ctk.CTkRadioButton(fullscreen_frame, text='Normal', variable=fullscreenmode, value=0,
+                                                         text_color='#C8C8C8', font=('Arial', 12),command=SetFullscreenmode)
+        fullscreen_mode_all_widget_btn = ctk.CTkRadioButton(fullscreen_frame, text='Fullscreen (all widgets)', variable=fullscreenmode, value=1,
+                                                              text_color='#C8C8C8', font=('Arial', 12),command=SetFullscreenmode)
+        fullscreen_mode_window_btn = ctk.CTkRadioButton(fullscreen_frame, text='Fullscreen to window', variable=fullscreenmode, value=2,
+                                                         text_color='#C8C8C8', font=('Arial', 12),command=SetFullscreenmode )
 
         # ── Advanced Settings Card ──
         advanced_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
@@ -1741,6 +1761,8 @@ def setting_frame():
         advanced_frame.grid_columnconfigure(1, weight=1)
 
         advanced_title = ctk.CTkLabel(advanced_frame, text='  ▸ Advanced', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
+        blurbtn = ctk.CTkCheckBox(advanced_frame, text='Acrylic blur effect', variable=blur_window,
+                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
         mpvlogbtn = ctk.CTkButton(advanced_frame, text='Show MPV Log', width=160, command=show_mpv_log,
                                    text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         enable_dnd_btn = ctk.CTkCheckBox(advanced_frame, text='Enable Drag and Drop', variable=enable_drag_and_drop,
@@ -2004,7 +2026,6 @@ def setting_frame():
             
             global prename_setting
             while not setting_closed:
-                #print(setting.winfo_width(),setting.winfo_height())
 
                 try:
                     ui_queue.put(lambda: init_quick_startup_mode_text.configure(state='normal'))
@@ -2142,8 +2163,7 @@ def setting_frame():
         maxresolutionlabel.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
         maxresolutioncombobox.grid(row=1, column=1, padx=8, pady=5, sticky="w")
         autoretry_btn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
-        audio_only_checkbtn.grid(row=2, column=1, padx=8, pady=5, sticky="w")
-        hover_fullscreen_btn.grid(row=3, column=0, padx=(24, 8), pady=(5, 12), sticky="w")
+        audio_only_checkbtn.grid(row=2, column=1, padx=8, pady=(5, 12), sticky="w")
 
         # ── Speed & Subtitle Card ──
         speed_subtitle_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
@@ -2173,19 +2193,24 @@ def setting_frame():
         audio_wait_open_slider.grid(row=5, column=1, padx=8, pady=(4, 12), sticky="ew")
         audio_wait_open_value_label.grid(row=5, column=2, padx=(4, 14), pady=(4, 12), sticky="w")
 
-        # ── Interface Card ──
-        interface_frame.grid(row=3, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
-        interface_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        blurbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        openwith_fullscreen_btn.grid(row=1, column=1, padx=8, pady=(5, 12), sticky="w")
+        # ── Fullscreen Card ──
+        fullscreen_frame.grid(row=3, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        fullscreen_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
+        openwith_fullscreen_btn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
+        hover_fullscreen_btn.grid(row=1, column=1, padx=8, pady=5, sticky="w")
+        fullscreen_mode_label.grid(row=2, column=0, padx=(24, 8), pady=(6, 4), sticky="w")
+        fullscreen_mode_normal_btn.grid(row=3, column=0, padx=(24, 8), pady=(2, 12), sticky="w")
+        fullscreen_mode_all_widget_btn.grid(row=3, column=1, padx=8, pady=(2, 12), sticky="w")
+        fullscreen_mode_window_btn.grid(row=3, column=2, padx=8, pady=(2, 12), sticky="w")
 
         # ── Advanced Card ──
         advanced_frame.grid(row=4, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
         advanced_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        mpvlogbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        enable_dnd_btn.grid(row=1, column=1, padx=8, pady=5, sticky="w")
-        force_stop_loading_btn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
-        show_cache_btn.grid(row=2, column=1, padx=8, pady=(5, 12), sticky="w")
+        blurbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
+        mpvlogbtn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
+        enable_dnd_btn.grid(row=2, column=1, padx=8, pady=5, sticky="w")
+        force_stop_loading_btn.grid(row=3, column=0, padx=(24, 8), pady=5, sticky="w")
+        show_cache_btn.grid(row=3, column=1, padx=8, pady=(5, 12), sticky="w")
 
         # ── External Services Card ──
         external_services_frame.grid(row=5, column=0, columnspan=2, padx=16, pady=(4, 10), sticky="ew")
@@ -2768,7 +2793,6 @@ def get_user_playlists_thread(mode):#0 = normal fun, 1 = init fun
             playlists = youtube.playlists().list(part='snippet', mine=True).execute()
         except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
 
-    # #print out the private playlist titles and IDs
     try:
         for playlist in playlists['items']:
             user_playlists_id.append(f"{playlist['id']}")
@@ -3091,7 +3115,6 @@ def update_playing_pos_local_and_chrome():
         
         try:
             time.sleep(0.1) 
-            #print(player_file.get_position()*length , player_file.get_length()/1000 ,player_file.is_playing(),resolution.get(),vid_aud_prior.get(),cache)
             if player.time_pos != None:
                 pos = player.time_pos
             else:
@@ -3157,8 +3180,8 @@ def update_playing_pos_local_and_chrome():
                             ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                         break
 
-                elif playing_vid_mode == 1 or playing_vid_mode == 3:### MPV option keep_open
-                    if player_mode_selector.get() =='replay':
+                elif playing_vid_mode == 1 or playing_vid_mode == 3 or playing_vid_mode == 0:### MPV option keep_open
+                    if player_mode_selector.get() =='replay':# =  3 chrome , =0 for chrome but added a video
                         player.seek(0.1,reference='absolute')
                         root.after(200, lambda: setattr(player, 'pause', False))
                     elif player_mode_selector.get() =='continue' and len(vid_url) > 0:
@@ -3257,14 +3280,12 @@ def update_playing_pos_yt():
                     ui_queue.put(lambda: player_loading_label.configure(text='🔴streaming...', text_color='red'))
                 
             if stoped: 
-                #print('ajksdbasjd')
                 finish_break = True
                 break
 
     except Exception as e:
         log_handle(content=f"Error in update_playing_pos_yt: {e}")
-        import traceback
-        traceback.print_exc()
+        
 
             
 
@@ -3500,9 +3521,9 @@ def load_thread():  ### add every try except to a new log system for next update
                                             ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
                                             ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
                                         except Exception as e:
-                                            print(f"Error processing subtitle: {e}")
+                                            log_handle(type='error',content=f"Error processing subtitle: {e}")
 
-                                    print(f"Available subtitles: {subtitle_namelist}")
+                                    log_handle(content=f"Available subtitles: {subtitle_namelist}")
                 
                                     try:## try to make the vid play info somehow ytdlp fail to get info dict
                                         if playing_vid_info_dict.get('live_status') == 'is_live':
@@ -3584,7 +3605,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
                                 try:
                                     ui_queue.put(lambda: playing_title_textbox.insert(tk.END, playing_vid_info_dict['title']))
-                                    if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                    if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
                                     else:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen - {playing_vid_info_dict["title"]}')) 
 
                                 except Exception as e:
@@ -3665,7 +3686,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                             
                                     else:succed = True   
 
-                                    if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                    if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
                                     else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {os.path.basename(cf)}')) 
                                                                     
 
@@ -3680,7 +3701,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                         
 
 
-                                        if modeforfullscreen == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                        if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
                                         else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}')) 
                                         try:
                                             ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
@@ -3941,11 +3962,13 @@ def get_resoltion(url) -> list[str]:
 
 
 
-def fullscreen_widget_change(event=None):
+def fullscreen_widget_change(mode:int=0):
     '''
     passively update/refresh 
+    mode = 0, go normal
+    mode = 1 go fullscreen , will check [tk.IntVar] fullscreenmode
     '''
-    global modeforfullscreen, stream, tkinter_scaling
+    global fullscreen_status, stream, tkinter_scaling
    
     try:
         window_dpi = copy(get_window_dpi(hwnd))
@@ -3954,7 +3977,8 @@ def fullscreen_widget_change(event=None):
         # Force geometry update before making changes
         root.update_idletasks()
         
-        if root.state() == 'normal':
+        if mode == 0:
+            
             root.geometry('1320x680')
             
             # Tkinter widgets need DPI scaling
@@ -3982,9 +4006,9 @@ def fullscreen_widget_change(event=None):
                 now_playing_frame.place_configure(relx=0.008, rely=0.102, relwidth=0.984, relheight=0.240)
                 progress_frame.place_configure(relx=0.008, rely=0.405, relwidth=0.984, relheight=0.230)
                 mode_frame.place_configure(relx=0.008, rely=0.585, relwidth=0.132, relheight=0.375)
-                playback_frame.place_configure(relx=0.150, rely=0.585, relwidth=0.35, relheight=0.375)
-                volume_frame.place_configure(relx=0.585, rely=0.605, relwidth=0.105, relheight=0.350)
-                action_btn_frame.place_configure(relx=0.695, rely=0.585, relwidth=0.300, relheight=0.375)
+                playback_frame.place_configure(relx=0.150, rely=0.585, relwidth=0.43, relheight=0.375)
+                volume_frame.place_configure(relx=0.635, rely=0.605, relwidth=0.105, relheight=0.350)
+                action_btn_frame.place_configure(relx=0.745, rely=0.585, relwidth=0.300, relheight=0.375)
                 
 
                 
@@ -4000,11 +4024,12 @@ def fullscreen_widget_change(event=None):
                 player_song_length_label.place_configure(relx=0.922, rely=0.03, relwidth=0.068)
                 
                 # Playback controls
-                prevsong.place_configure(relx=0.05, rely=0.08, relwidth=0.15, relheight=0.8)
-                pausebutton.place_configure(relx=0.22, rely=0.08, relwidth=0.15, relheight=0.8)
-                stopbutton.place_configure(relx=0.39, rely=0.08, relwidth=0.15, relheight=0.8)
-                nextsong.place_configure(relx=0.56, rely=0.08, relwidth=0.15, relheight=0.8)
-                player_loading_label.place_configure(relx=0.75, rely=0.25, relwidth=0.2)
+                prevsong.place_configure(relx=0.02, rely=0.08, relwidth=0.15, relheight=0.8)
+                pausebutton.place_configure(relx=0.18, rely=0.08, relwidth=0.15, relheight=0.8)
+                stopbutton.place_configure(relx=0.34, rely=0.08, relwidth=0.15, relheight=0.8)
+                nextsong.place_configure(relx=0.50, rely=0.08, relwidth=0.15, relheight=0.8)
+                fullscreenbtn.place_configure(relx=0.66, rely=0.06, relwidth=0.13, relheight=0.88)
+                player_loading_label.place_configure(relx=0.81, rely=0.25, relwidth=0.18)
                 
                 # Volume
                 player_volume_label.place_configure(relx=0, rely=0.2, relwidth=0.120)
@@ -4015,7 +4040,6 @@ def fullscreen_widget_change(event=None):
                 star_btn.place_configure(relx=0.270, rely=0.06, relwidth=0.175, relheight=0.88)
                 select_info_btn.place_configure(relx=0.460, rely=0.06, relwidth=0.175, relheight=0.88)
                 playing_info_btn.place_configure(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
-                fullscreenbtn.place_configure(relx=0.840, rely=0.06, relwidth=0.150, relheight=0.88)
                 
                 # Now playing
                 np_icon.place_configure(relx=0.008, rely=0.14)
@@ -4026,61 +4050,65 @@ def fullscreen_widget_change(event=None):
             player_position_scale.configure(height=int(160*0.313*0.5*0.03))
             Frame_for_mpv.lift()
             fullscreenbtn.configure(text='⛶')
-            modeforfullscreen = 0
+            fullscreen_status = 0
             root.title(f'JaTubePlayer {ver} by Jackaopen')
             
-        elif root.state() == 'zoomed':
+        elif mode == 1:
+            if fullscreenmode.get() !=1 :
+                header_frame.place_forget()
+                right_panel_frame.place_forget()
+                playlist_btn_frame.place_forget()
+                video_container.place_forget()
+                action_btn_frame.place_forget()
+                now_playing_frame.place_forget()
             
-            header_frame.place_forget()
-            right_panel_frame.place_forget()
-            playlist_btn_frame.place_forget()
-            video_container.place_forget()
-            action_btn_frame.place_forget()
-            now_playing_frame.place_forget()
 
             
             try:
-                Frame_for_mpv.place_configure(relx=0, rely=0, relwidth=1, relheight=0.93)
-                controls_frame.place_configure(relx=0.025, rely=0.93, relwidth=0.95, relheight=0.073)
+                if fullscreenmode.get() == 0:
+                    root.state('zoomed')
+                    Frame_for_mpv.place_configure(relx=0, rely=0, relwidth=1, relheight=0.93)
+                    controls_frame.place_configure(relx=0.025, rely=0.93, relwidth=0.95, relheight=0.073)
 
+                elif fullscreenmode.get() == 2:
+                    Frame_for_mpv.place_configure(relx=0, rely=0, relwidth=1, relheight=0.9)
+                    controls_frame.place_configure(relx=0, rely=0.9, relwidth=1, relheight=0.1)
+                if fullscreenmode.get() != 1:
+                    # Progress
+                    progress_frame.place_configure(relx=0.02, rely=0.05, relwidth=0.96, relheight=0.5)
+                    player_pos_label.place_configure(relx=0, rely=0.1, relwidth=0.05)
+                    player_position_scale.place_configure(relx=0.06, rely=0.2, relwidth=0.83, relheight=0.5)
+                    player_song_length_label.place_configure(relx=0.92, rely=0.1, relwidth=0.06)
+                    
+                    # Playback
+                    playback_frame.place_configure(relx=0.35, rely=0.5, relwidth=0.3, relheight=0.45)
+                    prevsong.place_configure(relx=0.1, rely=0.1, relwidth=0.13, relheight=0.95)
+                    pausebutton.place_configure(relx=0.24, rely=0.1, relwidth=0.13, relheight=0.95)
+                    stopbutton.place_configure(relx=0.38, rely=0.1, relwidth=0.13, relheight=0.95)
+                    nextsong.place_configure(relx=0.52, rely=0.1, relwidth=0.13, relheight=0.95)
+                    fullscreenbtn.place_configure(relx=0.66, rely=0.06, relwidth=0.13, relheight=0.88)
+                    player_loading_label.place_configure(relx=0.81, rely=0.25, relwidth=0.18)
+                    # Volume
+                    volume_frame.place_configure(relx=0.75, rely=0.5, relwidth=0.2, relheight=0.75)
+                    player_volume_label.place_configure(relx=0, rely=0.05, relwidth=0.15)
+                    player_volume_scale.place_configure(relx=0.18, rely=0.25, relwidth=0.75, relheight=0.4)
+                    
+                    # Mode
+                    mode_frame.place_configure(relx=0.02, rely=0.5, relwidth=0.25, relheight=0.45)
+                    mode_label.place_configure(relx=0.02, rely=0.2)
+                    player_mode_continue.place_configure(relx=0.25, rely=0.3)
+                    player_mode_replay.place_configure(relx=0.5, rely=0.3)
+                    player_mode_random.place_configure(relx=0.75, rely=0.3)
                 
-                # Progress
-                progress_frame.place_configure(relx=0.02, rely=0.05, relwidth=0.96, relheight=0.5)
-                player_pos_label.place_configure(relx=0, rely=0.1, relwidth=0.05)
-                player_position_scale.place_configure(relx=0.06, rely=0.2, relwidth=0.83, relheight=0.5)
-                player_song_length_label.place_configure(relx=0.92, rely=0.1, relwidth=0.06)
-                
-                # Playback
-                playback_frame.place_configure(relx=0.35, rely=0.5, relwidth=0.3, relheight=0.45)
-                prevsong.place_configure(relx=0.1, rely=0.1, relwidth=0.13, relheight=0.95)
-                pausebutton.place_configure(relx=0.24, rely=0.1, relwidth=0.13, relheight=0.95)
-                stopbutton.place_configure(relx=0.38, rely=0.1, relwidth=0.13, relheight=0.95)
-                nextsong.place_configure(relx=0.52, rely=0.1, relwidth=0.13, relheight=0.95)
-                
-                # Volume
-                volume_frame.place_configure(relx=0.75, rely=0.5, relwidth=0.2, relheight=0.75)
-                player_volume_label.place_configure(relx=0, rely=0.05, relwidth=0.15)
-                player_volume_scale.place_configure(relx=0.18, rely=0.25, relwidth=0.75, relheight=0.4)
-                
-                # Mode
-                mode_frame.place_configure(relx=0.02, rely=0.5, relwidth=0.25, relheight=0.45)
-                mode_label.place_configure(relx=0.02, rely=0.2)
-                player_mode_continue.place_configure(relx=0.25, rely=0.3)
-                player_mode_replay.place_configure(relx=0.5, rely=0.3)
-                player_mode_random.place_configure(relx=0.75, rely=0.3)
-                
-                # Fullscreen button
-                fullscreenbtn.place_forget()
-                fullscreenbtn.place(relx=0.96, rely=-0.8, relwidth=0.03, relheight=0.714)
+
             except Exception as e:
-                print(e)
+                log_handle(content=f"Error in fullscreen_widget_change: {e}"    )
             
             player_position_scale.configure(height=int(root.winfo_height()*0.07*0.5*0.5*0.05))
             Frame_for_mpv.lift()
             controls_frame.lift()
-            fullscreenbtn.lift()
             fullscreenbtn.configure(text='↖')
-            modeforfullscreen = 1
+            fullscreen_status = 1
             
             try:
                 if playing_title_textbox.get("1.0", "end").strip():
@@ -4109,20 +4137,20 @@ def full_screen_contorl_hover_thread():
     hover_fullscreen_last_statue = None
     while True:
         time.sleep(0.2)
-        if modeforfullscreen == 1 and hover_fullscreen.get():
+        if fullscreen_status == 1 and hover_fullscreen.get() and not fullscreenmode.get() == 1:
             window_height = root.winfo_height() 
             mouse_y = root.winfo_pointery() 
             if  mouse_y > window_height * 0.93 and mouse_y < window_height +root.winfo_rooty() and root.winfo_rootx() <= root.winfo_pointerx() <= root.winfo_rootx() + root.winfo_width():
 
                 if hover_fullscreen_last_statue == 0:
-                    ui_queue.put(lambda:fullscreen_widget_change())
-                    print('update')
+                    ui_queue.put(lambda:fullscreen_widget_change(mode = 1))
+                    log_handle('hover control frame removed')
                     hover_fullscreen_last_statue = 1
             else:
                 if hover_fullscreen_last_statue == 1:
                     ui_queue.put(lambda:controls_frame.place_forget())
 
-                    print('update')
+                    log_handle('hover control frame showed')
                     ui_queue.put(lambda:Frame_for_mpv.place_configure(relx=0, rely=0, relwidth=1, relheight=1))
                     hover_fullscreen_last_statue = 0
                 
@@ -4130,8 +4158,21 @@ def full_screen_contorl_hover_thread():
 
 
 def fullscreen_change_state(event=None):## for btn
-    if root.state() == 'normal':root.state('zoomed')
-    elif root.state() == 'zoomed':root.state('normal')
+    if fullscreenmode.get() != 2:
+        if root.state() == 'normal':
+            root.state('zoomed')
+            ui_queue.put(lambda: fullscreen_widget_change(mode = 1))
+        elif root.state() == 'zoomed':
+            root.state('normal')
+            ui_queue.put(lambda: fullscreen_widget_change(mode = 0))
+    else:
+        if fullscreen_status == 0:
+            ui_queue.put(lambda: fullscreen_widget_change(mode = 1))
+        elif fullscreen_status == 1:
+            ui_queue.put(lambda: fullscreen_widget_change(mode = 0))
+        if fullscreen_status == 1 and root.state() == 'zoomed':
+            root.state('normal')
+
     if event:time.sleep(0.05)
 
 
@@ -4143,7 +4184,7 @@ def fullscreen_detect_thread():## auto drag
             previous = root.state()
             time.sleep(0.01)  
             if previous != root.state():
-                ui_queue.put(lambda: fullscreen_widget_change())
+                ui_queue.put(lambda: fullscreen_widget_change(1 if root.state() == 'zoomed' else 0))
                 hover_fullscreen_last_statue = 1
                 time.sleep(0.1) 
         except:pass
@@ -4305,30 +4346,30 @@ def init_read_config():
     try:
         if CONFIG['auto_sub_refresh']:auto_sub_refresh.set(True)
         else:auto_sub_refresh.set(False)
-        print("sub fin")
+        log_handle(content="sub fin")
         if CONFIG['auto_like_refresh']:auto_like_refresh.set(True)
         else:auto_like_refresh.set(False)
-        print("like fin")
+        log_handle(content="like fin")
 
         if CONFIG['vercheck']:auto_check_ver.set(True)
         else:auto_check_ver.set(False)
-        print("ver fin")
+        log_handle(content="ver fin")
 
         if CONFIG['record_history']:save_history.set(True)
         else:save_history.set(False)
-        print("history fin")
+        log_handle(content="history fin")
         
         if CONFIG['open_with_fullscreen']:open_with_fullscreen.set(True)
         else:open_with_fullscreen.set(False)
-        print("open fin")
+        log_handle(content="open fin")
         
         if CONFIG['enable_drag_and_drop']:enable_drag_and_drop.set(True)
         else:enable_drag_and_drop.set(False)
-        print("dnd fin")
+        log_handle(content="dnd fin")
 
         if CONFIG['show_cache']:show_cache.set(True)
         else:show_cache.set(False)
-        print("cache fin")
+        log_handle(content="cache fin")
 
         if CONFIG['hover_fullscreen']:hover_fullscreen.set(True)
         else:hover_fullscreen.set(False)
@@ -4340,7 +4381,7 @@ def init_read_config():
         demuxer_max_back_bytes.set(CONFIG['cache']['demuxer_max_back_bytes'])
         cache_pause_wait.set(CONFIG['cache']['cache_pause_wait'])
         audio_wait_open.set(CONFIG['cache']['audio_wait_open'])
-
+        fullscreenmode.set(CONFIG['fullscreenmode'])
 
         if CONFIG['enable_discord_presence']:
             enable_discord_presence.set(True)
@@ -4470,7 +4511,7 @@ def init_set_smtc():
     smtc.iconpath = icondir
 
 def init_set_dnd_handle():
-    print("init dnd ... ")
+    log_handle(content="init dnd ... ")
     global dnd_handle
     log_handle(content=f"dnd {enable_drag_and_drop.get()}")
     dnd_handle.enable_drop(hwnd, enable_drag_and_drop.get())
@@ -4523,11 +4564,7 @@ def start_async_eventloop():
 
 def init_listen_chromeextension():
     global playing_vid_mode,selected_song_number,star_vid_handle
-    if setting_run_chrome_extension_server.get():
-
-
-
-
+    while setting_run_chrome_extension_server.get():
         if chrome_extension_flask.chrome_extension_url:
             log_handle(content=f"chrome extension url: {chrome_extension_flask.chrome_extension_url}")
             chrome_extension_url = chrome_extension_flask.chrome_extension_url.split("&")[0]
@@ -4540,11 +4577,11 @@ def init_listen_chromeextension():
             else:
                 ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
             
-            playlisttreebox.delete(*playlisttreebox.get_children())
-            modetextbox.configure(state="normal")
-            modetextbox.delete(0.0,tk.END)
-            modetextbox.insert(tk.END,"Chrome extension video")
-            modetextbox.configure(state="disabled")
+            ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+            ui_queue.put(lambda: modetextbox.configure(state="normal"))
+            ui_queue.put(lambda: modetextbox.delete(0.0, tk.END))
+            ui_queue.put(lambda: modetextbox.insert(tk.END, "Chrome extension video"))
+            ui_queue.put(lambda: modetextbox.configure(state="disabled"))
             chrome_extension_flask.chrome_extension_url = None
 
         elif chrome_extension_flask.chrome_extension_star_video:
@@ -4566,16 +4603,19 @@ def init_listen_chromeextension():
                             deno_path=deno_exe,
                             log_handler=ytdlp_log_handler()
                         )
-                        insert_treeview_quene.put((info['thumbnails'][0]['url'],info['title'],info['uploader']))
+                        try:thumb = info['thumbnails'][0]['url']
+                        except:thumb = info['thumbnail']
+                        finally:thumb = thumb if thumb else None 
+                        insert_treeview_quene.put((thumb,info['title'],info['uploader']))
                         vid_url.append(url)
                         playlisttitles.append(info['title'])
                         playlist_channel.append(info['uploader'])
-                        playlist_thumbnails.append(info['thumbnails'][0]['url'])
+                        playlist_thumbnails.append(thumb)
                     except Exception as e:
                         log_handle(content=f"Error adding starred video to playlist: {e}")
                         messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add starred video to playlist.\nError: {e}")
             else:
-                messagebox.showinfo(f'JaTubePlayer {ver}', "This video is already in your starred list.")
+                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "This video is already in your starred list."))
             chrome_extension_flask.chrome_extension_star_video = None
         elif chrome_extension_flask.chrome_extension_add_to_end:
             if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
@@ -4584,13 +4624,13 @@ def init_listen_chromeextension():
                 try:
                     modetitle = modetextbox.get("1.0", "end").strip()
 
-
-                    modetextbox.configure(state="normal")
+                    ui_queue.put(lambda: modetextbox.configure(state="normal"))
                     if "[with added video]" not in modetitle:
-                        modetextbox.delete(1.0,tk.END)
-                        modetextbox.insert(tk.END,f"{modetitle} [with added video]")
-                    
-                    modetextbox.configure(state="disabled")
+                        ui_queue.put(lambda mt=modetitle: (
+                            modetextbox.delete(1.0, tk.END),
+                            modetextbox.insert(tk.END, f"{mt} [with added video]")
+                        ))
+                    ui_queue.put(lambda: modetextbox.configure(state="disabled"))
 
 
 
@@ -4610,22 +4650,25 @@ def init_listen_chromeextension():
                         deno_path=deno_exe,
                         log_handler=ytdlp_log_handler()
                     )
-                    insert_treeview_quene.put((info['thumbnails'][0]['url'],f"[ADDED]{info['title']}",info['uploader']))
+                    try:thumb = info['thumbnails'][0]['url']
+                    except:thumb = info['thumbnail']
+                    finally:thumb = thumb if thumb else None 
+                    insert_treeview_quene.put((thumb,f"[ADDED]{info['title']}",info['uploader']))
                     vid_url.append(url)
                     playlisttitles.append(info['title'])
                     playlist_channel.append(info['uploader'])
-                    playlist_thumbnails.append(info['thumbnails'][0]['url'])
+                    playlist_thumbnails.append(thumb)
                 except Exception as e:
                     log_handle(content=f"Error adding video to playlist: {e}")
                     messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add video to playlist.\nError: {e}")    
                 finally:
                     chrome_extension_flask.chrome_extension_add_to_end = None
             else:
-                messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it.")
+                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
         
         
         
-        root.after(500,init_listen_chromeextension)
+        time.sleep(0.5)
 
 def check_keyboard():
     global KeyMemHotkey
@@ -4915,7 +4958,7 @@ separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
 google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='X', font=('Segoe UI', 14),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
-google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center", relheigh = 0.9)
+google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center", relheigh = 0.85)
 
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 12), text_color='#888888', wrap="none",
@@ -4955,8 +4998,8 @@ def google_status_update():
                     pic_url = acc_info['picture']
                     response = requests.get(pic_url)
                     profile_pic = Image.open(io.BytesIO(response.content))
-                    profile_pic = profile_pic.resize((26, 26), Image.LANCZOS)
-                    ctk_image = ctk.CTkImage(profile_pic, size=(26, 26))
+                    profile_pic = profile_pic.resize((34,34), Image.LANCZOS)
+                    ctk_image = ctk.CTkImage(profile_pic, size=(34, 34))
                     ui_queue.put(lambda img=ctk_image: google_status_profile_pic_label.configure(
                         image=img, 
                         text=''
@@ -4996,7 +5039,7 @@ mode_icon_label.place(relx=0.021, rely=0.18)
 
 modetextbox = tk.Text(mode_header_frame, font=('Segoe UI', 11), width=65, fg='#c5c5c5',
                       bg='#252525', relief='flat', height=2, wrap='char', borderwidth=0)
-modetextbox.place(relx=0.095, rely=0.12)
+modetextbox.place(relx=0.095, rely=0)
 modetextbox.insert(tk.END, 'Please login or search something')
 modetextbox.configure(state='disabled')
 
@@ -5158,35 +5201,43 @@ player_mode_random = ctk.CTkRadioButton(mode_frame, text='🔀', variable=player
 player_mode_random.place(relx=0.72, rely=0.45)
 
 playback_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=20)
-playback_frame.place(relx=0.150, rely=0.585, relwidth=0.35, relheight=0.375)
+playback_frame.place(relx=0.150, rely=0.585, relwidth=0.43, relheight=0.375)
 
 prevsong = ctk.CTkButton(playback_frame, text='⏮', command=playprevsong,
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
                          font=('Segoe UI', 17))
-prevsong.place(relx=0.05, rely=0.08, relwidth=0.15, relheight=0.8)
+prevsong.place(relx=0.02, rely=0.08, relwidth=0.15, relheight=0.8)
 
 pausebutton = ctk.CTkButton(playback_frame, textvariable=pauseStr,
                             command=lambda: pause(1), fg_color='#3e62dc', hover_color='#4a70f0',
                             corner_radius=20, font=('Segoe UI', 17, 'bold'))
-pausebutton.place(relx=0.22, rely=0.08, relwidth=0.15, relheight=0.8)
+pausebutton.place(relx=0.18, rely=0.08, relwidth=0.15, relheight=0.8)
 pauseStr.set('▶')
 
 stopbutton = ctk.CTkButton(playback_frame, text='⏹', command=stop_playing_video,
                            fg_color='transparent', hover_color='#333333', corner_radius=20,
                            font=('Segoe UI', 17))
-stopbutton.place(relx=0.39, rely=0.08, relwidth=0.15, relheight=0.8)
+stopbutton.place(relx=0.34, rely=0.08, relwidth=0.15, relheight=0.8)
 
 nextsong = ctk.CTkButton(playback_frame, text='⏭', command=playnextsong,
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
                          font=('Segoe UI', 17))
-nextsong.place(relx=0.56, rely=0.08, relwidth=0.15, relheight=0.8)
+nextsong.place(relx=0.50, rely=0.08, relwidth=0.15, relheight=0.8)
+
+# make fullscreen button match the other transport controls (transparent background, same corner radius/font)
+fullscreenbtn = ctk.CTkButton(playback_frame, text='⛶', command=fullscreen_change_state,
+                               fg_color='transparent', hover_color='#333333', corner_radius=20,
+                               font=('Segoe UI', 17))
+# slightly narrower so it doesn't crowd the playback buttons
+fullscreenbtn.place(relx=0.66, rely=0.06, relwidth=0.13, relheight=0.88)
 
 player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 12), text='',
-                                     text_color='#FF6B35', anchor="center")
-player_loading_label.place(relx=0.75, rely=0.25, relwidth=0.2)
+                                     text_color='#FF6B35', anchor="center",
+                                     fg_color="transparent")
+player_loading_label.place(relx=0.81, rely=0.25, relwidth=0.18)
 
 volume_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-volume_frame.place(relx=0.585, rely=0.605, relwidth=0.105, relheight=0.350)
+volume_frame.place(relx=0.635, rely=0.605, relwidth=0.105, relheight=0.350)
 
 player_volume_label = ctk.CTkLabel(volume_frame, font=('Segoe UI', 16), text='🔊',
                                    text_color='#888888', anchor="e")
@@ -5203,7 +5254,7 @@ Frame_for_mpv.bind('<MouseWheel>', set_volume_wheel)
 
 # ── Action Buttons ──
 action_btn_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-action_btn_frame.place(relx=0.695, rely=0.585, relwidth=0.300, relheight=0.375)
+action_btn_frame.place(relx=0.745, rely=0.585, relwidth=0.300, relheight=0.375)
 
 setting_btn = ctk.CTkButton(action_btn_frame, text='⚙️ Settings', command=setting_frame,
                             fg_color='#FF6B35', hover_color='#FF8555', corner_radius=8,
@@ -5228,11 +5279,7 @@ playing_info_btn = ctk.CTkButton(action_btn_frame, text='📊 Now',
                                   border_width=1, border_color='#444444')
 playing_info_btn.place(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
 
-fullscreenbtn = ctk.CTkButton(action_btn_frame, text='⛶', command=fullscreen_change_state,
-                               fg_color='#2E2E2E', hover_color='#404040', corner_radius=10,
-                               border_color='#444444', border_width=1,
-                               font=('Segoe UI', 16))
-fullscreenbtn.place(relx=0.840, rely=0.06, relwidth=0.150, relheight=0.88)
+
 
 
 
@@ -5243,7 +5290,7 @@ root.bind("<KeyPress-Right>", lambda event: set_position_keyboard(2))
 root.bind("<KeyRelease-Right>", arrow_release)
 root.bind("<KeyRelease-Left>", arrow_release)
 
-modeforfullscreen = 0
+
 
 
 root.mainloop()

@@ -41,5 +41,6 @@
     "discord_presence_show_playing": false,
     "show_cache": true,
     "hover_fullscreen" : true,
-    "download_path": "[player]/user_data/downloaded_file"
+    "download_path": "[player]/user_data/downloaded_file",
+    "fullscreenmode":0
 }
