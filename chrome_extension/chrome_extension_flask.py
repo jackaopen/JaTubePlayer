@@ -1,12 +1,13 @@
 from flask import Flask, request
-import time, requests, threading
+import socket, threading
 from werkzeug.serving import make_server
 from notification.wintoast_notify import ToastNotification
 from flask_cors import CORS
 
 
 class ChromeExtensionServer:
-    def __init__(self):
+    def __init__(self, log_handle: object):
+        self.log_handle = log_handle
         self.chrome_flaskapp = Flask(__name__)
         CORS(self.chrome_flaskapp, resources={r"/receive_url": {"origins": "chrome-extension://*"}})
         self.chrome_extension_url = None
@@ -16,7 +17,6 @@ class ChromeExtensionServer:
         self._register_routes()
 
     def _register_routes(self):
-        # 'self' is captured via closure — Flask never needs to pass it
         @self.chrome_flaskapp.after_request
         def _pna(resp):
             resp.headers["Access-Control-Allow-Private-Network"] = "true"
@@ -26,7 +26,7 @@ class ChromeExtensionServer:
         def _receive_url(action):
             try:
                 url = request.data.decode()
-                print(url)
+                self.log_handle(f"Received URL from Chrome extension: {url} with action: {action}")
                 auth = request.headers.get("X-auth")
 
                 if action == 'dir':
@@ -41,58 +41,33 @@ class ChromeExtensionServer:
                 else:
                     return "forbidden", 403
             except Exception as e:
-                print(e)
+                self.log_handle('Error receiving URL from Chrome extension: ' + str(e))
                 return "failed", 403
 
-        @self.chrome_flaskapp.route("/Shutdown", methods=["POST"])
-        def _shutdown():
-            print(self.server)
-            auth = request.headers.get("X-auth")
-            icondir = request.headers.get("X-icon")
-
-            if auth == "Jatubeplayerextensionbyjackaopen":
-                try:
-                    threading.Thread(target=lambda: self._shutdown_server(self.server)).start()
-                    ToastNotification().notify(
-                        title="JaTubePlayer",
-                        msg="JaTubePlayer Chrome Extension Server Stopped",
-                        duration='short',
-                        icon=icondir
-                    )
-                    return "ok", 200
-                except Exception as e:
-                    print(e)
-                    return "failed", 403
-            else:
-                return "forbidden", 403
-
     def _shutdown_server(self, server):
-        time.sleep(0.1)
-        server.shutdown()
+        self.log_handle('Chrome extension server shutdown initiated.')
+        server.shutdown()      # stop serve_forever() 
+        server.server_close()  # release the socket 
+        self.log_handle('Chrome extension server has been shut down.')
+
+    def shutdown(self, icondir: str = None):
+        if self.server:
+            threading.Thread(
+                target=lambda: self._shutdown_server(self.server),
+                daemon=True
+            ).start()
+        else:
+            self.log_handle('shutdown() called but server is not running.')
 
     def run_flask_app(self, icondir: str = None):
-        '''
-        Note: This function will block the calling thread.
-        Please run it in a separate thread if you want to keep your main thread responsive.
-        '''
-        self.server = make_server("127.0.0.1", 5000, self.chrome_flaskapp)
+        self.server = make_server("127.0.0.1", 5000, self.chrome_flaskapp, threaded=True)
+        self.server.timeout = 1
+        self.server.protocol_version = "HTTP/1.0"  # disables keep-alive
         ToastNotification().notify(
             title="JaTubePlayer",
             msg="JaTubePlayer Chrome Extension Server Started\nRunning at http://127.0.0.1:5000",
             duration='short',
             icon=icondir
         )
-        print('0', self.server)
-        self.server.serve_forever()
-
-
-if __name__ == "__main__":
-    instance = ChromeExtensionServer()
-    threading.Thread(target=instance.run_flask_app, args=(None,)).start()
-    print("Sending shutdown request...")
-    time.sleep(2)
-    try:
-        res = requests.post('http://localhost:5000/Shutdown', headers={'X-auth': 'Jatubeplayerextensionbyjackaopen'}, timeout=5)
-        print(f"Response: {res}")
-    except Exception as e:
-        print(f"Error: {e}")
+        self.log_handle(f"Chrome extension server started at {self.server}")
+        self.server.serve_forever(poll_interval=0.5)

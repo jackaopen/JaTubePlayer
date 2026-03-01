@@ -408,17 +408,11 @@ def _switch_local_server(mode:int)->None|str:
     elif mode == 1:
         log_handle(content="Shutting down local server for chrome extension communication...")
         try:
-
-
-            res = requests.post('http://localhost:5000/Shutdown',headers={'X-auth':'Jatubeplayerextensionbyjackaopen','X-icon':icondir},timeout=1)
-            log_handle(content=str(res.text))
-            if res.text == 'ok':
-                
-                setting_run_chrome_extension_server.set(False)
-                try:
-                    root.after(0, chrome_ext_status_close)
-                except:pass
-                
+            setting_run_chrome_extension_server.set(False)
+            chrome_extension_flask.shutdown(icondir=icondir)
+            try:
+                root.after(0, chrome_ext_status_close)
+            except:pass
         except Exception as e:
             return str(e)
         
@@ -4783,7 +4777,7 @@ def _extra_startup_imports():
         # Flask
     t = time.time()
     import chrome_extension.chrome_extension_flask as cef
-    chrome_extension_flask = cef.ChromeExtensionServer()
+    chrome_extension_flask = cef.ChromeExtensionServer(log_handle=log_handle)
     log_handle(content=f"flask: {time.time()-t:.3f}s")
 
     if CONFIG["run_flask"]:_switch_local_server(0)
