@@ -451,13 +451,14 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
     except:
         if mode == 1:
             if playing_vid_mode == 0 or playing_vid_mode == 4 or (playing_vid_mode == 3 and len(vid_url) > 0):
-                if playing_vid_mode == 4 and  not vid_url[selected_song_number].startswith(('https://','https://')):
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The selected video is a local file, video info function is only available for online videos'))
-                    ui_queue.put(lambda: info.destroy())
-                    return
                 if selected_song_number == None:
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','No video selected'))
                     return
+                if playing_vid_mode == 4 and not vid_url[selected_song_number].startswith(('https://','https://')):
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The selected video is a local file, video info function is only available for online videos'))
+                    ui_queue.put(lambda: info.destroy())
+                    return
+                
             if playing_vid_mode == 1 or playing_vid_mode == 2:
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info function is only available for YouTube videos'))
                 return
@@ -798,6 +799,7 @@ def setting_frame():
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
                             is_downloading.set(False)
                             return
+                    print(f'title = {title},{playlisttitles}')
                     ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
                     download_to_local(
                         res=resoltion_combox.get(),
@@ -2492,7 +2494,10 @@ def page_control(mode):
     log_handle(content=str(modetextbox.get(0.0,tk.END).strip()))
     if modetextbox.get(0.0,tk.END).strip() == 'Subscribed':get_sub_channel(mode)
     elif modetextbox.get(0.0,tk.END).strip() == 'Liked':get_liked_vid(mode)
-    else:messagebox.showerror(f'JaTubePlayer {ver}','Please init subsciption or like page first!')
+    else:
+        if 'loading' in modetextbox.get(0.0,tk.END).strip() or 'updating' in modetextbox.get(0.0,tk.END).strip():
+            messagebox.showinfo(f'JaTubePlayer {ver}','still loading, please wait!')
+        else:messagebox.showerror(f'JaTubePlayer {ver}','Please init subsciption or like page first!')
 
 
 def get_sub_channel_thread(mode):
@@ -2724,15 +2729,22 @@ def get_liked_vid_thread(mode):
                                 if title_response != None:
                                     try:
                                         vid_info = title_response['items'][0]['snippet']
-                                        try:
-                                            title = f'🛑LIVE {vid_info["title"]}' if vid_info['live_status'] == 'is_live' else vid_info['title']
-                                        except:title = vid_info["title"]
-                                        playlisttitles.append(title)
-                                        playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
-                                        playlist_channel.append(vid_info['channelTitle'])
-                                        insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],title,vid_info['channelTitle']))
-                                        ui_queue.put(lambda: root.update())
-                                    except:insert_treeview_quene.put((None,'unknown','unknown'))
+                                        if vid_info:
+                                            try:
+                                                title = f'🛑LIVE {vid_info["title"]}' if vid_info['live_status'] == 'is_live' else vid_info['title']
+                                            except:title = vid_info["title"]
+                                            playlisttitles.append(title)
+                                            playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
+                                            playlist_channel.append(vid_info['channelTitle'])
+                                            insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],title,vid_info['channelTitle']))
+                                            ui_queue.put(lambda: root.update())
+                                        else:
+                                            ui_queue.put(lambda: ToastNotification().notify(app_id="JaTubePlayer", 
+                                                                                            title=f'JaTubePlayer {ver}',
+                                                                                            msg='Skipped a unavailable video', 
+                                                                                            duration='short', 
+                                                                                            icon=icondir))
+                                    except:pass
                                 else:pass
                             except Exception as e : ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
 
