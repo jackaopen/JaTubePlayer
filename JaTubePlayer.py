@@ -449,6 +449,23 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
             info.deiconify()
         else:raise Exception("info window already opened")
     except:
+        if mode == 1:
+            if playing_vid_mode == 0 or playing_vid_mode == 4 or (playing_vid_mode == 3 and len(vid_url) > 0):
+                if playing_vid_mode == 4 and  not vid_url[selected_song_number].startswith(('https://','https://')):
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The selected video is a local file, video info function is only available for online videos'))
+                    ui_queue.put(lambda: info.destroy())
+                    return
+                if selected_song_number == None:
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','No video selected'))
+                    return
+        elif mode == 2:
+            if playing_vid_mode == 1 or playing_vid_mode == 2:
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info function is only available for YouTube videos'))
+                return
+            if playing_vid_mode == 4 and not playing_vid_info_dict:
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info is not available for this video'))
+                return
+
         info = ctk.CTkToplevel(root,fg_color='#242424')
         info.title('Video info')
         info.geometry('600x500')
@@ -509,87 +526,65 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
             global info
             log_handle(content=f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number != None and len(vid_url) > 0 else 'N/A'}")
             try:
-                if playing_vid_mode == 0 or playing_vid_mode == 4 or (playing_vid_mode == 3 and len(vid_url) > 0):
-                    if playing_vid_mode == 4 and  not vid_url[selected_song_number].startswith(('https://','https://')):
-                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The selected video is a local file, video info function is only available for online videos'))
-                        ui_queue.put(lambda: info.destroy())
-                        return
-                    if selected_song_number != None:
-                        try:
-                            ui_queue.put(lambda: info.title('loading info...'))
-                            _,info_dict = get_info(yt_dlp=yt_dlp,
-                                                maxres=1080,
-                                                target_url=vid_url[selected_song_number],
-                                                deno_path=deno_exe,
-                                                log_handler=ytdlp_log_handle,
-                                                cookie_path=cookies_dir)
-                                
-                            
-                            ui_queue.put(lambda: info.title('Video info '))
-                            ui_queue.put(lambda: title_text.configure(state='normal'))
-                            ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
-                            ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
-                            ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
-                            ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
-                            ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
-                            ui_queue.put(lambda: title_text.configure(state='disabled'))
-                            ui_queue.put(lambda: uploader_text.configure(state='disabled'))
-                            ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
-                            ui_queue.put(lambda: url_text.configure(state='disabled'))
-                            ui_queue.put(lambda: description_text.configure(state='disabled'))
-
-                            ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
-
-                        except Exception as e : 
-                            try:       
-                                ui_queue.put(lambda: description_text.configure(state='normal'))
-                                ui_queue.put(lambda err=e: description_text.insert(tk.END, f'opps we got some problmes\n{err}'))
-                                ui_queue.put(lambda: description_text.configure(state='disabled'))
-                            except:pass
-
-
+                
+                ui_queue.put(lambda: info.title('loading info...'))
+                _,info_dict = get_info(yt_dlp=yt_dlp,
+                                    maxres=1080,
+                                    target_url=vid_url[selected_song_number],
+                                    deno_path=deno_exe,
+                                    log_handler=ytdlp_log_handle,
+                                    cookie_path=cookies_dir)
                     
-                    else:
-                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The function is not available under file selection'))
-                        ui_queue.put(lambda: info.destroy())
-                else:
-                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The function is not available under file selection'))
-                        ui_queue.put(lambda: info.destroy())
+                
+                ui_queue.put(lambda: info.title('Video info '))
+                ui_queue.put(lambda: title_text.configure(state='normal'))
+                ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
+                ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
+                ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
+                ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
+                ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
+                ui_queue.put(lambda: title_text.configure(state='disabled'))
+                ui_queue.put(lambda: uploader_text.configure(state='disabled'))
+                ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
+                ui_queue.put(lambda: url_text.configure(state='disabled'))
+                ui_queue.put(lambda: description_text.configure(state='disabled'))
+
+                ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
+
+            except Exception as e : 
+                try:       
+                    ui_queue.put(lambda: description_text.configure(state='normal'))
+                    ui_queue.put(lambda err=e: description_text.insert(tk.END, f'opps we got some problmes\n{err}'))
+                    ui_queue.put(lambda: description_text.configure(state='disabled'))
+                except:pass
+
             except googleapiclient.errors.HttpError as err: ######  handle stupid api
                 ui_queue.put(lambda e=err: messagebox.showerror(f'JaTubePlayer {ver}', f"An error occurred: {e}"))
                 ui_queue.put(lambda: info.destroy())
 
         def loadplayinginfo():
-            if playing_vid_mode == 0 or playing_vid_mode == 3:
-                if playing_vid_info_dict:
-                    if playing_vid_info_dict == None:
-                        ui_queue.put(lambda: description_text.configure(state='normal'))
-                        ui_queue.put(lambda: description_text.insert(tk.END,f"opps we got some problems"))
-                        ui_queue.put(lambda: description_text.configure(state='disabled'))
 
-                    else:
-                        ui_queue.put(lambda: title_text.configure(state='normal'))
-                        ui_queue.put(lambda t=playing_vid_info_dict.get('title'): title_text.insert(tk.END, t))
-                        ui_queue.put(lambda c=playing_vid_info_dict.get('channel'), u=playing_vid_info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
-                        ui_queue.put(lambda d=playing_vid_info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
-                        ui_queue.put(lambda url=playing_vid_info_dict.get('original_url'): url_text.insert(tk.END, url))
-                        ui_queue.put(lambda desc=playing_vid_info_dict.get('description'): description_text.insert(tk.END, desc))
-                        ui_queue.put(lambda: title_text.configure(state='disabled'))
-                        ui_queue.put(lambda: uploader_text.configure(state='disabled'))
-                        ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
-                        ui_queue.put(lambda: url_text.configure(state='disabled'))
-                        ui_queue.put(lambda: description_text.configure(state='disabled'))
+            if playing_vid_info_dict == None:
+                ui_queue.put(lambda: description_text.configure(state='normal'))
+                ui_queue.put(lambda: description_text.insert(tk.END,f"opps we got some problems"))
+                ui_queue.put(lambda: description_text.configure(state='disabled'))
 
-                        ui_queue.put(lambda t=playing_vid_info_dict.get('title'): info.configure(title=f"Playing Video info - {t}"))
-
-
-                else:
-                    ui_queue.put(lambda: info.destroy())
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please play a video first!'))
             else:
-                ui_queue.put(lambda: info.destroy())
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The function is not available under file selection'))
-                
+                ui_queue.put(lambda: title_text.configure(state='normal'))
+                ui_queue.put(lambda t=playing_vid_info_dict.get('title'): title_text.insert(tk.END, t))
+                ui_queue.put(lambda c=playing_vid_info_dict.get('channel'), u=playing_vid_info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
+                ui_queue.put(lambda d=playing_vid_info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
+                ui_queue.put(lambda url=playing_vid_info_dict.get('original_url'): url_text.insert(tk.END, url))
+                ui_queue.put(lambda desc=playing_vid_info_dict.get('description'): description_text.insert(tk.END, desc))
+                ui_queue.put(lambda: title_text.configure(state='disabled'))
+                ui_queue.put(lambda: uploader_text.configure(state='disabled'))
+                ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
+                ui_queue.put(lambda: url_text.configure(state='disabled'))
+                ui_queue.put(lambda: description_text.configure(state='disabled'))
+
+                ui_queue.put(lambda t=playing_vid_info_dict.get('title'): info.configure(title=f"Playing Video info - {t}"))
+
+
 
         if mode == 1:
             infothread = threading.Thread(daemon = True,target=loadselectedinfo)
@@ -3737,6 +3732,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                         ui_queue.put(lambda: player_loading_label.configure(text=''))
                                         ui_queue.put(lambda: pauseStr.set('||'))
                                         time.sleep(0.1)
+                                        playing_vid_info_dict = {}
                                         loadingvideo = False
                                 else:
                                     ui_queue.put(lambda:messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
