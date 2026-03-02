@@ -4,7 +4,6 @@ from tkinter import BooleanVar
 from tkinter import messagebox
 import time,threading
 import customtkinter as ctk
-from notification.ctkmessagebox import ctk_messagebox
 import queue
 
 cancel_download = threading.Event()
@@ -107,8 +106,8 @@ def download_to_local(res:str,
             main_label.configure(state='disabled')
             if mode == 0:
                 if download_path == '[player]/user_data/downloaded_file':
-                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp3')
-                else:download_path = os.path.join(download_path,f'{better_name}.mp3')
+                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}')
+                else:download_path = os.path.join(download_path,f'{better_name}')
                 down_tdl_opt = {
                             'outtmpl':download_path,
                             'format' : 'bestaudio/best',
@@ -116,8 +115,8 @@ def download_to_local(res:str,
                             'logger': ytdlp_log_handle,
                             'postprocessors': [{
                             'key': 'FFmpegExtractAudio',  # Extract audio after download
-                            'preferredcodec': 'mp3',  # Convert it to MP3
-                            'preferredquality': '192'  # Set quality (adjust as needed)
+                            'preferredcodec': 'mp3',  
+                            'preferredquality': '192'  
                             }],'ignore_no_formats_error': True,
                             'js-runtimes':f'deno:{deno_path}'    
     
@@ -202,7 +201,6 @@ def download_to_local(res:str,
         except yt_dlp.utils.DownloadError as de:
             print(de)
             ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{de}', duration='short', icon=icondir)
-        else:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg='Select a video first!', duration='short', icon=icondir)
 
         time.sleep(1)
         try:is_downloading.set(False)

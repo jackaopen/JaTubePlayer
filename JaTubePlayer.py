@@ -1,7 +1,6 @@
 import time
+from types import NoneType
 
-from customtkinter.windows.widgets import image
-from rsa.key import T
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
@@ -10,7 +9,7 @@ import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random
 from PIL import Image, ImageTk 
 from random import shuffle
 import googleapiclient.errors
-from concurrent.futures import ThreadPoolExecutor, thread
+from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
@@ -735,19 +734,26 @@ def setting_frame():
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Another download is in progress, please wait until it finishes'))
                 return
             else:
+
+                ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
+                is_downloading.set(True)
                 if not playing_vid_mode == 1 and not playing_vid_mode == 2:
                     
                     if formats.get() == -1:
                         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select resolution and format first'))
+                        is_downloading.set(False)
                         return
                     if playing_vid_mode == 0 or playing_vid_mode == 4:
                         if selected_song_number== None:
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video first'))
+                            is_downloading.set(False)
                             return
                         if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:pass
                         else:
-                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
-                            return
+                            if formats.get() == 1:
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
+                                is_downloading.set(False)
+                                return
                         if vid_url[selected_song_number].startswith(('https://','http://')):
                             ToastNotification().notify(
                             title=f"JaTubePlayer {ver}",
@@ -762,24 +768,29 @@ def setting_frame():
                                             cookie_path=cookies_dir)
                             if not info_dict:
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to fetch video info, the video may be unavailable or private\nPlease check the log for more details'))
+                                is_downloading.set(False)
                                 return
                             if info_dict.get('is_live'):
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
+                                is_downloading.set(False)
                                 return
                             else:
                                 url = vid_url[selected_song_number]
                                 title = playlisttitles[selected_song_number]
                         else:
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The selected video is a local file, downloading is not supported'))
+                            is_downloading.set(False)
                             return
                     
                     elif playing_vid_mode == 3:
                         if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:pass
                         else:
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
+                            is_downloading.set(False)
                             return
                         if playing_vid_info_dict['is_live'] == 'is_live':
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
+                            is_downloading.set(False)
                             return
                         else:
                             url = playing_vid_info_dict.get('original_url')
@@ -787,6 +798,7 @@ def setting_frame():
                     if download_path.get() != '[player]/user_data/downloaded_file':
                         if not os.path.exists(download_path.get()):
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
+                            is_downloading.set(False)
                             return
                     ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
                     download_to_local(
@@ -807,7 +819,8 @@ def setting_frame():
                         deno_path=deno_exe,
                         ctk_messagebox=messagebox
                         )
-                    ui_queue.put(lambda: is_downloading.set(True))
+                    log_handle(content=f"downloaded {title  }")
+                    
                     time.sleep(2)
                     ui_queue.put(lambda: downloadselectedsong.configure(state = "normal"))
                     ui_queue.put(lambda: downloadhooktext.set(''))
@@ -2720,7 +2733,7 @@ def get_liked_vid_thread(mode):
                                         playlist_channel.append(vid_info['channelTitle'])
                                         insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],title,vid_info['channelTitle']))
                                         ui_queue.put(lambda: root.update())
-                                    except:pass
+                                    except:insert_treeview_quene.put((None,'unknown','unknown'))
                                 else:pass
                             except Exception as e : ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
 
@@ -2839,6 +2852,7 @@ def get_youtube_playlist_thread(playlistid_input = None): ###### get specifc inf
         playlisttitles.clear()
         playlist_channel.clear()
         playlist_thumbnails.clear()
+        vid_url.clear()
 
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -2860,19 +2874,23 @@ def get_youtube_playlist_thread(playlistid_input = None): ###### get specifc inf
                 if not nextpagetoken:
                     break
             tree_index = 1
-            vid_url = [f"https://www.youtube.com/watch?v={item['contentDetails']['videoId']}" for item in playlistsongs]
             for item in playlistsongs:
-                video_id = item['contentDetails']['videoId']
-                title_response = youtube.videos().list(
-                    part='snippet',
-                    id=video_id
-                ).execute()
-                vid_info = title_response['items'][0]['snippet']
-                playlist_channel.append(vid_info['channelTitle'])
-                playlisttitles.append(vid_info['title'])
-                playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
-                insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],vid_info['title'],vid_info['channelTitle']))
-                tree_index += 1
+                try:
+                    video_id = item['contentDetails']['videoId']
+                    title_response = youtube.videos().list(
+                        part='snippet',
+                        id=video_id
+                    ).execute()
+                    vid_url.append(f"https://www.youtube.com/watch?v={video_id}")
+                    vid_info = title_response['items'][0]['snippet']
+                    playlist_channel.append(vid_info['channelTitle'])
+                    playlisttitles.append(vid_info['title'])
+                    playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
+                    insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],vid_info['title'],vid_info['channelTitle']))
+                    tree_index += 1
+                except Exception as e:
+                    log_handle(content=str(e))
+
         
 
     except googleapiclient.errors.HttpError as err: ######  handle stupid api
@@ -3148,7 +3166,6 @@ def update_playing_pos_local_and_chrome():
                 else:
                     ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
             if player.eof_reached and length != -1: ## video ends
-                
                 if selected_song_number != None:
                     ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
                     if playing_vid_mode == 2 or playing_vid_mode == 4:
@@ -3172,6 +3189,7 @@ def update_playing_pos_local_and_chrome():
                         break
 
                 elif playing_vid_mode == 1 or playing_vid_mode == 3 or playing_vid_mode == 0:### MPV option keep_open
+                    
                     if player_mode_selector.get() =='replay':# =  3 chrome , =0 for chrome but added a video
                         player.seek(0.1,reference='absolute')
                         root.after(200, lambda: setattr(player, 'pause', False))
@@ -4126,7 +4144,7 @@ def fullscreen_widget_change(mode:int=0):
        
 def full_screen_contorl_hover_thread():
     global hover_fullscreen_last_statue
-    hover_fullscreen_last_statue = None
+    hover_fullscreen_last_statue = 1
     while True:
         time.sleep(0.2)
         if fullscreen_status == 1 and hover_fullscreen.get() and not fullscreenmode.get() == 1:
@@ -4230,7 +4248,7 @@ def init_openwith_thread():
 
             if CONFIG['open_with_fullscreen']:
                 log_handle(content='fullscreen')
-                fullscreen_change_state()
+                fullscreen_widget_change(mode=1)
             
     except:pass
 
@@ -4276,7 +4294,7 @@ def dnd_path_listener():
                         if len(file_paths) == 1:
                             if os.path.isfile(file_paths[0]):
                                 load_local_files(mode=0,dnd_single_file_path=file_paths[0])#still put a file into it
-                                selected_song_number = 0
+                                selected_song_number = None
                                 load_thread_queue.put((file_paths[0],None))#play the first file
                             elif os.path.isdir(file_paths[0]):
                                 load_local_files(mode=1,local_folder_path=file_paths[0])
@@ -4584,38 +4602,19 @@ def init_listen_chromeextension():
             url = chrome_extension_flask.chrome_extension_star_video.split("&")[0]
             log_handle(content=f"chrome extension star video url: {url}")
             if not star_vid_handle.search(url):
-                star_vid_handle.add(url)
-                if playing_vid_mode == 4:
-                    try:
-                        ToastNotification().notify(app_id="JaTubePlayer", 
+                res = star_vid_handle.add(url)
+                if res:ToastNotification().notify(app_id="JaTubePlayer", 
                                                    title=f'JaTubePlayer {ver}', 
                                                    msg='Added starred video to playlist\nFetching data...', 
                                                    duration='short', 
                                                    icon=icondir)
-                        _,info = get_info(
-                            yt_dlp=yt_dlp,
-                            maxres=1080,
-                            target_url=url,
-                            deno_path=deno_exe,
-                            log_handler=ytdlp_log_handler()
-                        )
-                        try:thumb = info['thumbnails'][0]['url']
-                        except:thumb = info['thumbnail']
-                        finally:thumb = thumb if thumb else None 
-                        insert_treeview_quene.put((thumb,info['title'],info['uploader']))
-                        vid_url.append(url)
-                        playlisttitles.append(info['title'])
-                        playlist_channel.append(info['uploader'])
-                        playlist_thumbnails.append(thumb)
-                        ToastNotification().notify(app_id="JaTubePlayer",
-                                                   title=f'JaTubePlayer {ver}',
-                                                   msg='Added starred video to playlist', 
-                                                   duration='short', 
-                                                   icon=icondir)
-                    except Exception as e:
+                else:
+                    log_handle(content=f"Failed to add starred video from chrome extension, error in adding: {res}")
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', "Failed to add starred video to playlist.\nError in adding video."))
+                if playing_vid_mode == 4:
+                    get_starred_vid()
+                        
 
-                        log_handle(content=f"Error adding starred video to playlist: {e}")
-                        messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add starred video to playlist.\nError: {e}")
             else:
                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "This video is already in your starred list."))
             chrome_extension_flask.chrome_extension_star_video = None
@@ -5163,8 +5162,8 @@ np_icon.place(relx=0.008, rely=0.14)
 
 playing_title_textbox = tk.Text(now_playing_frame, font=('Segoe UI Semibold', 14), width=130, fg='#c5c5c5',
                                 bg='#1c1c1c', relief='flat', wrap='word', state='disabled',
-                                height=2, borderwidth=0)
-playing_title_textbox.place(relx=0.035, rely=0.10)
+                                height=1, borderwidth=0)
+playing_title_textbox.place(relx=0.035, rely=0.15)
 
 # ── Progress Bar ──
 progress_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
