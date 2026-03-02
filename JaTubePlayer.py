@@ -458,6 +458,9 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
                 if selected_song_number == None:
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','No video selected'))
                     return
+            if playing_vid_mode == 1 or playing_vid_mode == 2:
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info function is only available for YouTube videos'))
+                return
         elif mode == 2:
             if playing_vid_mode == 1 or playing_vid_mode == 2:
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info function is only available for YouTube videos'))
@@ -1732,7 +1735,7 @@ def setting_frame():
         cache_pause_wait_slider = ctk.CTkSlider(cache_buffer_frame, variable=cache_pause_wait, from_=0.1, to=20.0, width=200,
                                                        number_of_steps=199, command=_cache_pause_wait_slider_change, **_slider_kw)
         cache_pause_wait_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        cache_pause_wait_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{cache_pause_wait.get()}s', text_color='#E0C48C')
+        cache_pause_wait_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{cache_pause_wait.get():.1f}s', text_color='#E0C48C')
 
         audio_wait_open_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Audio Wait Open', text_color='#B0B0B0')
         audio_wait_open_slider = ctk.CTkSlider(cache_buffer_frame, variable=audio_wait_open, from_=1, to=10, width=200,
@@ -4153,10 +4156,13 @@ def full_screen_contorl_hover_thread():
                     hover_fullscreen_last_statue = 1
             else:
                 if hover_fullscreen_last_statue == 1:
-                    ui_queue.put(lambda:controls_frame.place_forget())
 
                     log_handle('hover control frame showed')
-                    ui_queue.put(lambda:Frame_for_mpv.place_configure(relx=0, rely=0, relwidth=1, relheight=1))
+                    def _place_controls():# Since there will be a delay with the ui queue root .after thus this function is needed to make sure the controls will be placed and mpv frame is placed at the right place after the fullscreen change
+                        if fullscreen_status == 1:
+                            controls_frame.place_forget()
+                            Frame_for_mpv.place_configure(relx=0, rely=0, relwidth=1, relheight=1)
+                    ui_queue.put(_place_controls)
                     hover_fullscreen_last_statue = 0
                 
 
