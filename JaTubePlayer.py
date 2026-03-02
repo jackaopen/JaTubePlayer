@@ -1216,6 +1216,7 @@ def setting_frame():
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','ytdlp Update failed!, please check log file'))
             else:
                 yt_dlp, utils, ytdlpver = reload_yt_dlp(_internal_dir)
+                star_vid_handle.yt_dlp = yt_dlp #update yt-dlp reference in star vid handle
                 threading.Thread(daemon=True,target=get_version_setting_thread).start()
 
                 ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='New version installed!', duration='short',icon=icondir)
