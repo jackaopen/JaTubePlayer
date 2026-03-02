@@ -14,13 +14,11 @@ def _create_edl_url(video_url, audio_url, duration=None):
     parts = [
         # --- VIDEO TRACK ---
         "!new_stream",     
-        "!no_clip",        
         "!no_chapters",    
         _format_segment(video_url, duration),
         
         # --- AUDIO TRACK ---
         "!new_stream",     
-        "!no_clip", 
         "!no_chapters",
         _format_segment(audio_url, duration)
     ]

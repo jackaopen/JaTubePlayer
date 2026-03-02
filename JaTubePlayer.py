@@ -1,6 +1,7 @@
 import time
 
 from customtkinter.windows.widgets import image
+from rsa.key import T
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
@@ -2941,7 +2942,7 @@ def youtube_search_thread():
             vid_search_results = ydl.extract_info(search_url_vid, download=False)
             stream_search_results = ydl.extract_info(search_url_stream, download=False)
         
-        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children())) #########      start to process thumnail and title
+        playlisttreebox.delete(*playlisttreebox.get_children()) #########      start to process thumnail and title
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
         vid_url = []
         playlisttitles.clear()
@@ -4436,7 +4437,7 @@ def create_mpv_player():
     "cache-pause-initial": "yes",
     "demuxer-thread": "yes",
     "audio-wait-open": audio_wait_open_val,
-    "demuxer-hysteresis-secs": 0
+    "demuxer-hysteresis-secs": 0,
 
 }
 
@@ -4606,7 +4607,13 @@ def init_listen_chromeextension():
                         playlisttitles.append(info['title'])
                         playlist_channel.append(info['uploader'])
                         playlist_thumbnails.append(thumb)
+                        ToastNotification().notify(app_id="JaTubePlayer",
+                                                   title=f'JaTubePlayer {ver}',
+                                                   msg='Added starred video to playlist', 
+                                                   duration='short', 
+                                                   icon=icondir)
                     except Exception as e:
+
                         log_handle(content=f"Error adding starred video to playlist: {e}")
                         messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add starred video to playlist.\nError: {e}")
             else:
@@ -4654,6 +4661,11 @@ def init_listen_chromeextension():
                     playlisttitles.append(info['title'])
                     playlist_channel.append(info['uploader'])
                     playlist_thumbnails.append(thumb)
+                    ToastNotification().notify(app_id="JaTubePlayer",
+                                               title=f'JaTubePlayer {ver}',
+                                               msg='Added video to playlist',
+                                               duration='short',
+                                               icon=icondir)
                 except Exception as e:
                     log_handle(content=f"Error adding video to playlist: {e}")
                     messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add video to playlist.\nError: {e}")    

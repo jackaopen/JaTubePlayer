@@ -1,4 +1,4 @@
-from CTkMessagebox import CTkMessagebox
+from CTkMessagebox import CTkMessagebox, ctkmessagebox
 import queue,time,os,sys,subprocess,threading
 
 
@@ -24,7 +24,7 @@ class ctk_messagebox(object):
             return
         if sys.platform == "win32":
             import winsound
-            winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+            winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC)
         else:
             # Linux: aplay (ALSA); macOS: afplay
             cmd = ["afplay", path] if sys.platform == "darwin" else ["aplay", "-q", path]
@@ -131,4 +131,3 @@ class ctk_messagebox(object):
             self.master.update()
             time.sleep(0.02)
         return 
-    
