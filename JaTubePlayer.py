@@ -736,6 +736,10 @@ def setting_frame():
 
                 ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
                 is_downloading.set(True)
+                _vid_url = list(vid_url)
+                _playlisttitles = list(playlisttitles)
+                _dict = dict(playing_vid_info_dict) if playing_vid_info_dict else {}
+                _selected_idx = selected_song_number
                 if not playing_vid_mode == 1 and not playing_vid_mode == 2:
                     
                     if formats.get() == -1:
@@ -743,7 +747,7 @@ def setting_frame():
                         is_downloading.set(False)
                         return
                     if playing_vid_mode == 0 or playing_vid_mode == 4:
-                        if selected_song_number== None:
+                        if _selected_idx == None:
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video first'))
                             is_downloading.set(False)
                             return
@@ -753,7 +757,7 @@ def setting_frame():
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
                                 is_downloading.set(False)
                                 return
-                        if vid_url[selected_song_number].startswith(('https://','http://')):
+                        if _vid_url[_selected_idx].startswith(('https://','http://')):
                             ToastNotification().notify(
                             title=f"JaTubePlayer {ver}",
                             msg="Preparing to download...\n Checking video valiability and fetching info",
@@ -761,7 +765,7 @@ def setting_frame():
                             )
                             _,info_dict = get_info(yt_dlp=yt_dlp,
                                             maxres=1080,
-                                            target_url=vid_url[selected_song_number],
+                                            target_url=_vid_url[_selected_idx],
                                             deno_path=deno_exe,
                                             log_handler=ytdlp_log_handle,
                                             cookie_path=cookies_dir)
@@ -774,8 +778,8 @@ def setting_frame():
                                 is_downloading.set(False)
                                 return
                             else:
-                                url = vid_url[selected_song_number]
-                                title = playlisttitles[selected_song_number]
+                                url = _vid_url[_selected_idx]
+                                title = _playlisttitles[_selected_idx]
                         else:
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The selected video is a local file, downloading is not supported'))
                             is_downloading.set(False)
@@ -787,13 +791,13 @@ def setting_frame():
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
                             is_downloading.set(False)
                             return
-                        if playing_vid_info_dict['is_live'] == 'is_live':
+                        if _dict['is_live'] == 'is_live':
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
                             is_downloading.set(False)
                             return
                         else:
-                            url = playing_vid_info_dict.get('original_url')
-                            title = playing_vid_info_dict.get('title','unknown_title')
+                            url = _dict.get('original_url')
+                            title = _dict.get('title','unknown_title')
                     if download_path.get() != '[player]/user_data/downloaded_file':
                         if not os.path.exists(download_path.get()):
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
