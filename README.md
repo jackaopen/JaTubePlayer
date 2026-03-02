@@ -139,13 +139,10 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 | Category | Libraries / Components |
 | :--- | :--- |
 | **Runtime** | Python 3.11+ |
-| **GUI** | `customtkinter`, `tkinter`, `sv_ttk`, `CTkMessagebox` |
-| **Media** | `Pillow`, `ffmpeg-python`, `python-mpv`, `yt-dlp` |
-| **Network** | `requests`, `aiohttp`, `flask`, `flask-cors`, `feedparser`, `beautifulsoup4`, `lxml` |
-| **Google / Auth** | `google-auth`, `google-api-python-client`, `google-auth-oauthlib`, `browser-cookie3` |
-| **Windows Integration** | `pywin32`, `pynput`, `pystray`, `BlurWindow`, `winrt` (SMTC) |
-| **Notifications** | `winotify`, `win11toast` |
-| **External Services** | `pypresence` (Discord Rich Presence) |
+| **GUI** | `customtkinter`, `tkinter` |
+| **Media** | `Pillow`, `ffmpeg-python`, `mpv`, `yt_dlp` |
+| **Network** | `requests`, `aiohttp`, `flask`, `flask-cors` |
+| **Integration** | `google-auth`, `google-api-python-client`, `winotify`, `pywin32`, `pypresence` |
 | **Security** | `cryptography` |
 | **Bundled** | `ffmpeg.exe`, `ffprobe.exe`, `libmpv-2.dll` |
 
