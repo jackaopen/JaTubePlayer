@@ -3119,7 +3119,6 @@ def update_playing_pos_local_and_chrome():
     global stoped,finish_break, pos_for_label,volume,selected_song_number,stream
     stoped = False
     finish_break = False
-
     while not stoped:  
         
         try:
@@ -3194,9 +3193,8 @@ def update_playing_pos_local_and_chrome():
                         player.seek(0.1,reference='absolute')
                         root.after(200, lambda: setattr(player, 'pause', False))
                     elif player_mode_selector.get() =='continue' and len(vid_url) > 0:
+                        stop_playing_video()
                         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','Please choose a video again!'))
-                        player.seek(0.1,reference='absolute')
-                        root.after(200, lambda: setattr(player, 'pause', True))
                         
                 elif playing_vid_mode == 2:ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer{ver}','Choose a video again'))
             if stoped: 
