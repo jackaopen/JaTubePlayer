@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JaTubePlayer Chrome Extension",
-  "version": "1.0",
+  "version": "2.2",
   "permissions": ["contextMenus","notifications"],
   "host_permissions": ["http://localhost:5000/*"],
   "background": {
