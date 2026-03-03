@@ -35,8 +35,8 @@ def get_info(yt_dlp:object,
              cookie_path:str=None)->tuple[str,dict]:
     '''
     Returns (final_url, info_dict)
-    if normal dash formats are available, final_url will be m3u8 url
-    if only separate video and audio formats are available, final_url will be an EDL URL
+    For non-live YouTube with separate video+audio DASH streams, final_url is an EDL URL.
+    For single-stream or live, final_url is the direct stream URL.
     '''
     fmt = (
     f"(bv*[height<={maxres}][protocol=https][ext=mp4][vcodec^=avc1]"
@@ -73,8 +73,6 @@ def get_info(yt_dlp:object,
                 info = ydl.extract_info(target_url)
                 if info['live_status'] != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
-                    import pprint
-                    pprint.pprint(fmt)
                     if len(fmt) == 2:
                         vid_url = fmt[0]['url']
                         audio_only_url = fmt[1]['url']

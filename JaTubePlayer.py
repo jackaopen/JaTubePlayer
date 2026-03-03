@@ -4472,9 +4472,8 @@ def create_mpv_player():
     "cache-pause-initial": "yes",
     "demuxer-thread": "yes",
     "audio-wait-open": audio_wait_open_val,
-    "demuxer-hysteresis-secs": 0,
 
-}
+    }
 
     sub_arg = {
     "sub_font": "Inter Medium",
@@ -4483,7 +4482,7 @@ def create_mpv_player():
     "sub_border_color": "0.0/0.35/0.8/0.9",
     "sub_border_size": 5,
     "sub_scale": 0.9,
-}
+    }
 
 
     log_handle("create mpv")
@@ -4506,7 +4505,6 @@ def create_mpv_player():
         idle = True,
         hwdec="auto",
         profile="fast",
-        ytdl = True,
         wid=Frame_for_mpv.winfo_id(),
         log_handler=log_handle,
         vid="no" if audio_only.get() else "auto",
