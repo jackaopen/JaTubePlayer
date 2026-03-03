@@ -14,13 +14,11 @@ def _create_edl_url(video_url, audio_url, duration=None):
     parts = [
         # --- VIDEO TRACK ---
         "!new_stream",     
-        "!no_clip",        
         "!no_chapters",    
         _format_segment(video_url, duration),
         
         # --- AUDIO TRACK ---
         "!new_stream",     
-        "!no_clip", 
         "!no_chapters",
         _format_segment(audio_url, duration)
     ]
@@ -37,18 +35,28 @@ def get_info(yt_dlp:object,
              cookie_path:str=None)->tuple[str,dict]:
     '''
     Returns (final_url, info_dict)
-    if normal dash formats are available, final_url will be m3u8 url
-    if only separate video and audio formats are available, final_url will be an EDL URL
+    For non-live YouTube with separate video+audio DASH streams, final_url is an EDL URL.
+    For single-stream or live, final_url is the direct stream URL.
     '''
-    
+    fmt = (
+    f"(bv*[height<={maxres}][protocol=https][ext=mp4][vcodec^=avc1]"
+    f"+ba[protocol=https][ext=m4a][acodec^=mp4a])"
+    f"/(bv*[height<={maxres}][protocol=https]+ba[protocol=https])"
+    f"/(b[height<={maxres}][protocol=https])"
+    f"/(bv*[height<={maxres}]+ba/b[height<={maxres}])"
+    )
+
+
     ydl_opts = { 
         'skip_download': True,
         'ignoreerrors': True,
         'no_color': True,
         'extract_flat': False,  
         'logger': log_handler,
-        'format': f"bv*[height<={maxres}]+ba/best",
-        'js-runtimes': f'deno:{deno_path}',
+        'format': fmt,
+        "extractor_args": {"youtube": {"player_client": ["default", "web_embedded", "android"]}},
+        'js_runtimes': {'deno': {'path': deno_path}},
+        'remote_components': {'ejs:npm'},
     }
     
     if cookie_path:
@@ -59,32 +67,82 @@ def get_info(yt_dlp:object,
     vid_url = None
     audio_only_url = None
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(target_url, download=True)
-            if info['live_status'] != 'is_live' and 'requested_formats' in info:
-                fmt = info['requested_formats']
-                if len(fmt) == 2:
-                    vid_url = fmt[0]['url']
-                    audio_only_url = fmt[1]['url']
-                    log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}")
-                    final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
-                else:
-                    final_url = info['url']
-            else:
-                fmt = info.get('formats', [])
-                if fmt:
-                    fmt = sorted(fmt,key = lambda x: x.get('height',0) or 0, reverse=True)
-                    for f in fmt:
-                        if f.get('height',0) <= maxres:
-                            final_url = f'edl://!new_stream;!no_clip;!no_chapters;%{len(f["url"])}%{f["url"]}'
-                            break
-        
-            print('vid_url:', vid_url,'\n')
-            print('audio_only_url:', audio_only_url)
+    if "youtube" in target_url:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(target_url)
+                if info['live_status'] != 'is_live' and 'requested_formats' in info:
+                    fmt = info['requested_formats']
+                    if len(fmt) == 2:
+                        vid_url = fmt[0]['url']
+                        audio_only_url = fmt[1]['url']
+                        log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}, fmt {fmt[1].get('container','N/A')}")
+                        final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
 
-        log_handler.info(f'get_info return { final_url}')
-        return final_url, info
-    except Exception as e:
-        log_handler.error(f'get_info error: {e}')
-        return None, None
+                    
+                    else:
+                        final_url = info['url']
+                else:
+                    fmt = info.get('formats', [])
+                    if fmt:
+                        fmt = sorted(fmt,key = lambda x: x.get('height',0) or 0, reverse=True)
+                        for f in fmt:
+                            if f.get('height',0) <= maxres:
+                                final_url = f'edl://!new_stream;!no_clip;!no_chapters;%{len(f["url"])}%{f["url"]}'
+                                break
+            
+                print('vid_url:', vid_url,'\n')
+                print('audio_only_url:', audio_only_url)
+
+            log_handler.info(f'get_info return { final_url}')
+            return final_url, info
+        except Exception as e:
+            log_handler.error(f'get_info error: {e}')
+            return None, None
+        
+
+
+    elif "twitch" in target_url:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(target_url, download=True)
+                if info.get('live_status', 'not_live') != 'is_live' and 'requested_formats' in info:
+                    fmt = info['requested_formats']
+                    if len(fmt) == 2:
+                        vid_url = fmt[0]['url']
+                        audio_only_url = fmt[1]['url']
+                        log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}")
+                        final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
+                    else:
+                        final_url = info['url']
+                else:
+                    fmt = info.get('formats', [])
+                    if fmt:
+                        fmt = sorted(fmt,key = lambda x: x.get('height',0) or 0, reverse=True)
+                        for f in fmt:
+                            if f.get('height',0) <= maxres:
+                                final_url = f'edl://!new_stream;!no_clip;!no_chapters;%{len(f["url"])}%{f["url"]}'
+                                break
+            
+                print('vid_url:', vid_url,'\n')
+                print('audio_only_url:', audio_only_url)
+
+            log_handler.info(f'get_info return { final_url}')
+            yt_like_info = {
+                'title': info.get('title'),
+                'uploader': info.get('uploader'),
+                'thumbnail': info.get('thumbnail'),
+                'tags': info.get('uploader'),# Twitch API doesn't provide tags in the same way YouTube does, so we'll just use uploader name as a placeholder
+                'subtitles': {},# Twitch API doesn't provide subtitles in the same way YouTube does, so we'll leave this empty
+                'live_status': info.get('live_status', False),
+                'channel': info.get('uploader'),
+                'uploader_id': info.get('uploader_id'),
+                'upload_date': info.get('upload_date'),
+                'original_url': info.get('original_url'),
+                'description': info.get('description'),
+            }
+            return final_url, yt_like_info
+        except Exception as e:
+            log_handler.error(f'get_info error: {e}')
+            return None, None
+        

@@ -29,20 +29,34 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 **Media Playback**
 - **Play local files and folders** — Enjoy your media directly from disk with support for multiple formats
 - **Search and play online videos** — Find and play content without leaving the app
-- **Live streams** — Able to play live streams
+- **Live streams** — Able to play live streams (YouTube & Twitch)
+- **Twitch support** — Stream Twitch live channels directly, including via the Chrome extension
 - **Supports more formats than WMP** — Play rare and uncommon file formats that Windows Media Player can't handle
 
 **User Interface & Experience**
 - **Modern glass/acrylic blur UI** — Embraces Windows 11's design language with translucent panels and blur effects
+- **Redesigned Settings panel** — Card-style layout with reorganized sections for API, playback, cache, downloads, hotkeys, and external services
+- **Multiple fullscreen modes** — Choose between Normal, Fullscreen (all widgets), or Fullscreen-to-window; dedicated fullscreen button in playback controls
+- **Hover fullscreen** — Optionally trigger control sectopn on mouse hover over the video area
 - **Hot key shortcuts** — Full keyboard support for play/pause, navigation, volume control, and more
 - **Drag and drop support** — Simply drag files or folders into the app for instant playback
+- **Toast notifications** — Get notified when videos are added to the playlist
 
 **Integration & Enhancement**
+
+-  **Star/bookmark videos** — Save any video to a persistent starred local list and replay instantly
 - **Video recommendations** — Discover new content based on your viewing history
-- **Chrome extension integration** — Receive video links directly from a companion Chrome extension
+
+- **Chrome extension integration** — Companion Chrome extension with three context menu actions on YouTube & Twitch pages:
+    - **Send to JTP** : play immediately
+    - **Star on JTP** : add to starred video list
+    - **Add to JTP playlist** : queue to end of currnet playlist
 - **Discord Rich Presence** — Show your current playback status in Discord with customizable options
 - **Quick startup initialization** — Automatically load your preferred content when the app starts
 - **Hot-update yt_dlp** — Easily update yt_dlp by replacing files in the `_internal/` folder
+- **Configurable download path** — Set and reset your download destination directly from Settings
+- **Configurable cache/buffer controls** — Tune `cache_secs`, `demuxer_max_bytes`, `demuxer_max_back_bytes`, and `audio_wait_open` via sliders in Settings
+- **Automatic credential refresh** — Google OAuth2 credentials refresh automatically without re-login
 
 <br>
 
@@ -55,6 +69,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 -  **Access your personal YouTube playlists**
 -  **Browse your liked videos and subscribed channel list**
+
 -  **Bypass antibot verification and access member-only content** (via cookies)
 
 <br>
@@ -81,6 +96,12 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - Mouse wheel to adjust volume
 - Adjustable playback speed
 - Selectable resolution for online videos
+- Star button to bookmark the currently playing video
+- Dedicated fullscreen button with three configurable fullscreen modes
+
+**Playlist Management**
+- Remove a selected item from the playlist via Settings — without affecting the original source
+- Chrome extension **Add to JTP playlist** queues a video to the end of the current playlist without changing the active source
 
 
 **System Integration & Convenience**

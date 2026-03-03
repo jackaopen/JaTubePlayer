@@ -41,7 +41,23 @@ class google_auth_control(object):
         self.Fernet_encryptor = Ferner_encrptor(os.path.join(current_dir,'user_data'),ctk_messagebox=ctk_messagebox)
         webbrowser.register('chrome_app', None, custom_chrome())
 
-
+    def refresh_cred(self,cred:Credentials)->Credentials|None:
+        '''
+        Refresh the Google OAuth2 credentials if they are expired and have a refresh token.
+        Args:
+            cred (Credentials): The Google OAuth2 credentials to be refreshed.
+        Note:
+            This func will save the refreshed credentials
+        '''
+        
+        if cred.expired and cred.refresh_token:
+            try:
+                cred.refresh(Request())
+                self.Fernet_encryptor.encrypt_cred(cred)
+                return cred
+            except Exception as e:
+                self.ctk_messagebox.showerror(f'JaTubePlayer {self.ver}',f'Failed to refresh Google credentials: {e}')
+                return None
 
     def load_token_from_env(self)->Credentials|None:
         '''
@@ -68,7 +84,7 @@ class google_auth_control(object):
         except FileNotFoundError:
             return None
         except Exception as e:
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {self.ver}', msg=str(e), duration='short', icon='')
+            self.ctk_messagebox.showerror(f'JaTubePlayer {self.ver}',f'Failed to load Google credentials: {e}')
             return None
     
 
@@ -85,22 +101,22 @@ class google_auth_control(object):
         try:
 
             if cred:
-                if not cred.expired:
-
+                if cred.expired:cred = self.refresh_cred(cred)
+                if cred:
                     #refresh not needed and get userinfo
                     re = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',headers={'Authorization': f'Bearer {cred.token}'})
                     userinfo = re.json()
                     self.log_handle('no refresh')
                     if 'error_description' in userinfo:
                         err_msg = userinfo['error_description']
-                        ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {self.ver}', msg=f'got some problem:{err_msg}\n try to login again!', duration='short', icon='')
+                        self.ctk_messagebox.showerror(f'JaTubePlayer {self.ver}',f'got some problem:{err_msg}\n try to login again!')
                         return None
                     else:
                         return userinfo
                 else:return None
             else:return None
         except Exception as e:
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {self.ver}', msg=str(e), duration='short', icon='')
+            self.ctk_messagebox.showerror(f'JaTubePlayer {self.ver}',f'Failed to get Google user info: {e}')
             return None
 
 

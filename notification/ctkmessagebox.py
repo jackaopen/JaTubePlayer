@@ -1,15 +1,34 @@
-from CTkMessagebox import CTkMessagebox
-import queue,time
+from CTkMessagebox import CTkMessagebox, ctkmessagebox
+import queue,time,os,sys,subprocess,threading
+
+
+
 
 class ctk_messagebox(object):
     '''
     A wrapper for CTkMessagebox to make it thread-safe
     if other moduels want to use CTkMessagebox, they should have a root first
     '''
-    def __init__(self,master) -> None:
+    def __init__(self,
+                 master:object,
+                 _internal_path:str) -> None:
         self.master = master
         self.queue = queue.Queue()
         self.process_queue()
+        self._info_wav  = os.path.join(_internal_path, "info.wav")
+        self._error_wav = os.path.join(_internal_path, "err.wav")
+        self._warn_wav  = os.path.join(_internal_path, "warn.wav")
+
+    def _play(self, path:str) -> None:
+        if not os.path.isfile(path):
+            return
+        if sys.platform == "win32":
+            import winsound
+            winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC)
+        else:
+            # Linux: aplay (ALSA); macOS: afplay
+            cmd = ["afplay", path] if sys.platform == "darwin" else ["aplay", "-q", path]
+            threading.Thread(target=subprocess.call, args=(cmd,), daemon=True).start()
     
     def process_queue(self):
         try:
@@ -22,20 +41,39 @@ class ctk_messagebox(object):
         self.master.after(20, self.process_queue)
 
     def showerror(self,title:str,message:str) -> None:
-        self.queue.put(lambda: CTkMessagebox(title=title,message=message,icon="cancel"))
-
+        self._play(self._error_wav)
+        def _show():
+            dlg = CTkMessagebox(title=title,message=message,icon="cancel")
+            try: dlg.focus_force()
+            except: pass
+        self.queue.put(_show)
+        
     def showinfo(self,title:str,message:str) -> None:
-        self.queue.put(lambda: CTkMessagebox(title=title,message=message,icon="info"))
+        self._play(self._info_wav)
+        def _show():
+            dlg = CTkMessagebox(title=title,message=message,icon="info")
+            try: dlg.focus_force()
+            except: pass
+        self.queue.put(_show)
 
     def showwarning(self,title:str,message:str) -> None:
-        self.queue.put(lambda: CTkMessagebox(title=title,message=message,icon="warning"))
+        self._play(self._warn_wav)
+        def _show():
+            dlg = CTkMessagebox(title=title,message=message,icon="warning")
+            try: dlg.focus_force()
+            except: pass
+        self.queue.put(_show)
 
     def askquestion(self,title:str,message:str) -> None:
         res = None
         def _ask():
             nonlocal res
-            res = CTkMessagebox(title=title,message=message,icon="question",
-            option_1="Yes",option_2="No").get()
+            self._play(self._info_wav)
+            dlg = CTkMessagebox(title=title,message=message,icon="question",
+            option_1="Yes",option_2="No")
+            try: dlg.focus_force()
+            except: pass
+            res = dlg.get()
         self.queue.put(_ask)
         while res is None:
             self.master.update()
@@ -45,8 +83,12 @@ class ctk_messagebox(object):
         res = None
         def _ask():
             nonlocal res
-            res = CTkMessagebox(title=title,message=message,icon="question",
-            option_1="OK",option_2="Cancel").get()
+            self._play(self._info_wav)
+            dlg = CTkMessagebox(title=title,message=message,icon="question",
+            option_1="OK",option_2="Cancel")
+            try: dlg.focus_force()
+            except: pass
+            res = dlg.get()
         self.queue.put(_ask)
         while res is None:
             self.master.update()
@@ -57,6 +99,7 @@ class ctk_messagebox(object):
         res = None
         def _ask():
             nonlocal res
+            self._play(self._info_wav)
             res = CTkMessagebox(title=title,message=message,icon="question",
             option_1="Yes",option_2="No").get()
         self.queue.put(_ask)
@@ -69,8 +112,12 @@ class ctk_messagebox(object):
         res = None
         def _ask():
             nonlocal res
-            res = CTkMessagebox(title=title,message=message,icon="question",
-            option_1="Yes",option_2="No",option_3="Cancel").get()
+            self._play(self._info_wav)
+            dlg = CTkMessagebox(title=title,message=message,icon="question",
+            option_1="Yes",option_2="No",option_3="Cancel")
+            try: dlg.focus_force()
+            except: pass
+            res = dlg.get()
         self.queue.put(_ask)
         while res is None:
             self.master.update()
@@ -81,8 +128,12 @@ class ctk_messagebox(object):
         res = None
         def _ask():
             nonlocal res
-            res = CTkMessagebox(title=title,message=message,icon="question",
-            option_1="Retry",option_2="Cancel").get()
+            self._play(self._info_wav)
+            dlg = CTkMessagebox(title=title,message=message,icon="question",
+            option_1="Retry",option_2="Cancel")
+            try: dlg.focus_force()
+            except: pass
+            res = dlg.get()
         self.queue.put(_ask)
         while res is None:
             self.master.update()
@@ -97,10 +148,13 @@ class ctk_messagebox(object):
         res = None
         def _ask():
             nonlocal res
-            res = CTkMessagebox(title=title,message=message,icon="cancel").get()
+            self._play(self._error_wav)
+            dlg = CTkMessagebox(title=title,message=message,icon="cancel")
+            try: dlg.focus_force()
+            except: pass
+            res = dlg.get()
         self.queue.put(_ask)
         while res is None:
             self.master.update()
             time.sleep(0.02)
         return 
-    

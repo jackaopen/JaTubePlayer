@@ -19,6 +19,13 @@
         "volume_down": "<ctrl>+<shift>+<down>",
         "toggle_minimize": "<ctrl>+<shift>+m"
     },
+    "cache":{
+        "cache_secs" :80,
+        "demuxer_max_bytes" :512,
+        "demuxer_max_back_bytes":256,
+        "cache_pause_wait": 3,
+        "audio_wait_open":1
+    },
     "client_secret_path": "",
     "cookie_path": "",
     "vercheck": false,
@@ -32,5 +39,8 @@
     "enable_drag_and_drop": true,
     "enable_discord_presence": true,
     "discord_presence_show_playing": false,
-    "show_cache": true
+    "show_cache": true,
+    "hover_fullscreen" : true,
+    "download_path": "[player]/user_data/downloaded_file",
+    "fullscreenmode":0
 }

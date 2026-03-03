@@ -4,7 +4,6 @@ from tkinter import BooleanVar
 from tkinter import messagebox
 import time,threading
 import customtkinter as ctk
-from notification.ctkmessagebox import ctk_messagebox
 import queue
 
 cancel_download = threading.Event()
@@ -15,31 +14,32 @@ def download_to_local(res:str,
                       cookies_dir:str,
                       yt_dlp:object,
                       target_vid_url:str,
-                      playing_vid_mode:int,
-                      target_playlisttitle:str,
+                      title:str,
+                      download_path:str,
                       current_dir:str,
                       icondir:str,
-                      info_dict:dict,
                       ver:str,
-                      chrome_extension_url:str,
                       root:ctk.CTkToplevel,
                       ffmpeg:object,
                       ytdlp_log_handle:object,
                       deno_path:str,
                       is_downloading:BooleanVar,
-                      ctk_messagebox:object):
+                      ctk_messagebox:object,
+                      ):
     
     '''
-    vid_url for yt vids, please just give URL
-    info_dict (playing vid dict ) for chrome extension vids
-
-    Note the function will choose vid_url first
-    ctk_messagebox is the ctk_messagebox object from the main window
+    pass the URL and title 
+    Note the vid should not be a live stream, the function will NOT check  if it is live
+    mode 0: audio only
+    mode 1: video + audio
     '''
     try:is_downloading.set(True)
     except:pass
     
     def _pre_download_cleanup():
+        if not os.path.exists(os.path.join(current_dir,'user_data','downloaded_file')):
+            os.makedirs(os.path.join(current_dir,'user_data','downloaded_file'))
+            
         try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
         except:pass
         try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
@@ -91,127 +91,117 @@ def download_to_local(res:str,
         
     def _start_download():
         global cancel_download,ytdlp_killed
+        nonlocal download_path
         cancel_download.clear()
         ytdlp_killed.clear()
-        
-        if playing_vid_mode != 3:
-            try:
-                opt = {'quiet': True,
-                    'format': "best",
-                    'skip_download':True,
-                    "extract_flat": True,
-                    'logger': ytdlp_log_handle
-                    }
-                if cookies_dir:
-                    opt['cookiefile'] = cookies_dir   
-                with yt_dlp.YoutubeDL(opt) as ydl:info_dict_download = ydl.extract_info(target_vid_url , download=False)
-            except:
-                info_dict_download = {}
-                info_dict_download['live_status'] = ''
-        else:
-            info_dict_download = info_dict
 
-        if info_dict_download.get('live_status') != 'is_live':
-            if target_vid_url != None or playing_vid_mode == 3:
+        
+
+        
+        try:
+            better_name = re.sub(r'[\\/:*?"<>|#]', ' ', title)
+            main_label.configure(state='normal')
+            main_label.delete('0.0', 'end')
+            main_label.insert('0.0', f"Downloading: {title}")
+            main_label.configure(state='disabled')
+            if mode == 0:
+                if download_path == '[player]/user_data/downloaded_file':
+                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}')
+                else:download_path = os.path.join(download_path,f'{better_name}')
+                down_tdl_opt = {
+                            'outtmpl':download_path,
+                            'format' : 'bestaudio/best',
+                            'progress_hooks': [progress_hook],
+                            'logger': ytdlp_log_handle,
+                            'postprocessors': [{
+                            'key': 'FFmpegExtractAudio',  # Extract audio after download
+                            'preferredcodec': 'mp3',  
+                            'preferredquality': '192'  
+                            }],'ignore_no_formats_error': True,
+                            'js-runtimes':f'deno:{deno_path}'    
+    
+                            }  
+                if cookies_dir:
+                    down_tdl_opt['cookiefile'] = cookies_dir 
+                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                
+            else:
+
+                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                down_tdl_opt = {
+                            'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'),
+                            'format' : f'bestvideo[height<={res}]',
+                            'progress_hooks': [progress_hook],
+                            'ignore_no_formats_error': True,
+                            'logger': ytdlp_log_handle,
+                            'js-runtimes':f'deno:{deno_path}'
+        
+
+                            }
+                
+                if cookies_dir:
+                    down_tdl_opt['cookiefile'] = cookies_dir 
+                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                down_tdl_opt = {
+                            'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
+                            'format' : 'bestaudio',
+                            'progress_hooks': [progress_hook],
+                            'ignore_no_formats_error': True,
+                            'logger': ytdlp_log_handle,
+                            'js-runtimes':f'deno:{deno_path}'
+                            }    
+                if cookies_dir:
+                    down_tdl_opt['cookiefile'] = cookies_dir   
+                if cancel_download.is_set():return
+                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+
                 try:
-                    better_name = re.sub(r'[\\/:*?"<>|#]', ' ', target_playlisttitle if playing_vid_mode != 3 else info_dict["title"])
+                    try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
+                    except:pass
+                    bar.place_forget()
                     main_label.configure(state='normal')
                     main_label.delete('0.0', 'end')
-                    main_label.insert('0.0', f"Downloading: {target_playlisttitle if playing_vid_mode != 3 else info_dict['title']}")
+                    main_label.insert('0.0', f"processing video and audio...")
                     main_label.configure(state='disabled')
-                    if mode == 0:
-                        down_tdl_opt = {
-                                    'outtmpl':os.path.join(current_dir,'user_data','downloaded_file',f"{better_name}.mp3"),
-                                    'format' : 'bestaudio/best',
-                                    'progress_hooks': [progress_hook],
-                                    'logger': ytdlp_log_handle,
-                                    'postprocessors': [{
-                                    'key': 'FFmpegExtractAudio',  # Extract audio after download
-                                    'preferredcodec': 'mp3',  # Convert it to MP3
-                                    'preferredquality': '192'  # Set quality (adjust as needed)
-                                    }],'ignore_no_formats_error': True,
-                                    'js-runtimes':f'deno:{deno_path}'    
-            
-                                    }  
-                        if cookies_dir:
-                            down_tdl_opt['cookiefile'] = cookies_dir 
-                        with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url if playing_vid_mode != 3 else chrome_extension_url)
-                        
+
+                    download_frame.update()
+
+                    if download_path == '[player]/user_data/downloaded_file':
+                        download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4')
                     else:
+                        download_path = os.path.join(download_path,f'{better_name}.mp4')
+                    ffmpeg.output(vid,aud,
+                                download_path,
+                                vcodec='copy', 
+                                acodec='aac',
+                                audio_bitrate='192k',
+                                ).run()
+                    
+                except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
+                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                main_label.configure(state='normal')
+                main_label.delete('0.0', 'end')
+                main_label.insert('0.0', f"finished!")
+                main_label.configure(state='disabled')
 
-                        if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                        if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-                        down_tdl_opt = {
-                                    'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'),
-                                    'format' : f'bestvideo[height<={res}]',
-                                    'progress_hooks': [progress_hook],
-                                    'ignore_no_formats_error': True,
-                                    'logger': ytdlp_log_handle,
-                                    'js-runtimes':f'deno:{deno_path}'
-               
+            ToastNotification().notify(app_id="JaTubePlayer", 
+                title=f'JaTubePlayer {ver} Download', 
+                msg=f'Downloaded : {better_name}', 
+                duration='short', 
+                icon = icondir)
+        except yt_dlp.utils.DownloadCancelled:
+            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download cancelled : {better_name}', duration='short', icon=icondir)
+        except Exception as e:
+            print(e)
+            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{e}', duration='short', icon=icondir)
+        except yt_dlp.utils.DownloadError as de:
+            print(de)
+            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{de}', duration='short', icon=icondir)
 
-                                    }
-                        
-                        if cookies_dir:
-                            down_tdl_opt['cookiefile'] = cookies_dir 
-                        with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url if playing_vid_mode != 3 else chrome_extension_url)
-                        down_tdl_opt = {
-                                    'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
-                                    'format' : 'bestaudio',
-                                    'progress_hooks': [progress_hook],
-                                    'ignore_no_formats_error': True,
-                                    'logger': ytdlp_log_handle,
-                                    'js-runtimes':f'deno:{deno_path}'
-                                    }    
-                        if cookies_dir:
-                            down_tdl_opt['cookiefile'] = cookies_dir   
-                        if cancel_download.is_set():return
-                        with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url if playing_vid_mode != 3 else chrome_extension_url)
-                        vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                        aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-
-                        try:
-                            try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
-                            except:pass
-                            bar.place_forget()
-                            main_label.configure(state='normal')
-                            main_label.delete('0.0', 'end')
-                            main_label.insert('0.0', f"processing video and audio...")
-                            main_label.configure(state='disabled')
-
-                            download_frame.update()
-                            ffmpeg.output(vid,aud,
-                                        os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'),
-                                        vcodec='copy', 
-                                        acodec='aac',
-                                        audio_bitrate='192k',
-                                        ).run()
-                            
-                        except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
-                        os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                        os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-                        main_label.configure(state='normal')
-                        main_label.delete('0.0', 'end')
-                        main_label.insert('0.0', f"finished!")
-                        main_label.configure(state='disabled')
-
-                    ToastNotification().notify(app_id="JaTubePlayer", 
-                        title=f'JaTubePlayer {ver} Download', 
-                        msg=f'Downloaded : {better_name}', 
-                        duration='short', 
-                        icon = icondir)
-                except yt_dlp.utils.DownloadCancelled:
-                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download cancelled : {better_name}', duration='short', icon=icondir)
-                except Exception as e:
-                    print(e)
-                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{e}', duration='short', icon=icondir)
-                except yt_dlp.utils.DownloadError as de:
-                    print(de)
-                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{de}', duration='short', icon=icondir)
-            else:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg='Select a video first!', duration='short', icon=icondir)
-
-        else:
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg='you cant download a live stream!', duration='short', icon=icondir)
         time.sleep(1)
         try:is_downloading.set(False)
         except:pass
@@ -339,7 +329,7 @@ if __name__ == "__main__":
         target_playlisttitle="Test Download",
         current_dir=current_dir,
         icondir="",
-        info_dict={},
+        title="Test Video",
         ver="Test",
         chrome_extension_url="",
         root=test_root,
