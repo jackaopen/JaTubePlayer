@@ -118,6 +118,12 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 ---
 
+>**Warning**: There is a known problem that some videos may buffer slowly.
+> This might be related to mpv, EDL / DASH, or YouTube. 
+> If this happens, please reload the video. 
+> We are currently investigating the root cause and working on a solution.
+---
+
 ## 📖 Documentation
 
 **[📚 Complete GUI Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/HkiZya7YZl)** &nbsp;|&nbsp; **[🔑 API Setup Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/BybMxxzPZe)** &nbsp;|&nbsp; **[🧩 Extension Setup](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/By1q6Nzwbg)**
@@ -152,7 +158,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 </div>
 
-<br>
+
 
 
 ##  Author's Note
