@@ -120,7 +120,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 ## 📖 Documentation
 
-**[📚 Complete GUI Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/HJrhllGw-l)** &nbsp;|&nbsp; **[🔑 API Setup Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/BybMxxzPZe)** &nbsp;|&nbsp; **[🧩 Extension Setup](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/By1q6Nzwbg)**
+**[📚 Complete GUI Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/HkiZya7YZl)** &nbsp;|&nbsp; **[🔑 API Setup Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/BybMxxzPZe)** &nbsp;|&nbsp; **[🧩 Extension Setup](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/By1q6Nzwbg)**
 
 ---
 
