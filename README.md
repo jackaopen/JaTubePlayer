@@ -11,8 +11,8 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 > 🔒 **Privacy-First Architecture** — Your Google credentials and API keys are encrypted locally using **Fernet + DPAPI**.
 
 </div>
+<img width="1645" height="884" alt="螢幕擷取畫面 2026-03-02 163837" src="https://github.com/user-attachments/assets/95ae727d-1a68-4211-a3a2-b5c79c2a32ea" />
 
-<img width="1318" height="710" alt="螢幕擷取畫面 2026-02-06 015335" src="https://github.com/user-attachments/assets/d6d55326-0634-42fb-b1a1-cdad71a3c147" />
 
 
 ## Features
