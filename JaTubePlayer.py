@@ -1,11 +1,12 @@
+'''
+THIS FILE IS FOR LINUX ONLY !!!!!
+'''
 import time
-from types import NoneType
-
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
 from tkinter import *
-import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,asyncio,win32gui
+import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,asyncio
 from PIL import Image, ImageTk 
 from random import shuffle
 import googleapiclient.errors
@@ -27,17 +28,12 @@ from utils.get_media_info import get_info
 
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
-
-from ui.blur_for_winsys import blur
-
 from system.tray import Playertray
-from system.dnd_winsys import *
 from system.keyboard import *
 from system.presence import DiscordPresence
+from system.dnd_winsys import DropHandler
 
 _apply_google_auth_patch()
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
-
 
 
 
@@ -60,11 +56,24 @@ root = ctk.CTk()
 ver='2.2'
 root.title(f'JaTubePlayer {ver} by Jackaopen')
 root.geometry('1320x680')
-root.iconbitmap(icondir)
-hwnd = win32gui.FindWindow(None, root.title())
-tkinter_scaling = get_window_dpi(hwnd)/1.25 # 1.25 is 100% scaling
 
 
+root_hwnd = root.winfo_id()
+tkinter_scaling = 1.0  # default scaling for Linux
+
+def find_window_hwnd(win):
+    return win.winfo_id()
+
+_icon_photo_cache = []
+def set_window_icon(win):
+    try:
+        img = Image.open(icondir)
+        photo = ImageTk.PhotoImage(img)
+        _icon_photo_cache.append(photo)
+        win.iconphoto(True, photo)
+    except Exception:
+        pass
+set_window_icon(root)
 
 
 ui_queue = queue.Queue()
@@ -324,12 +333,7 @@ finish_break = True
 blur_window = tk.BooleanVar()
 blur_window.set(CONFIG.get('blur'))
 
-if blur_window.get():blur(hwnd, Dark=True, Acrylic=True)  
-
-'''
-win32gui.FindWindow(class_name, window_name)
-    class_name → we pass None → “I don’t care about the class; match any class.”
-    window_name → we pass root.title() → “find the window whose title is exactly this text.”'''
+# blur not supported on Linux
 
 
 def get_selected_vid(event=None):
@@ -475,9 +479,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
         info.geometry('600x500')
         info.attributes('-topmost','true')
         info.update()
-        if blur_window.get():root.after(200,lambda:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True))
-        
-        root.after(200,lambda:info.iconbitmap(icondir))
+        root.after(200, lambda: set_window_icon(info))
         def leave():
             root.attributes('-topmost','false')
             info.destroy()
@@ -606,7 +608,7 @@ def setting_frame():
         if setting and setting.winfo_exists():
             setting.deiconify()
             setting.lift()
-            setting.iconbitmap(icondir) # Ensure icon is set even when window already exists
+            set_window_icon(setting) # Ensure icon is set even when window already exists
         else: 
             raise Exception("Settings window does not exist")
     except:
@@ -619,8 +621,8 @@ def setting_frame():
         formats.set(-1)
         #setting.resizable(False, False)
         setting_closed = False
-        root.after(800, lambda: (setting.lift(), setting.iconbitmap(icondir)))
-        if blur_window.get():blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True)
+        root.after(800, lambda: (setting.lift(), set_window_icon(setting)))
+        # blur not supported on Linux
 
         setting_tab = ctk.CTkTabview(setting, width=700, height=500,fg_color='#242424')
         setting_tab.grid(row=0, column=0, padx=0, pady=20, sticky="nsew")
@@ -1187,23 +1189,7 @@ def setting_frame():
             global blur_window
             CONFIG['blur'] = blur_window.get()
             save_config()
-            try:
-                if blur_window.get():
-                    blur(hwnd, Dark=True, Acrylic=True) 
-                    blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True)
-                    try:blur(win32gui.FindWindow(None,log_.title()), Dark=True, Acrylic=True)
-                    except:pass
-                    try:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True)
-                    except:pass
-                else:
-                    blur(hwnd,disable=True)
-                    blur(win32gui.FindWindow(None,setting.title()), disable=True)
-                    try:blur(win32gui.FindWindow(None,log_.title()), disable=True)
-                    except:pass
-                    try:blur(win32gui.FindWindow(None,info.title()), disable=True)
-                    except:pass
-            except Exception as e:
-                log_handle(content=str(e))    
+            # blur not supported on Linux
                 
         def max_resolution_select(event=None):
             maxresolution.set(int(maxresolutioncombobox.get()))
@@ -2398,11 +2384,9 @@ def show_mpv_log():
         log_.resizable(True, True)
         log_.geometry('800x400')
         log_.minsize(400, 200)
-        log_.iconbitmap(icondir)
+        set_window_icon(log_)
         log_.attributes('-topmost', 'true')
-
-        if blur_window.get():
-            root.after(200, lambda: blur(win32gui.FindWindow(None, log_.title()), Dark=True, Acrylic=True))
+        # blur not supported on Linux
 
         def leave():
             root.attributes('-topmost', 'false')
@@ -3373,7 +3357,6 @@ def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
             if player.duration != None:
                 if paused == False:
                     player.pause = True
-                    smtc.set_paused()
                     pauseStr.set('▶')
                     pausebutton.update()
                     paused = True
@@ -3382,9 +3365,8 @@ def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
                     player.pause = False
                     if playing_vid_info_dict:
                         if playing_vid_info_dict.get('live_status') == 'is_live':
-                            player.seek(player.duration, reference='absolute')# move to live point
+                            player.seek(player.duration, reference='absolute')
                     pauseStr.set('||')
-                    smtc.set_playing()
                     pausebutton.update()
                     paused = False
     except:
@@ -3636,12 +3618,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                     log_handle(content=f"Error inserting title: {e}")
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
                                 
-                                ui_queue.put(lambda: smtc.update_media_info(
-                                    title = playing_vid_info_dict['title'],
-                                    artist = playing_vid_info_dict['uploader'],
-                                    album = 'JaTubePlayer',
-                                    thumbnail_url = playing_vid_info_dict['thumbnail']
-                                ))
+                                pass  # SMTC not supported on Linux
                                 if enable_discord_presence.get():
                                     try:
                                         if discord_presence_show_playing.get():
@@ -3726,16 +3703,7 @@ def load_thread():  ### add every try except to a new log system for next update
 
                                         if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
                                         else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}')) 
-                                        try:
-                                            ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
-                                                title = os.path.basename(cf),
-                                                artist = '-local file',
-                                                album = 'JaTubePlayer',
-                                                thumbnail_url = None
-
-                                            ))
-                                        except Exception as e:
-                                            log_handle(content=f"Error updating media info: {e}")    
+                                        pass  # SMTC not supported on Linux    
 
                                         if enable_discord_presence.get():
                                             try:
@@ -3920,8 +3888,6 @@ def onclose():
         if not messagebox.askokcancel(f'JaTubePlayer {ver}','A video is still downloading, are you sure to exit?'):
             return
     try:player.stop()
-    except:pass
-    try:smtc.destroy()
     except:pass
     try:discord_presence.close()
     except:pass
@@ -4491,10 +4457,6 @@ def create_mpv_player():
     if player:
         player.terminate()
         try:
-            smtc.destroy()
-        except:
-            pass
-        try:
             discord_presence.idle()
         except:
             pass
@@ -4529,17 +4491,13 @@ def init_star_vid_instance():
                                         deno_path=os.path.join(current_dir,'_internal','deno'),
                                         yt_dlp_log_handler=ytdlp_log_handler())
 
-def init_set_smtc():
-    smtc.next_song_fun = playnextsong
-    smtc.prev_song_fun = playprevsong
-    smtc.pause_fun = pause
-    smtc.iconpath = icondir
+def init_set_smtc(): pass  # SMTC not supported on Linux
 
 def init_set_dnd_handle():
     log_handle(content="init dnd ... ")
     global dnd_handle
     log_handle(content=f"dnd {enable_drag_and_drop.get()}")
-    dnd_handle.enable_drop(hwnd, enable_drag_and_drop.get())
+    dnd_handle.enable_drop(root_hwnd, enable_drag_and_drop.get())
     dnd_handle.dnd_path_queue = dnd_path_queue
     dnd_handle.root = root
 
@@ -4720,10 +4678,7 @@ def check_keyboard():
         'toggle_minimize': lambda: threading.Thread(target=_toggle_minimize).start()
             }, root = root, icondir = icondir)
     
-def _init_load_smtc_obj():
-    global smtc
-    smtc = MediaControlOverlay()
-    init_set_smtc()
+def _init_load_smtc_obj(): pass  # SMTC not supported on Linux
 
 def _start_up_import():
     """Import heavy modules sequentially with timing"""
@@ -4786,16 +4741,7 @@ def _extra_startup_imports():
     init_ver_check()
     log_handle(content=f'ver_check: {time.time()-t:.3f}s')
 
-    from system.win_shortcut_control import ShortcutManager
-    shortcut_manager = ShortcutManager(app_user_model_id="Jackaopen.JaTubePlayer", main_path=os.path.abspath(__file__))
-    shortcut_manager.create()
-
-    # SMTC
-    t = time.time()
-    from system.SMTC import MediaControlOverlay
-    log_handle(content=f"smtc: {time.time()-t:.3f}s")
-    _init_load_smtc_obj()
-    log_handle(content=f'smtc fin')
+    # SMTC / ShortcutManager: Windows-only, skipped on Linux
 
     # Requests
     t = time.time()
@@ -4849,7 +4795,7 @@ def _start_up():
     log_handle(content=f'openwith fin')
 
    
-    init_set_dnd_handle()
+    # DnD not available on Linux
     log_handle(content=f'dnd fin')
     
     root.after(0, init_quick_startup)

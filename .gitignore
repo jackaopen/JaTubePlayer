@@ -10,6 +10,8 @@ __pycache__/
 _internal/yt_dlp
 _internal/*.exe
 _internal/*.dll
+*.dll
+*.so
 
 # User data
 user_data/*.enc

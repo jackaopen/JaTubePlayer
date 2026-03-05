@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────
+# JaTubePlayer v2.2 — Runtime dependencies
+# ─────────────────────────────────────────────────────────────────
+
+# Async HTTP (subscription/liked feed fetching)
+aiohappyeyeballs==2.6.1
+aiohttp==3.13.3
+aiosignal==1.4.0
+attrs==25.4.0
+frozenlist==1.8.0
+multidict==6.7.0
+propcache==0.4.0
+yarl==1.22.0
+
+# Encryption / security
+cffi==2.0.0
+cryptography==46.0.2
+pycparser==2.23
+rsa==4.9.1
+pyasn1==0.6.1
+pyasn1_modules==0.4.2
+
+# GUI
+customtkinter==5.2.2
+CTkMessagebox==2.7
+darkdetect==0.8.0
+sv_ttk==2.6.1
+pillow>=10,<=12
+
+# Media / player
+ffmpeg-python==0.2.0
+python-mpv==1.0.8
+mutagen==1.47.0
+lz4==4.4.5
+pycryptodomex==3.23.0
+curl_cffi==0.14.0
+
+# yt-dlp (bundled in _internal/ at runtime; listed here for dev environments)
+yt-dlp==2026.2.21
+
+# Web / Flask (Chrome extension server)
+blinker==1.9.0
+brotli==1.2.0
+click==8.3.1
+Flask==3.1.2
+flask-cors==6.0.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+Werkzeug==3.1.5
+
+# HTTP clients / utils
+certifi==2026.1.4
+charset-normalizer==3.4.4
+colorama==0.4.6
+httplib2==0.31.0
+idna==3.11
+PySocks==1.7.1
+requests==2.32.5
+six==1.17.0
+urllib3==2.6.3
+
+# Google API / OAuth
+cachetools==6.2.0
+google-api-core==2.25.2
+google-api-python-client==2.188.0
+google-auth==2.41.1
+google-auth-httplib2==0.3.0
+google-auth-oauthlib==1.2.4
+googleapis-common-protos==1.70.0
+oauthlib==3.3.1
+proto-plus==1.26.1
+protobuf==6.32.1
+requests-oauthlib==2.0.0
+uritemplate==4.2.0
+
+# Windows system integration
+pynput==1.8.1
+
+# Discord Rich Presence
+pypresence==4.6.1
+
+# Misc runtime
+packaging==25.0
+pyparsing==3.2.5
+typing_extensions==4.15.0
+websockets==16.0
+
+# ─────────────────────────────────────────────────────────────────
+# Build / packaging only  (not needed to run the app)
+# ─────────────────────────────────────────────────────────────────
+altgraph==0.17.5
+pefile==2024.8.26
+pyinstaller==6.18.0
+pyinstaller-hooks-contrib==2026.0
+setuptools==82.0.0
+

@@ -1,11 +1,28 @@
 
 from cryptography.fernet import Fernet
 import os
+import platform
 from google.oauth2.credentials import Credentials
 from notification.ctkmessagebox import ctk_messagebox
-import pywintypes
-import win32crypt
 import json
+
+IS_WINDOWS = platform.system() == "Windows"
+
+if IS_WINDOWS:
+    import pywintypes
+    import win32crypt
+
+def _os_protect(data: bytes) -> bytes:
+    """Wrap key bytes with OS-level user-scoped protection."""
+    if IS_WINDOWS:
+        return win32crypt.CryptProtectData(data)
+    return data  # Linux: rely on file permissions (chmod 600)
+
+def _os_unprotect(data: bytes) -> bytes:
+    """Unwrap key bytes with OS-level user-scoped protection."""
+    if IS_WINDOWS:
+        return win32crypt.CryptUnprotectData(data)[1]
+    return data
 
 
 class Ferner_encrptor(object):
@@ -51,40 +68,46 @@ class Ferner_encrptor(object):
 
     def _create_cred_key(self):
         key = Fernet.generate_key()
-        bolb = win32crypt.CryptProtectData(key)
-        with open(os.path.join(self.user_data_dir,'fernet_cred_key.enc'),"wb") as f:
-            f.write(bolb)
+        blob = _os_protect(key)
+        path = os.path.join(self.user_data_dir, 'fernet_cred_key.enc')
+        with open(path, "wb") as f:
+            f.write(blob)
+        if not IS_WINDOWS:
+            os.chmod(path, 0o600)
 
     def _create_API_key(self):
         key = Fernet.generate_key()
-        bolb = win32crypt.CryptProtectData(key)
-        with open(os.path.join(self.user_data_dir,'fernet_API_key.enc'),"wb") as f:
-            f.write(bolb)
+        blob = _os_protect(key)
+        path = os.path.join(self.user_data_dir, 'fernet_API_key.enc')
+        with open(path, "wb") as f:
+            f.write(blob)
+        if not IS_WINDOWS:
+            os.chmod(path, 0o600)
         
 
     def _get_cred_key(self)->Fernet:
         try:
             with open(os.path.join(self.user_data_dir,'fernet_cred_key.enc'),"rb") as f:
-                bolb = f.read()
-            key = win32crypt.CryptUnprotectData(bolb)[1]
+                blob = f.read()
+            key = _os_unprotect(blob)
             return Fernet(key)
-        except pywintypes.error as e:
+        except Exception as e:
+            msg = e.strerror if hasattr(e, 'strerror') else str(e)
             self.ctk_messagebox.showerror_and_wait(title="JaTubePlayer",
-                                 message=f"FATAL ERROR: \nget credential key failed: {e.strerror}\nPlease delete the file fernet_cred_key.enc and restart the app")
-                                 
+                                 message=f"FATAL ERROR: \nget credential key failed: {msg}\nPlease delete the file fernet_cred_key.enc and restart the app")
             os._exit(1)
             
         
     def _get_API_key(self)->Fernet:
         try:
             with open(os.path.join(self.user_data_dir,'fernet_API_key.enc'),"rb") as f:
-                bolb = f.read()
-            key = win32crypt.CryptUnprotectData(bolb)[1]
+                blob = f.read()
+            key = _os_unprotect(blob)
             return Fernet(key)
-        except pywintypes.error as e:
-             
+        except Exception as e:
+            msg = e.strerror if hasattr(e, 'strerror') else str(e)
             self.ctk_messagebox.showerror_and_wait(title="JaTubePlayer",
-                                 message=f"FATAL ERROR: \nget API key failed: {e.strerror}\nPlease delete the file fernet_API_key.enc and restart the app")
+                                 message=f"FATAL ERROR: \nget API key failed: {msg}\nPlease delete the file fernet_API_key.enc and restart the app")
             os._exit(1)
                
     

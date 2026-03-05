@@ -10,13 +10,37 @@ from account.fernet_pubnew_class import Ferner_encrptor
 from notification.ctkmessagebox import ctk_messagebox
 
 
+import platform
+
+def _find_chrome() -> list:
+    """Return the Chrome/Chromium executable path for the current OS."""
+    if platform.system() == "Windows":
+        candidates = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        ]
+    else:  # Linux / macOS
+        candidates = [
+            "google-chrome",
+            "google-chrome-stable",
+            "chromium-browser",
+            "chromium",
+        ]
+    import shutil
+    for c in candidates:
+        if shutil.which(c) or (platform.system() == "Windows" and os.path.exists(c)):
+            return c
+    return None
+
 class custom_chrome:
     def open(self, url, new=0, autoraise=True):
         global chrome_process
-        chrome_process = subprocess.Popen([
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            f'--app={url}',
-        ])
+        chrome = _find_chrome()
+        if chrome:
+            chrome_process = subprocess.Popen([chrome, f'--app={url}'])
+        else:
+            # Fallback: open in default browser
+            webbrowser.open(url)
         return True
     
 
@@ -168,6 +192,28 @@ class google_auth_control(object):
                     scopes = ["https://www.googleapis.com/auth/youtube.readonly"
                               ,"https://www.googleapis.com/auth/userinfo.profile"]
                     flow = InstalledAppFlow.from_client_secrets_file(self.client_secret_path, scopes=scopes)
+
+                    try:
+                        html_file_path = os.path.join(self.current_dir,'_internal','google_login_suc_red_page.html')
+                        with open(html_file_path, 'r', encoding='utf-8') as f:
+                            html = f.read()
+                        credentials = flow.run_local_server(
+                            port=0,
+                            timeout_seconds=120,
+                            success_message=html,#changed the flow.py class _RedirectWSGIApp to support html success message
+                            browser='chrome_app'
+                            )
+
+                        self.Fernet_encryptor.encrypt_cred(credentials)
+                        if credentials:
+                            print("Google login successful.")
+                        else:
+                            print("Google login failed or was cancelled.")
+                        return credentials
+
+                    except Exception as e:
+                        self.log_handle(errtype='error', component='google_login', content=f'Google login failed: {e}')
+
                     
                     html_file_path = os.path.join(self.current_dir,'_internal','google_login_suc_red_page.html')
                     with open(html_file_path, 'r', encoding='utf-8') as f:
