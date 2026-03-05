@@ -53,7 +53,7 @@ else:
 
 
 
-os.environ["PATH"] = _internal_dir + os.pathsep + os.environ["PATH"]
+os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH"]
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
@@ -3532,6 +3532,20 @@ def load_thread():  ### add every try except to a new log system for next update
                                                                         cookie_path=cookies_dir)
                                 
                                 if final_url:
+                                    # Apply HTTP headers from yt-dlp before play so mpv forwards them
+                                    # to every nested request (segments, keys, variant playlists).
+                                    # Per research: use http_header_fields (--http-header-fields) as the
+                                    # high-level knob; do NOT use cookies here — headers only.
+                                    try:
+                                        http_headers = playing_vid_info_dict.get('http_headers', {})
+                                        if http_headers:
+                                            player.http_header_fields = [
+                                                f"{k}: {v}" for k, v in http_headers.items()
+                                            ]
+                                            log_handle(content=f"[headers] set {list(http_headers.keys())}")
+                                    except Exception as _he:
+                                        log_handle(content=f"[headers] failed to set: {_he}")
+
                                     player.play(final_url)
                                     subtitle_selection_idx.set(0)
                                     subtitle_namelist = ['No subtitles']
