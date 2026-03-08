@@ -1,4 +1,5 @@
 import json,os
+from tkinter import NO
 from .get_media_info import *
 import queue
 
@@ -82,7 +83,8 @@ class star_vid_handler:
                  vid_url:list,
                  playlisttitles:list,
                  playlist_channel:list,
-                 playlist_thumbnails:list
+                 playlist_thumbnails:list,
+                 loadingplaylist_flag=None
                  )->bool:
         '''
         Run this in thread to avoid blocking the main thread, it will clear the input lists and fill them with the starred videos info, and also put the info into the treeview_queue for updating the treeview in the main thread
@@ -105,6 +107,8 @@ class star_vid_handler:
         except Exception as e:
             self.yt_dlp_log_handler.info(f"Error listing starred videos: {e}")
             return False
+        if loadingplaylist_flag is not None:
+            loadingplaylist_flag = False
         return True
 
 

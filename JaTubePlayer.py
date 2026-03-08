@@ -1,6 +1,8 @@
 import time
 from types import NoneType
 
+from pyparsing import col
+
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
@@ -13,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
+import CTkColorPicker
 import ctypes
 ctk.set_appearance_mode("dark")
 
@@ -321,10 +324,11 @@ paused = False
 finish_break = True
 
 # ==== blur ====
+blur_hexColor = tk.StringVar()
 blur_window = tk.BooleanVar()
 blur_window.set(CONFIG.get('blur'))
-
-if blur_window.get():blur(hwnd, Dark=True, Acrylic=True)  
+blur_hexColor.set(CONFIG.get('blur_hexColor'))
+if blur_window.get():blur(hwnd, Dark=True, Acrylic=True, hexColor=blur_hexColor.get())  
 
 '''
 win32gui.FindWindow(class_name, window_name)
@@ -475,7 +479,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
         info.geometry('600x500')
         info.attributes('-topmost','true')
         info.update()
-        if blur_window.get():root.after(200,lambda:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True))
+        if blur_window.get():root.after(200,lambda:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True, hexColor=blur_hexColor.get()))
         
         root.after(200,lambda:info.iconbitmap(icondir))
         def leave():
@@ -620,7 +624,7 @@ def setting_frame():
         #setting.resizable(False, False)
         setting_closed = False
         root.after(800, lambda: (setting.lift(), setting.iconbitmap(icondir)))
-        if blur_window.get():blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True)
+        if blur_window.get():blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True, hexColor=blur_hexColor.get())
 
         setting_tab = ctk.CTkTabview(setting, width=700, height=500,fg_color='#242424')
         setting_tab.grid(row=0, column=0, padx=0, pady=20, sticky="nsew")
@@ -1189,11 +1193,11 @@ def setting_frame():
             save_config()
             try:
                 if blur_window.get():
-                    blur(hwnd, Dark=True, Acrylic=True) 
-                    blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True)
-                    try:blur(win32gui.FindWindow(None,log_.title()), Dark=True, Acrylic=True)
+                    blur(hwnd, Dark=True, Acrylic=True,hexColor=blur_hexColor.get()) 
+                    blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get())
+                    try:blur(win32gui.FindWindow(None,log_.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get())
                     except:pass
-                    try:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True)
+                    try:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get())
                     except:pass
                 else:
                     blur(hwnd,disable=True)
@@ -1435,6 +1439,28 @@ def setting_frame():
             CONFIG['fullscreenmode'] = fullscreenmode.get()
             save_config()
 
+        def set_gradient_color(default:bool=False):
+            global blur_hexColor
+            if not default:
+                color_picker = CTkColorPicker.AskColor(title="Choose gradient color")
+                color_picker.brightness_slider_value.set(50)
+
+                color_picker.update_colors()
+                color = color_picker.get()
+
+            else:
+                color = "#101010"
+            if color:
+                CONFIG['blur_hexColor'] = f"{color}60"
+                blur_hexColor.set(f"{color}60")
+                save_config()
+                try:
+                    switch_blur_window()
+                except Exception as e:
+                    log_handle(content=str(e))
+            else:messagebox.showinfo(f'JaTubePlayer {ver}','Cancelled!')
+
+        
         player_tab = setting_tab.add("Advanced Player setting")
         personal_playlist_tab = setting_tab.add("Personal playlist")
         download_tab = setting_tab.add("Download")
@@ -1784,6 +1810,17 @@ def setting_frame():
                                                 text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache,
                                           fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_show_cache)
+
+        # ── Blur Gradient Color ──
+        blur_gradient_name_label = ctk.CTkLabel(advanced_frame, text='Blur Gradient Color', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
+        blur_gradient_value_label = ctk.CTkLabel(advanced_frame, textvariable=blur_hexColor, font=('Arial', 12, 'bold'), text_color='#C8C8C8',
+                                                  fg_color='#1a1a1a', corner_radius=6, anchor='w', padx=8)
+        blur_gradient_choose_btn = ctk.CTkButton(advanced_frame, text='Choose Color', width=140,
+                                                  command=lambda: set_gradient_color(), 
+                                                  text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+        blur_gradient_default_btn = ctk.CTkButton(advanced_frame, text='Set Default', width=140,
+                                                   command=lambda: set_gradient_color(default=True),  
+                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # ── External Services Card ──
         external_services_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
@@ -2223,7 +2260,11 @@ def setting_frame():
         mpvlogbtn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
         enable_dnd_btn.grid(row=2, column=1, padx=8, pady=5, sticky="w")
         force_stop_loading_btn.grid(row=3, column=0, padx=(24, 8), pady=5, sticky="w")
-        show_cache_btn.grid(row=3, column=1, padx=8, pady=(5, 12), sticky="w")
+        show_cache_btn.grid(row=3, column=1, padx=8, pady=5, sticky="w")
+        blur_gradient_name_label.grid(row=4, column=0, padx=(24, 8), pady=(8, 2), sticky="w")
+        blur_gradient_value_label.grid(row=4, column=1, padx=(8, 24), pady=(8, 2), sticky="ew")
+        blur_gradient_choose_btn.grid(row=5, column=0, padx=(24, 8), pady=(2, 12), sticky="w")
+        blur_gradient_default_btn.grid(row=5, column=1, padx=8, pady=(2, 12), sticky="w")
 
         # ── External Services Card ──
         external_services_frame.grid(row=5, column=0, columnspan=2, padx=16, pady=(4, 10), sticky="ew")
@@ -2402,7 +2443,7 @@ def show_mpv_log():
         log_.attributes('-topmost', 'true')
 
         if blur_window.get():
-            root.after(200, lambda: blur(win32gui.FindWindow(None, log_.title()), Dark=True, Acrylic=True))
+            root.after(200, lambda: blur(win32gui.FindWindow(None, log_.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get()))
 
         def leave():
             root.attributes('-topmost', 'false')
@@ -2504,22 +2545,28 @@ def page_control(mode):
         else:messagebox.showerror(f'JaTubePlayer {ver}','Please init subsciption or like page first!')
 
 
-def get_sub_channel_thread(mode):
+def get_sub_channel_thread(page_control_mode:int):
+        '''
+        page_control_mode == 0:init and auto update sub list if required, 
+        page_control_mode == 1: next page, page_control_mode == 2: prev page
+
+        for page_control_mode ==1 and 2, check if inited , and load via sub_channel() function which load the json
+        '''
         global loadingplaylist,user_playlists_name,youtube,user_playlists_id,vid_url,selected_song_number,youtubeAPI,page_num
         loadingplaylist = True
         usestoreddata = False
         stop = False## for auto sub update and check if list is empty or not
-        if mode !=0 and page_num == 0:# check if inited first
+        if page_control_mode !=0 and page_num == 0:# check if inited first
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please init the like page first'))
         else:  
-            if mode == 0:
+            if page_control_mode == 0:
                 usestoreddata = messagebox.askyesno(f'JaTubePlayer {ver}','login with stored data?')
                 if not usestoreddata:
                     stop = True
                     ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','please go to "setting > Personal playlist" to login the desired account\n then go to "setting > Personal playlist" to update the list\n then try again!'))
 
-            if usestoreddata and mode == 0 or mode != 0:#init or page change
-                if auto_sub_refresh.get() and mode == 0:#auto update sub list, if required, only when init
+            if usestoreddata and page_control_mode == 0 or page_control_mode != 0:#init or page change
+                if auto_sub_refresh.get() and page_control_mode == 0:#auto update sub list, if required, only when init
                     ui_queue.put(lambda: modetextbox.configure(state='normal'))
                     ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
                     ui_queue.put(lambda: modetextbox.insert(tk.END, f"Subscribed\n⏳ updating..."))
@@ -2543,12 +2590,12 @@ def get_sub_channel_thread(mode):
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
             try:
                 if not stop:
-                    if mode == 0:
+                    if page_control_mode == 0:
                         page_num = 1
-                    elif mode == 1:
+                    elif page_control_mode == 1:
                         if page_num == len(channel)//50+1:page_num = 1
                         else:page_num += 1
-                    elif mode == 2:
+                    elif page_control_mode == 2:
                         if page_num == 1: page_num = len(channel)//50+1
                         else:page_num -= 1
 
@@ -2621,7 +2668,7 @@ def get_sub_channel_thread(mode):
             loadingplaylist = False
 
 @check_internet
-def get_sub_channel(mode,parent=root):
+def get_sub_channel(page_control_mode:int,parent=root):
     global playing_vid_mode,credentials
     if client_secret_path :
         log_handle(content=str(client_secret_path))
@@ -2634,7 +2681,7 @@ def get_sub_channel(mode,parent=root):
                     else:return
                 if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
                     playing_vid_mode = 0
-                    thread = threading.Thread(daemon = True,target=lambda:get_sub_channel_thread(mode))
+                    thread = threading.Thread(daemon = True,target=lambda:get_sub_channel_thread(page_control_mode))
                     thread.start()
         
             else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting')
@@ -2643,9 +2690,9 @@ def get_sub_channel(mode,parent=root):
 
 
 
-def get_liked_vid_thread(mode):
-        global youtubeAPI,credentials,page_num,liked_vid_url,vid_url,selected_song_number,nextpagetoken,loadingplaylist,youtube
-        if mode !=0 and page_num == 0:
+def get_liked_vid_thread(page_control_mode:int):
+        global youtubeAPI,credentials,page_num,liked_vid_url,vid_url,selected_song_number,loadingplaylist,youtube
+        if page_control_mode !=0 and page_num == 0:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please init the like page first'))
         else:
             selected_song_number = None
@@ -2660,7 +2707,7 @@ def get_liked_vid_thread(mode):
                 playlist_channel.clear()
                 stop = False#for updating the like list , both auto and user cancel auto load
                 
-                if mode == 0:#mode 0 init, mode 1 next page, mode 2 previous page
+                if page_control_mode == 0:#mode 0 init, mode 1 next page, mode 2 previous page
                     log_handle(content=str(auto_like_refresh.get()))
                     if auto_like_refresh.get():
                         ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Liked', msg='Auto updating liked videos, please wait...', duration='short', icon=icondir)
@@ -2701,12 +2748,12 @@ def get_liked_vid_thread(mode):
 
                 
                 if not stop:
-                    if mode == 0:page_num = 1
-                    elif mode == 1 and page_num != 0:
+                    if page_control_mode == 0:page_num = 1
+                    elif page_control_mode == 1 and page_num != 0:
                         if page_num != len(liked_vid_url)//50+1:
                             page_num += 1
                         else: page_num = 1
-                    elif mode == 2 and page_num != 0:
+                    elif page_control_mode == 2 and page_num != 0:
                         if page_num != 1:
                             page_num -= 1
                         else: page_num = len(liked_vid_url)//50+1
@@ -2764,7 +2811,7 @@ def get_liked_vid_thread(mode):
             loadingplaylist = False
 
 @check_internet
-def get_liked_vid(mode):
+def get_liked_vid(page_control_mode:int ):
     global playing_vid_mode,credentials
     if client_secret_path :
         if os.path.exists(client_secret_path):
@@ -2776,7 +2823,7 @@ def get_liked_vid(mode):
                     else:return
                 if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
                     playing_vid_mode = 0
-                    thread = threading.Thread(daemon = True,target=lambda:get_liked_vid_thread(mode))
+                    thread = threading.Thread(daemon = True,target=lambda:get_liked_vid_thread(page_control_mode))
                     thread.start()
         
             else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting')
@@ -2786,8 +2833,6 @@ def get_liked_vid(mode):
 
 
 
-
-nextpagetoken = None
 
 
 
@@ -2809,11 +2854,11 @@ def get_user_playlists_thread(mode):#0 = normal fun, 1 = init fun
     except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
     try:
         global playlists
-        playlists = youtube.playlists().list(part='snippet', mine=True).execute()
+        playlists = youtube.playlists().list(part='snippet', mine=True,maxResults=500).execute()
     except:
         try:
             if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
-            playlists = youtube.playlists().list(part='snippet', mine=True).execute()
+            playlists = youtube.playlists().list(part='snippet', mine=True,maxResults=500).execute()
         except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
 
     try:
@@ -2858,8 +2903,13 @@ def get_user_playlists(mode):
 
 
 @check_internet
-def get_youtube_playlist_thread(playlistid_input = None): ###### get specifc info from the playlist that user choose
-    global loadingplaylist,vid_url,selected_song_number,nextpagetoken,playlistID
+def get_youtube_playlist_thread(playlistid_input = None): 
+    '''
+    playlistid_input is used for quick init function, it will directly use the playlist id from the input instead of the global playlistID variable, which is set when user select a playlist from the combobox
+    
+    '''
+    ###### get specifc info from the playlist that user choose
+    global loadingplaylist,vid_url,selected_song_number,playlistID
     loadingplaylist = True
     try:
         selected_song_number = None
@@ -2868,6 +2918,7 @@ def get_youtube_playlist_thread(playlistid_input = None): ###### get specifc inf
         playlist_channel.clear()
         playlist_thumbnails.clear()
         vid_url.clear()
+        nextpagetoken = None
 
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -3034,25 +3085,29 @@ def youtube_search(event=None):
 
 @check_internet
 def get_starred_vid(event=None):
-    global vid_url,playlisttitles,playlist_channel,playlist_thumbnails,insert_treeview_quene,star_vid_handle,selected_song_number,playing_vid_mode
-    selected_song_number = None
-    playing_vid_mode = 4
-    log_handle(content="start to get starred videos")
-    ui_queue.put(lambda: modetextbox.configure(state='normal'))
-    ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
-    ui_queue.put(lambda: modetextbox.insert(tk.END,f"Starred Videos"))
-    ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-    ui_queue.put(lambda: page_num_label.configure(text=''))
-    ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-    ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-    ui_queue.put(lambda:star_vid_handle.list_all(
-      
-            treeview_queue=insert_treeview_quene,
-            vid_url=vid_url,
-            playlisttitles=playlisttitles,
-            playlist_channel=playlist_channel,
-            playlist_thumbnails=playlist_thumbnails))
-          
+    global vid_url,playlisttitles,playlist_channel,playlist_thumbnails,insert_treeview_quene,star_vid_handle,selected_song_number,playing_vid_mode,loadingplaylist
+    if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
+        selected_song_number = None
+        playing_vid_mode = 4
+        loadingplaylist = True
+        log_handle(content="start to get starred videos")
+        ui_queue.put(lambda: modetextbox.configure(state='normal'))
+        ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
+        ui_queue.put(lambda: modetextbox.insert(tk.END,f"Starred Videos"))
+        ui_queue.put(lambda: modetextbox.configure(state='disabled'))
+        ui_queue.put(lambda: page_num_label.configure(text=''))
+        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        ui_queue.put(lambda:star_vid_handle.list_all(
+        
+                treeview_queue=insert_treeview_quene,
+                vid_url=vid_url,
+                playlisttitles=playlisttitles,
+                playlist_channel=playlist_channel,
+                playlist_thumbnails=playlist_thumbnails,
+                loadingplaylist_flag=loadingplaylist))
+        loadingplaylist = False
+            
 
 def switch_starred_vid(event=None):
     global star_vid_handle,selected_song_number,playing_vid_mode,vid_url,playlist_thumbnails,playlisttitles,playlist_channel,cookies_dir,playing_vid_info_dict
@@ -4379,7 +4434,7 @@ def init_read_dlp():
         
 
 def init_read_config():
-    global cookies_dir,client_secret_path,auto_like_refresh,auto_sub_refresh,auto_check_ver,save_history,maxresolution,listen_chromeextension_thread,enable_drag_and_drop,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open
+    global cookies_dir,client_secret_path,auto_like_refresh,auto_sub_refresh,auto_check_ver,save_history,maxresolution,listen_chromeextension_thread,enable_drag_and_drop,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open,blur_hexColor
     cookies_dir= CONFIG['cookie_path']
     client_secret_path = CONFIG['client_secret_path']
     log_handle(content=f"cookie {cookies_dir}")
@@ -4423,6 +4478,7 @@ def init_read_config():
         cache_pause_wait.set(CONFIG['cache']['cache_pause_wait'])
         audio_wait_open.set(CONFIG['cache']['audio_wait_open'])
         fullscreenmode.set(CONFIG['fullscreenmode'])
+        blur_hexColor.set(CONFIG.get('blur_hexColor', '#10101000'))
 
         if CONFIG['enable_discord_presence']:
             enable_discord_presence.set(True)
@@ -4436,7 +4492,7 @@ def init_read_config():
         else:discord_presence_show_playing.set(False)
 
         
-
+    
 
         maxresolution.set(CONFIG["max_resolution"])
         setting_run_chrome_extension_server.set(CONFIG['run_flask'])
