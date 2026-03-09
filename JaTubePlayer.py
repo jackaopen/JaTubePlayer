@@ -1,4 +1,5 @@
 import time
+from turtle import fillcolor
 from types import NoneType
 
 from pyparsing import col
@@ -15,7 +16,6 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
-import CTkColorPicker
 import ctypes
 ctk.set_appearance_mode("dark")
 
@@ -27,7 +27,7 @@ from utils.download_to_local import download_to_local
 from utils.check_internet import *
 from utils.check_internet import check_internet
 from utils.get_media_info import get_info
-
+from utils.color_picker.ctk_color_picker import AskColor    
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
 
@@ -60,7 +60,7 @@ os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-ver='2.2'
+ver='2.3'
 root.title(f'JaTubePlayer {ver} by Jackaopen')
 root.geometry('1320x680')
 root.iconbitmap(icondir)
@@ -170,6 +170,15 @@ def dump(filename,content):
 Frame_for_mpv = tk.Frame(root)
 Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.664)
 Frame_for_mpv.bind('<Button-1>',lambda event :pause(1))
+motto_label = ctk.CTkLabel(Frame_for_mpv,
+                           text="Uninterrupted,\njust how you like it",
+                           font=('Brush Script MT',50),
+                           text_color="#676767",
+                           bg_color='transparent',
+                           padx=20,
+                           pady=14,
+                           )
+motto_label.place(relx=0.5,rely=0.5,anchor='center')
 
 # ==== 播放器控制 ====
 player = None
@@ -1442,7 +1451,7 @@ def setting_frame():
         def set_gradient_color(default:bool=False):
             global blur_hexColor
             if not default:
-                color_picker = CTkColorPicker.AskColor(title="Choose gradient color")
+                color_picker = AskColor(title="Choose gradient color")
                 color_picker.brightness_slider_value.set(50)
 
                 color_picker.update_colors()
@@ -1451,8 +1460,8 @@ def setting_frame():
             else:
                 color = "#101010"
             if color:
-                CONFIG['blur_hexColor'] = f"{color}60"
-                blur_hexColor.set(f"{color}60")
+                CONFIG['blur_hexColor'] = color
+                blur_hexColor.set(color)
                 save_config()
                 try:
                     switch_blur_window()

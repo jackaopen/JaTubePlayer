@@ -39,11 +39,9 @@ def get_info(yt_dlp:object,
     For single-stream or live, final_url is the direct stream URL.
     '''
     fmt = (
-    f"(bv*[height<={maxres}][protocol=https][ext=mp4][vcodec^=avc1]"
-    f"+ba[protocol=https][ext=m4a][acodec^=mp4a])"
-    f"/(bv*[height<={maxres}][protocol=https]+ba[protocol=https])"
-    f"/(b[height<={maxres}][protocol=https])"
-    f"/(bv*[height<={maxres}]+ba/b[height<={maxres}])"
+    f"(bv*[height<={maxres}][protocol=https]+ba[protocol=https][ext=m4a])"
+    f"/(bv*[height<={maxres}][protocol!=m3u8_native]+ba[protocol!=m3u8_native])"
+    f"/(bv*[height<={maxres}][protocol!=m3u8_native]+ba[protocol!=m3u8_native])/b[height<={maxres}]"
     )
 
 
@@ -54,7 +52,7 @@ def get_info(yt_dlp:object,
         'extract_flat': False,  
         'logger': log_handler,
         'format': fmt,
-        "extractor_args": {"youtube": {"player_client": ["default", "web_embedded", "android"]}},
+        "extractor_args": {"youtube": {"player_client": ["default", "web_embedded","tv"]}},
         'js_runtimes': {'deno': {'path': deno_path}},
         'remote_components': {'ejs:npm'},
     }
