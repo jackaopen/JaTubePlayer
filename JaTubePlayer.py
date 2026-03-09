@@ -170,6 +170,7 @@ def dump(filename,content):
 Frame_for_mpv = tk.Frame(root)
 Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.664)
 Frame_for_mpv.bind('<Button-1>',lambda event :pause(1))
+
 motto_label = ctk.CTkLabel(Frame_for_mpv,
                            text="Uninterrupted,\njust how you like it",
                            font=('Brush Script MT',50),
@@ -179,6 +180,7 @@ motto_label = ctk.CTkLabel(Frame_for_mpv,
                            pady=14,
                            )
 motto_label.place(relx=0.5,rely=0.5,anchor='center')
+motto_label.bind('<Button-1>',lambda event :pause(1))
 
 # ==== 播放器控制 ====
 player = None

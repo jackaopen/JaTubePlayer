@@ -39,10 +39,12 @@ def get_info(yt_dlp:object,
     For single-stream or live, final_url is the direct stream URL.
     '''
     fmt = (
-    f"(bv*[height<={maxres}][protocol=https]+ba[protocol=https][ext=m4a])"
-    f"/(bv*[height<={maxres}][protocol!=m3u8_native]+ba[protocol!=m3u8_native])"
-    f"/(bv*[height<={maxres}][protocol!=m3u8_native]+ba[protocol!=m3u8_native])/b[height<={maxres}]"
-    )
+    f"(bv*[height<={maxres}][protocol!=m3u8][protocol!=m3u8_native]"
+    f"+ba[protocol!=m3u8][protocol!=m3u8_native][ext=m4a])"
+    f"/(bv*[height<={maxres}][protocol!=m3u8][protocol!=m3u8_native]"
+    f"+ba[protocol!=m3u8][protocol!=m3u8_native])"
+    f"/(b[height<={maxres}][protocol=m3u8]/b[height<={maxres}])"
+)
 
 
     ydl_opts = { 
