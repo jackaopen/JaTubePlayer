@@ -3,10 +3,13 @@
 
 <div align="center">
 
-### 🎬 A Feature-Rich Media Player for the Modern Era
+# 🎬 A Feature-Rich Media Player for the Modern Era
+
+### *Uninterrrupted, just how you like it*
 
 **JaTubePlayer** seamlessly bridges online streaming and local playback with **Python**, **yt-dlp**, and **mpv**.  
-Stream videos, access playlists, archive content —all through a stunning **Windows 11-inspired** interface featuring **glass/acrylic blur effects** and intuitive **customtkinter** design.
+Stream videos, access playlists, archive content —all through a stunning **Windows 11-inspired** interface  
+featuring **glass/acrylic blur effects** and intuitive **customtkinter** design.
 
 > 🔒 **Privacy-First Architecture** — Your Google credentials and API keys are encrypted locally using **Fernet + DPAPI**.
 
@@ -41,6 +44,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - **Hot key shortcuts** — Full keyboard support for play/pause, navigation, volume control, and more
 - **Drag and drop support** — Simply drag files or folders into the app for instant playback
 - **Toast notifications** — Get notified when videos are added to the playlist
+- **Adjustable background color** - Enjoy your custom player
 
 **Integration & Enhancement**
 
@@ -118,10 +122,12 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 ---
 
->**Warning**: There is a known problem that some videos may buffer slowly.
-> This might be related to mpv, EDL / DASH, or YouTube. 
-> If this happens, please reload the video. 
-> We are currently investigating the root cause and working on a solution.
+## ⚠️ MPV Build Note
+
+> There are different MPV builds that look identical in metadata but behave differently at runtime.  
+> **Only the MPV binary included in the distributed compressed archive (`.zip` / release package) has been tested and verified to work correctly.**  
+> Do not substitute it with a separately downloaded MPV build, even if the version number matches for this may cause subtle playback issues.
+> SHA256 of the `libmpv-2.dll`:9de0e4615a22d6eba29c6678a4cda3591cae746f54834b6bfe7cafae1b55887c
 ---
 
 ## 📖 Documentation
