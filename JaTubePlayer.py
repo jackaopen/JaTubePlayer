@@ -739,6 +739,7 @@ def setting_frame():
             elif mode == 1:
                 resoltion_combox.configure(state='normal')
                 get_resoltion_btn.configure(state='normal')
+            
 
         @check_internet
         def download_to_loacl_setting():
@@ -1668,8 +1669,8 @@ def setting_frame():
                                            font=('Arial', 12), text_color='#C8C8C8')
         
         # Resolution Section
-        resolution_title = ctk.CTkLabel(resolution_frame, text='  \u25b8 Resolution', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
-        resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 12), width=200, state='readonly', values=[],
+        resolution_title = ctk.CTkLabel(resolution_frame, text='  \u25b8 Resolution ( Select Format First! )', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
+        resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 12), width=200, values=[],state='readonly',
                                             dropdown_fg_color='#333333', button_color='#444444')
         get_resoltion_btn = ctk.CTkButton(resolution_frame, text='Get Available', width=140,
                                            command=lambda:threading.Thread(daemon=True,target=get_resolution_setting).start(),
