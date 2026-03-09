@@ -5353,6 +5353,8 @@ player_volume_scale.bind('<MouseWheel>', set_volume_wheel)
 player_volume_scale.place(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
 
 Frame_for_mpv.bind('<MouseWheel>', set_volume_wheel)
+motto_label.bind('<MouseWheel>', set_volume_wheel)
+
 
 # ── Action Buttons ──
 action_btn_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
