@@ -38,22 +38,23 @@ def _HEXtoRGBAint(HEX:str):
 
 
 
-def blur(hwnd, hexColor: bool = False, Acrylic: bool = False, Dark: bool = False, disable: bool = False):
+def blur(hwnd, hexColor: str|None = None, Acrylic: bool = False, Dark: bool = False, disable: bool = False):
     accent = ACCENTPOLICY()
     if not disable:
         accent.AccentState = 3 #Default window Blur #ACCENT_ENABLE_BLURBEHIND
 
         gradientColor = 0
         
-        if hexColor != False:
+        if hexColor is not None:
             gradientColor = _HEXtoRGBAint(hexColor)
             accent.AccentFlags = 2 #Window Blur With Accent Color #ACCENT_ENABLE_TRANSPARENTGRADIENT
         
         if Acrylic:
             accent.AccentState = 4 #UWP but LAG #ACCENT_ENABLE_ACRYLICBLURBEHIND
-            if hexColor == False: #UWP without color is translucent
+            if hexColor is None: #UWP without color is translucent
                 accent.AccentFlags = 2
-                gradientColor = _HEXtoRGBAint('#12121240') #placeholder color
+                if not hexColor:
+                    gradientColor = _HEXtoRGBAint("#10101000") #placeholder color
         
         accent.GradientColor = gradientColor
     else:

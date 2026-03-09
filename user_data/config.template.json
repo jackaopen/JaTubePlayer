@@ -42,5 +42,6 @@
     "show_cache": true,
     "hover_fullscreen" : true,
     "download_path": "[player]/user_data/downloaded_file",
-    "fullscreenmode":0
+    "fullscreenmode":0,
+    "blur_hexColor":"#10101000"
 }
