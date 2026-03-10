@@ -26,7 +26,8 @@ async def fetch_feed(session, item):
                 if epoch < time.time():
                     return [item, epoch]
             return [item, 0]
-        except:0
+        except:
+            return [item, 0]
 
 async def get_all_feeds(channel_list,main_dir):
     async with aiohttp.ClientSession() as session:
