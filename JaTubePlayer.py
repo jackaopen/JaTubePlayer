@@ -1,9 +1,4 @@
 import time
-from turtle import fillcolor
-from types import NoneType
-
-from pyparsing import col
-
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
