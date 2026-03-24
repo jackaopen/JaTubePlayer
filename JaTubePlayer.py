@@ -538,31 +538,34 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
             global info
             log_handle(content=f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number != None and len(vid_url) > 0 else 'N/A'}")
             try:
-                
-                ui_queue.put(lambda: info.title('loading info...'))
-                _,info_dict = get_info(yt_dlp=yt_dlp,
-                                    maxres=1080,
-                                    target_url=vid_url[selected_song_number],
-                                    deno_path=deno_exe,
-                                    log_handler=ytdlp_log_handle,
-                                    cookie_path=cookies_dir)
+                if selected_song_number is not None:
+
+                    ui_queue.put(lambda: info.title('loading info...'))
+                    _,info_dict = get_info(yt_dlp=yt_dlp,
+                                        maxres=1080,
+                                        target_url=vid_url[selected_song_number],
+                                        deno_path=deno_exe,
+                                        log_handler=ytdlp_log_handle,
+                                        cookie_path=cookies_dir)
+                        
                     
-                
-                ui_queue.put(lambda: info.title('Video info '))
-                ui_queue.put(lambda: title_text.configure(state='normal'))
-                ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
-                ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
-                ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
-                ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
-                ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
-                ui_queue.put(lambda: title_text.configure(state='disabled'))
-                ui_queue.put(lambda: uploader_text.configure(state='disabled'))
-                ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
-                ui_queue.put(lambda: url_text.configure(state='disabled'))
-                ui_queue.put(lambda: description_text.configure(state='disabled'))
+                    ui_queue.put(lambda: info.title('Video info '))
+                    ui_queue.put(lambda: title_text.configure(state='normal'))
+                    ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
+                    ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
+                    ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
+                    ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
+                    ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
+                    ui_queue.put(lambda: title_text.configure(state='disabled'))
+                    ui_queue.put(lambda: uploader_text.configure(state='disabled'))
+                    ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
+                    ui_queue.put(lambda: url_text.configure(state='disabled'))
+                    ui_queue.put(lambda: description_text.configure(state='disabled'))
 
-                ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
-
+                    ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
+                else:
+                    ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','No video selected'))
+                    return
             except Exception as e : 
                 try:       
                     ui_queue.put(lambda: description_text.configure(state='normal'))
@@ -576,11 +579,10 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
 
         def loadplayinginfo():
 
-            if playing_vid_info_dict == None:
-                ui_queue.put(lambda: description_text.configure(state='normal'))
-                ui_queue.put(lambda: description_text.insert(tk.END,f"opps we got some problems"))
-                ui_queue.put(lambda: description_text.configure(state='disabled'))
-
+            if not playing_vid_info_dict:
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', 'No video is currently playing'))
+                ui_queue.put(lambda: info.destroy())
+                return
             else:
                 ui_queue.put(lambda: title_text.configure(state='normal'))
                 ui_queue.put(lambda t=playing_vid_info_dict.get('title'): title_text.insert(tk.END, t))
