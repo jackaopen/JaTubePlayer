@@ -52,7 +52,7 @@ def get_info(yt_dlp:object,
         'extract_flat': False,  
         'logger': log_handler,
         'format': fmt,
-        "extractor_args": {"youtube": {"player_client": ["default", "web_embedded","tv"]}},
+        "extractor_args": {"youtube": {"player_client": [ "web_embedded","tv"]}},
         'js_runtimes': {'deno': {'path': deno_path}},
         'remote_components': {'ejs:npm'},
     }
@@ -69,6 +69,9 @@ def get_info(yt_dlp:object,
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(target_url)
+                if not info:
+                    log_handler.error(f'Failed to extract info for {target_url}')
+                    return None, None
                 if info['live_status'] != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
                     if len(fmt) == 2:
@@ -77,7 +80,7 @@ def get_info(yt_dlp:object,
                         log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}, fmt {fmt[1].get('container','N/A')}")
                         final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
 
-                    
+                
                     else:
                         final_url = info['url']
                 else:
@@ -104,6 +107,9 @@ def get_info(yt_dlp:object,
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(target_url, download=True)
+                if not info:
+                    log_handler.error(f'Failed to extract info for {target_url}')
+                    return None, None
                 if info.get('live_status', 'not_live') != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
                     if len(fmt) == 2:

@@ -315,7 +315,7 @@ page_num = 0
 # =====playerinit=====
 
 position = 0
-scale_clicked= False
+scaler_start_seeked= False
 player_mode_selector = tk.StringVar()
 player_mode_selector.set('continue')
 stopthreadevent = threading.Event() 
@@ -3377,17 +3377,17 @@ def update_playing_pos_yt():
 
 
  
-def scale_click(event):
+def scaler_start_seek(event):
     try:
         player.pause = True
-        log_handle(content=str(event))
         userposition = math.floor(event)
-        player.seek(userposition, reference='absolute')
+        player.seek(userposition, reference='absolute+exact')
+        log_handle(content=f"seek to {userposition}")
         pauseStr.set('||')
     except:pass
 
 
-def scale_release(event):
+def scaler_finish_seek(event):
     try:
         player.pause = False
     except:pass
@@ -3412,13 +3412,13 @@ def set_position_keyboard_thread(mode):#1 == backward 2 == forward
 
                     userposition = max(0, userposition - 5)##not fk it to the negative lol
 
-                    player.seek(userposition, reference='absolute')
+                    player.seek(userposition, reference='absolute+exact')
                 except Exception as e:log_handle(content=str(e))
             elif mode == 2:
                 try:
                     if not userposition :userposition = player.time_pos
                     userposition = min(player.duration - 1, userposition + 5)##not fk it to the end
-                    player.seek(userposition, reference='absolute')
+                    player.seek(userposition, reference='absolute+exact')
                 except Exception as e:log_handle(content=str(e))
             time.sleep(0.2)
             seeking = False
@@ -3444,7 +3444,7 @@ def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
                     player.pause = False
                     if playing_vid_info_dict:
                         if playing_vid_info_dict.get('live_status') == 'is_live':
-                            player.seek(player.duration, reference='absolute')# move to live point
+                            player.seek(player.duration, reference='absolute+exact')# move to live point
                     pauseStr.set('||')
                     smtc.set_playing()
                     pausebutton.update()
@@ -3657,7 +3657,9 @@ def load_thread():  ### add every try except to a new log system for next update
                                             log_handle(content=f"{tag} {channel_url}")
                                             save_recent_vid_info(tag,channel_url,current_dir)
                                     except:pass
-                                else:force_stop_loading = True   
+                                else:
+                                    force_stop_loading = True 
+                                    messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to extract video information, Please refer to log for more details')
                             except Exception as e :
                                 playing_vid_info_dict = None
                                 threading.Thread(daemon= True,target=lambda:messagebox.showerror(f'JaTubePlayer {ver}',f'we got some problem {e}\n\n we can still play the video, but some information make be missing, and you live streams cannot be played smoothly!')).start()
@@ -5265,11 +5267,11 @@ player_pos_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display
                                 textvariable=pos_for_label, text_color="#7d9bff", anchor="e")
 player_pos_label.place(relx=0, rely=0.03, relwidth=0.050)
 
-player_position_scale = ctk.CTkSlider(progress_frame, from_=0, command=scale_click,
+player_position_scale = ctk.CTkSlider(progress_frame, from_=0, command=scaler_start_seek,
                                        progress_color='#3e62dc', button_color='#5080ff',
                                        button_hover_color='#6090ff', fg_color='#333333')
 player_position_scale.set(0)
-player_position_scale.bind('<ButtonRelease-1>', scale_release)
+player_position_scale.bind('<ButtonRelease-1>', scaler_finish_seek)
 player_position_scale.place(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.50)
 
 player_song_length_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
