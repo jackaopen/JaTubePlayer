@@ -1,0 +1,22 @@
+import { Parser } from '../index.js';
+import Button from './Button.js';
+import Text from './misc/Text.js';
+import MusicTastebuilderShelfThumbnail from './MusicTastebuilderShelfThumbnail.js';
+import { YTNode } from '../helpers.js';
+export default class MusicTasteBuilderShelf extends YTNode {
+    static type = 'MusicTasteBuilderShelf';
+    thumbnail;
+    primary_text;
+    secondary_text;
+    action_button;
+    is_visible;
+    constructor(data) {
+        super();
+        this.thumbnail = Parser.parseItem(data.thumbnail, MusicTastebuilderShelfThumbnail);
+        this.primary_text = new Text(data.primaryText);
+        this.secondary_text = new Text(data.secondaryText);
+        this.action_button = Parser.parseItem(data.actionButton, Button);
+        this.is_visible = data.isVisible;
+    }
+}
+//# sourceMappingURL=MusicTastebuilderShelf.js.map

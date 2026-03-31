@@ -1,0 +1,180 @@
+import { Parser, ReloadContinuationItemsCommand } from '../../parser/index.js';
+import { concatMemos, InnertubeError } from '../../utils/Utils.js';
+import BackstagePost from '../../parser/classes/BackstagePost.js';
+import SharedPost from '../../parser/classes/SharedPost.js';
+import Channel from '../../parser/classes/Channel.js';
+import CompactVideo from '../../parser/classes/CompactVideo.js';
+import GridChannel from '../../parser/classes/GridChannel.js';
+import GridPlaylist from '../../parser/classes/GridPlaylist.js';
+import GridVideo from '../../parser/classes/GridVideo.js';
+import LockupView from '../../parser/classes/LockupView.js';
+import Playlist from '../../parser/classes/Playlist.js';
+import PlaylistPanelVideo from '../../parser/classes/PlaylistPanelVideo.js';
+import PlaylistVideo from '../../parser/classes/PlaylistVideo.js';
+import Post from '../../parser/classes/Post.js';
+import ReelItem from '../../parser/classes/ReelItem.js';
+import ShortsLockupView from '../../parser/classes/ShortsLockupView.js';
+import ReelShelf from '../../parser/classes/ReelShelf.js';
+import RichShelf from '../../parser/classes/RichShelf.js';
+import Shelf from '../../parser/classes/Shelf.js';
+import Tab from '../../parser/classes/Tab.js';
+import Video from '../../parser/classes/Video.js';
+import AppendContinuationItemsAction from '../../parser/classes/actions/AppendContinuationItemsAction.js';
+import ContinuationItem from '../../parser/classes/ContinuationItem.js';
+import TwoColumnBrowseResults from '../../parser/classes/TwoColumnBrowseResults.js';
+import TwoColumnSearchResults from '../../parser/classes/TwoColumnSearchResults.js';
+import WatchCardCompactVideo from '../../parser/classes/WatchCardCompactVideo.js';
+export default class Feed {
+    #page;
+    #actions;
+    #memo;
+    #continuation;
+    constructor(actions, response, already_parsed = false) {
+        if (this.#isParsed(response) || already_parsed) {
+            this.#page = response;
+        }
+        else {
+            this.#page = Parser.parseResponse(response.data);
+        }
+        const memo = concatMemos(...[
+            this.#page.contents_memo,
+            this.#page.continuation_contents_memo,
+            this.#page.on_response_received_commands_memo,
+            this.#page.on_response_received_endpoints_memo,
+            this.#page.on_response_received_actions_memo,
+            this.#page.sidebar_memo,
+            this.#page.header_memo
+        ]);
+        if (!memo)
+            throw new InnertubeError('No memo found in feed');
+        this.#memo = memo;
+        this.#actions = actions;
+    }
+    #isParsed(response) {
+        return !('data' in response);
+    }
+    /**
+     * Get all videos on a given page via memo
+     */
+    static getVideosFromMemo(memo) {
+        return memo.getType(Video, GridVideo, ReelItem, ShortsLockupView, CompactVideo, PlaylistVideo, PlaylistPanelVideo, WatchCardCompactVideo);
+    }
+    /**
+     * Get all playlists on a given page via memo
+     */
+    static getPlaylistsFromMemo(memo) {
+        const playlists = memo.getType(Playlist, GridPlaylist);
+        const lockup_views = memo.getType(LockupView)
+            .filter((lockup) => {
+            return ['PLAYLIST', 'ALBUM', 'PODCAST'].includes(lockup.content_type);
+        });
+        if (lockup_views.length > 0) {
+            playlists.push(...lockup_views);
+        }
+        return playlists;
+    }
+    /**
+     * Get all the videos in the feed
+     */
+    get videos() {
+        return Feed.getVideosFromMemo(this.#memo);
+    }
+    /**
+     * Get all the community posts in the feed
+     */
+    get posts() {
+        return this.#memo.getType(BackstagePost, Post, SharedPost);
+    }
+    /**
+     * Get all the channels in the feed
+     */
+    get channels() {
+        return this.#memo.getType(Channel, GridChannel);
+    }
+    /**
+     * Get all playlists in the feed
+     */
+    get playlists() {
+        return Feed.getPlaylistsFromMemo(this.#memo);
+    }
+    get memo() {
+        return this.#memo;
+    }
+    /**
+     * Returns contents from the page.
+     */
+    get page_contents() {
+        const tab_content = this.#memo.getType(Tab)?.[0].content;
+        const reload_continuation_items = this.#memo.getType(ReloadContinuationItemsCommand)[0];
+        const append_continuation_items = this.#memo.getType(AppendContinuationItemsAction)[0];
+        return tab_content || reload_continuation_items || append_continuation_items;
+    }
+    /**
+     * Returns all segments/sections from the page.
+     */
+    get shelves() {
+        return this.#memo.getType(Shelf, RichShelf, ReelShelf);
+    }
+    /**
+     * Finds shelf by title.
+     */
+    getShelf(title) {
+        return this.shelves.find((shelf) => shelf.title.toString() === title);
+    }
+    /**
+     * Returns secondary contents from the page.
+     */
+    get secondary_contents() {
+        if (!this.#page.contents?.is_node)
+            return null;
+        const node = this.#page.contents?.item();
+        if (!node.is(TwoColumnBrowseResults, TwoColumnSearchResults))
+            return null;
+        return node.secondary_contents;
+    }
+    get actions() {
+        return this.#actions;
+    }
+    /**
+     * Get the original page data
+     */
+    get page() {
+        return this.#page;
+    }
+    /**
+     * Checks if the feed has continuation.
+     */
+    get has_continuation() {
+        return this.#getBodyContinuations().length > 0;
+    }
+    /**
+     * Retrieves continuation data as it is.
+     */
+    async getContinuationData() {
+        if (this.#continuation) {
+            if (this.#continuation.length === 0)
+                throw new InnertubeError('There are no continuations.');
+            return await this.#continuation[0].endpoint.call(this.#actions, { parse: true });
+        }
+        this.#continuation = this.#getBodyContinuations();
+        if (this.#continuation)
+            return this.getContinuationData();
+    }
+    /**
+     * Retrieves next batch of contents and returns a new {@link Feed} object.
+     */
+    async getContinuation() {
+        const continuation_data = await this.getContinuationData();
+        if (!continuation_data)
+            throw new InnertubeError('Could not get continuation data');
+        return new Feed(this.actions, continuation_data, true);
+    }
+    #getBodyContinuations() {
+        if (this.#page.header_memo) {
+            const header_continuations = this.#page.header_memo.getType(ContinuationItem);
+            return this.#memo.getType(ContinuationItem).filter((continuation) => !header_continuations.includes(continuation));
+        }
+        return this.#memo.getType(ContinuationItem);
+    }
+}
+//# sourceMappingURL=Feed.js.map

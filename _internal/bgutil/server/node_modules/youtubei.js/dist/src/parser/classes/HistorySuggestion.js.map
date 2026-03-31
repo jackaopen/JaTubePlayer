@@ -1,0 +1,1 @@
+{"version":3,"file":"HistorySuggestion.js","sourceRoot":"","sources":["../../../../src/parser/classes/HistorySuggestion.ts"],"names":[],"mappings":"AACA,OAAO,gBAAgB,MAAM,uBAAuB,CAAC;AAErD,MAAM,CAAC,OAAO,OAAO,iBAAkB,SAAQ,gBAAgB;IAC7D,MAAM,CAAC,IAAI,GAAG,mBAAmB,CAAC;IAElC,YAAY,IAAa;QACvB,KAAK,CAAC,IAAI,CAAC,CAAC;IACd,CAAC"}

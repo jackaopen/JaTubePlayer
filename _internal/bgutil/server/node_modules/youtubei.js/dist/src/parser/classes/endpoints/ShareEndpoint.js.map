@@ -1,0 +1,1 @@
+{"version":3,"file":"ShareEndpoint.js","sourceRoot":"","sources":["../../../../../src/parser/classes/endpoints/ShareEndpoint.ts"],"names":[],"mappings":"AACA,OAAO,0BAA0B,MAAM,iCAAiC,CAAC;AAEzE,MAAM,CAAC,OAAO,OAAO,aAAc,SAAQ,0BAA0B;IACnE,MAAM,CAAC,IAAI,GAAG,eAAe,CAAC;IAE9B,YAAY,IAAa;QACvB,KAAK,CAAC,IAAI,CAAC,CAAC;IACd,CAAC"}

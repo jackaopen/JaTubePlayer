@@ -1,0 +1,1 @@
+{"version":3,"file":"PrefetchWatchCommand.js","sourceRoot":"","sources":["../../../../../src/parser/classes/endpoints/PrefetchWatchCommand.ts"],"names":[],"mappings":"AACA,OAAO,aAAa,MAAM,oBAAoB,CAAC;AAE/C,MAAM,CAAC,OAAO,OAAO,oBAAqB,SAAQ,aAAa;IAC7D,MAAM,CAAC,IAAI,GAAG,sBAAsB,CAAC;IAErC,YAAY,IAAa;QACvB,KAAK,CAAC,IAAI,CAAC,CAAC;IACd,CAAC"}
