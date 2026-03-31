@@ -1,4 +1,0 @@
-import { type LoadHook, type ResolveHook } from 'node:module';
-export declare const getPackageType: (url: string) => Promise<"module" | "commonjs" | undefined>;
-export declare const resolve: ResolveHook;
-export declare const load: LoadHook;
