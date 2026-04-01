@@ -46,9 +46,7 @@ def get_info(yt_dlp:object,
     f"/(bv*[height<={maxres}][protocol!=m3u8_native]+ba[protocol!=m3u8_native])/b[height<={maxres}]"
     )
 
-    bugtil_script_path = os.path.join(os.path.dirname(deno_path), "bgutil", "server","build","generate_once.js")
-    plugin_path = os.path.join(os.path.dirname(deno_path), "yt_dlp_plugins")
-
+    
     ydl_opts = {
         "verbose": True,
         "skip_download": True,
@@ -58,23 +56,12 @@ def get_info(yt_dlp:object,
         "logger": log_handler,
         "format": fmt,
 
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["mweb"],
-            },
-            "youtubepot-bgutilscript": {
-                "script_path": [bugtil_script_path],  
-            },
-        },
 
-        "js_runtimes": {
-            "deno": {
-                "path": deno_path,
-            }
-        },
+    "js_runtimes": {
+        "deno": {"path": deno_path},
+    },
+    "remote_components": ["ejs:npm"],   
 
-        "remote_components": ["ejs:npm"],
-        "plugin_dirs": [plugin_path],         
     }
     
     if cookie_path:

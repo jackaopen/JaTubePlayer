@@ -41,7 +41,7 @@ class star_vid_handler:
                                     log_handler=self.yt_dlp_log_handler,
                                     cookie_path=cookie_path)
                     
-                    try:thumb = info['thumbnails'][0]['url']
+                    try:thumb = info['thumbnail']
                     except: thumb = None
 
                     title = info.get('title',None)

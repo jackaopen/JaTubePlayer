@@ -175,6 +175,7 @@ motto_label = ctk.CTkLabel(Frame_for_mpv,
                            )
 motto_label.place(relx=0.5,rely=0.5,anchor='center')
 
+
 # ==== 播放器控制 ====
 player = None
 stream = False
@@ -230,7 +231,6 @@ info = None
 def _init_load_extra_objs():
     global dnd_handle,discord_presence,google_control,Ferner_encrptor_
     Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
-    
     dnd_handle=DropHandler()
     discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
     google_control = google_auth_control(ver=ver,youtubeAPI=Ferner_encrptor_.decrypte_api(),current_dir=current_dir,log_handle=log_handle,ctk_messagebox=messagebox)
@@ -3593,20 +3593,20 @@ def load_thread():  ### add every try except to a new log system for next update
                                                                         log_handler=ytdlp_log_handle,
                                                                         cookie_path=cookies_dir)
                                 
-                                if final_url:
-                                    # Apply HTTP headers from yt-dlp before play so mpv forwards them
-                                    # to every nested request (segments, keys, variant playlists).
-                                    # Per research: use http_header_fields (--http-header-fields) as the
-                                    # high-level knob; do NOT use cookies here — headers only.
+                                if final_url:                                    
                                     try:
-                                        http_headers = playing_vid_info_dict.get('http_headers', {})
+                                        http_headers = dict(playing_vid_info_dict.get('http_headers', {}))
                                         if http_headers:
+                                            http_headers['User-Agent'] = (
+                                                "Mozilla/5.0 (Linux; Android 13; Pixel 7) "
+                                                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+                                            )
                                             player.http_header_fields = [
                                                 f"{k}: {v}" for k, v in http_headers.items()
                                             ]
                                             log_handle(content=f"[headers] set {list(http_headers.keys())}")
-                                    except Exception as _he:
-                                        log_handle(content=f"[headers] failed to set: {_he}")
+                                    except Exception as e:
+                                        log_handle(content=f"[headers] failed to set: {e}")
 
                                     player.play(final_url)
                                     subtitle_selection_idx.set(0)
@@ -3683,7 +3683,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                 if i %2 ==0:
                                     ui_queue.put(lambda: player_loading_label.configure(text='loading..'))
                                 else:ui_queue.put(lambda: player_loading_label.configure(text='loading.'))
-
+                                if i == 15:player.play(direct_url)
 
                                 if i > 29:
                                     if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
@@ -4712,6 +4712,8 @@ def init_listen_chromeextension():
             else:
                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "This video is already in your starred list."))
             chrome_extension_flask.chrome_extension_star_video = None
+        
+        
         elif chrome_extension_flask.chrome_extension_add_to_end:
             if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
                 url = chrome_extension_flask.chrome_extension_add_to_end.split("&")[0]
@@ -4745,9 +4747,10 @@ def init_listen_chromeextension():
                         deno_path=deno_exe,
                         log_handler=ytdlp_log_handler()
                     )
-                    try:thumb = info['thumbnails'][0]['url']
-                    except:thumb = info['thumbnail']
-                    finally:thumb = thumb if thumb else None 
+                    log_handle(content = info['thumbnail'])
+
+                    try:thumb = info['thumbnail']
+                    except:thumb = None
                     log_handle(content=f"Added video to playlist: {info['title']} thumbnail: {thumb}")
                     insert_treeview_quene.put((thumb,f"[ADDED]{info['title']}",info['uploader']))
                     vid_url.append(url)
@@ -4846,6 +4849,9 @@ def _start_up_import():
 
 
 
+
+
+
 def _extra_startup_imports():
     global update_sub_list, update_like_list, liked_channel, sub_channel,download_and_extract_dlp
     global MediaControlOverlay,chrome_extension_flask,requests
@@ -4911,7 +4917,8 @@ def _start_up():
     init_read_api()
     log_handle(content=f'api fin')
     
-
+    log_handle(content=f'local host fin')
+    
     read_and_check_creditial()
     log_handle(content=f'creditial fin')
 
@@ -5353,6 +5360,7 @@ player_volume_scale.place(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
 
 Frame_for_mpv.bind('<MouseWheel>', set_volume_wheel)
 
+
 # ── Action Buttons ──
 action_btn_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
 action_btn_frame.place(relx=0.745, rely=0.585, relwidth=0.300, relheight=0.375)
@@ -5382,7 +5390,8 @@ playing_info_btn.place(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
 
 
 
-
+motto_label.bind('<MouseWheel>', set_volume_wheel)
+motto_label.bind('<Button-1>', lambda event: pause(1))  
 
 root.bind('<Escape>', fullscreen_change_state)
 root.bind('<space>', lambda event: pause(2))
