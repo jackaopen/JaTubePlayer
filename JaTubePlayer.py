@@ -26,7 +26,7 @@ from utils.color_picker.ctk_color_picker import AskColor
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
 
-from ui.blur_for_winsys import blur
+from ui.blur_for_client import blur
 
 from system.tray import Playertray
 from system.dnd_winsys import *
@@ -332,7 +332,7 @@ blur_hexColor = tk.StringVar()
 blur_window = tk.BooleanVar()
 blur_window.set(CONFIG.get('blur'))
 blur_hexColor.set(CONFIG.get('blur_hexColor'))
-if blur_window.get():blur(hwnd, Dark=True, Acrylic=True, hexColor=blur_hexColor.get())  
+if blur_window.get():blur(hwnd,  hexColor=blur_hexColor.get())  
 
 '''
 win32gui.FindWindow(class_name, window_name)
@@ -483,7 +483,7 @@ def vid_info_frame(mode):## 1 = selextd ;2 = playing
         info.geometry('600x500')
         info.attributes('-topmost','true')
         info.update()
-        if blur_window.get():root.after(200,lambda:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True, hexColor=blur_hexColor.get()))
+        if blur_window.get():root.after(200,lambda:blur(win32gui.FindWindow(None,info.title()),  hexColor=blur_hexColor.get()))
         
         root.after(200,lambda:info.iconbitmap(icondir))
         def leave():
@@ -630,7 +630,7 @@ def setting_frame():
         #setting.resizable(False, False)
         setting_closed = False
         root.after(800, lambda: (setting.lift(), setting.iconbitmap(icondir)))
-        if blur_window.get():blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True, hexColor=blur_hexColor.get())
+        if blur_window.get():blur(win32gui.FindWindow(None,setting.title()),  hexColor=blur_hexColor.get())
 
         setting_tab = ctk.CTkTabview(setting, width=700, height=500,fg_color='#242424')
         setting_tab.grid(row=0, column=0, padx=0, pady=20, sticky="nsew")
@@ -1200,11 +1200,11 @@ def setting_frame():
             save_config()
             try:
                 if blur_window.get():
-                    blur(hwnd, Dark=True, Acrylic=True,hexColor=blur_hexColor.get()) 
-                    blur(win32gui.FindWindow(None,setting.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get())
-                    try:blur(win32gui.FindWindow(None,log_.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get())
+                    blur(hwnd, hexColor=blur_hexColor.get()) 
+                    blur(win32gui.FindWindow(None,setting.title()), hexColor=blur_hexColor.get())
+                    try:blur(win32gui.FindWindow(None,log_.title()), hexColor=blur_hexColor.get())
                     except:pass
-                    try:blur(win32gui.FindWindow(None,info.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get())
+                    try:blur(win32gui.FindWindow(None,info.title()), hexColor=blur_hexColor.get())
                     except:pass
                 else:
                     blur(hwnd,disable=True)
@@ -2450,7 +2450,7 @@ def show_mpv_log():
         log_.attributes('-topmost', 'true')
 
         if blur_window.get():
-            root.after(200, lambda: blur(win32gui.FindWindow(None, log_.title()), Dark=True, Acrylic=True,hexColor=blur_hexColor.get()))
+            root.after(200, lambda: blur(win32gui.FindWindow(None, log_.title()), hexColor=blur_hexColor.get()))
 
         def leave():
             root.attributes('-topmost', 'false')
