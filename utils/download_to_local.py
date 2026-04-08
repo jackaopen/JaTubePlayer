@@ -124,6 +124,11 @@ def download_to_local(res:str,
                 if cookies_dir:
                     down_tdl_opt['cookiefile'] = cookies_dir 
                 with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+
+                main_label.configure(state='normal')
+                main_label.delete('0.0', 'end')
+                main_label.insert('0.0', f"processing video and audio...")
+                main_label.configure(state='disabled')
                 
             else:
 
@@ -183,10 +188,11 @@ def download_to_local(res:str,
                 except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
                 os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                 os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-                main_label.configure(state='normal')
-                main_label.delete('0.0', 'end')
-                main_label.insert('0.0', f"finished!")
-                main_label.configure(state='disabled')
+
+            main_label.configure(state='normal')
+            main_label.delete('0.0', 'end')
+            main_label.insert('0.0', f"finished! you can close this window if it dont close automatically")
+            main_label.configure(state='disabled')
 
             ToastNotification().notify(app_id="JaTubePlayer", 
                 title=f'JaTubePlayer {ver} Download', 
@@ -205,7 +211,9 @@ def download_to_local(res:str,
         time.sleep(1)
         try:is_downloading.set(False)
         except:pass
-        download_frame.destroy()
+        try:
+            download_frame.destroy()
+        except:pass
 
 
 
