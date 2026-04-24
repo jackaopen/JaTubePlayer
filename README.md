@@ -14,7 +14,7 @@ featuring **glass/acrylic blur effects** and intuitive **customtkinter** design.
 > 🔒 **Privacy-First Architecture** — Your Google credentials and API keys are encrypted locally using **Fernet + DPAPI**.
 
 </div>
-<img width="1645" height="884" alt="螢幕擷取畫面 2026-03-02 163837" src="https://github.com/user-attachments/assets/95ae727d-1a68-4211-a3a2-b5c79c2a32ea" />
+<img width="1672" height="941" alt="725453dd-4661-412c-8906-8f43e436477e" src="https://github.com/user-attachments/assets/9fa8003e-36ac-49fd-a021-377a890889b3" />
 
 
 
