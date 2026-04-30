@@ -26,7 +26,7 @@ from utils.color_picker.ctk_color_picker import AskColor
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
 
-from ui.blur_for_client import blur
+from effect.blur_for_client import blur
 
 from system.tray import Playertray
 from system.dnd_winsys import *
@@ -55,7 +55,7 @@ os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-ver='2.3'
+ver='2.4'
 root.title(f'JaTubePlayer {ver} by Jackaopen')
 root.geometry('1320x680')
 root.iconbitmap(icondir)
