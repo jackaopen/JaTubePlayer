@@ -1,6 +1,7 @@
 import io
 import aiohttp
 import asyncio
+import queue
 from PIL import Image, ImageTk
 import threading
 from typing import Callable
@@ -15,7 +16,7 @@ class ThumbnailLoader:
                  playing_vid_mode:Callable, #lambda for sync with global variable
                  insert_treeview_quene:object,
                  playlisttreebox:object, 
-                 ui_queue:object,
+                 ui_queue:queue.Queue,
                  tkinter_scaling:Callable,  #lambda for sync with global variable
                  log_handle:object,
                  root:object):
@@ -93,7 +94,9 @@ class ThumbnailLoader:
     # ─────────────────────────────────────────────────────────────────────────
     # Thumbnail Loading and Treeview Insertion, put thumbnail loading tasks in async_task list
     # ─────────────────────────────────────────────────────────────────────────
-
+    def clear_thumbnails(self):
+        self.ui_queue.put(lambda: self.playlisttreebox.delete(*self.playlisttreebox.get_children()))
+    
     def treeview_queue_GetterLoop(self):
         try:
             while not self.insert_treeview_quene.empty():

@@ -40,6 +40,7 @@ from system.dnd_winsys import *
 from system.keyboard import *
 from system.presence import DiscordPresence
 
+from video_media_control.page_control import MediaList_PageControl_
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
 
@@ -353,7 +354,7 @@ win32gui.FindWindow(class_name, window_name)
 
 def get_selected_vid(event=None):
     global selected_song_number,star_vid_handle
-    try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
+    try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0]) + (Media_list_page_controller.current_page -1)*50
     except:pass
     try:
         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
@@ -4440,7 +4441,7 @@ def create_mpv_player():
 
 
 def _init_load_extra_objs():
-    global dnd_handle,discord_presence,google_control,Ferner_encrptor_,get_info_loader,star_vid_handle,thumbnail_loader
+    global dnd_handle,discord_presence,google_control,Ferner_encrptor_,get_info_loader,star_vid_handle,thumbnail_loader,Media_list_page_controller
     Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
     dnd_handle=DropHandler()
     discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
@@ -4464,6 +4465,12 @@ def _init_load_extra_objs():
                                        tkinter_scaling=lambda: tkinter_scaling,
                                        log_handle=log_handle,
                                        root=root)
+    
+    Media_list_page_controller = MediaList_PageControl_(
+        media_data_list=media_data_list,
+        ui_queue=ui_queue,
+        tree_view_queue=insert_treeview_quene,
+        log_handle=log_handle)
                                     
     
     
