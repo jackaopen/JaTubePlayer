@@ -1,19 +1,15 @@
 import json,os
-from tkinter import NO
 from .get_media_info import *
+from loader.get_info_loader import get_info_loader_
 import queue
 
 class star_vid_handler:
     def __init__(self,
                 current_dir:str,
-                yt_dlp:object,
-                deno_path:str,
-                yt_dlp_log_handler:object,
+                get_info_loader:get_info_loader_,
                 ):
         self.current_dir = current_dir
-        self.yt_dlp = yt_dlp
-        self.deno_path = deno_path
-        self.yt_dlp_log_handler = yt_dlp_log_handler
+        self.get_info_loader = get_info_loader
         self._reload()
         
     def _reload(self):
@@ -29,17 +25,13 @@ class star_vid_handler:
             thumb:str =None,
             title:str = None,
             channel:str = None,
-            cookie_path:str=None)->bool:
+            )->bool:
         try:
             if not os.path.exists(url):
-            
                 if not thumb or not title or not channel:
-                    _,info = get_info(yt_dlp=self.yt_dlp,#both yt and twitch
-                                    maxres=1080,
+                    _,info = get_info(loader=self.get_info_loader,
                                     target_url=url,
-                                    deno_path=self.deno_path,
-                                    log_handler=self.yt_dlp_log_handler,
-                                    cookie_path=cookie_path)
+                                    )
                     
                     try:thumb = info['thumbnail']
                     except: thumb = None
@@ -60,7 +52,7 @@ class star_vid_handler:
             self.starred_vid_dict[url] = info_dict
             self._save()
         except Exception as e:
-            self.yt_dlp_log_handler.info(f"Error adding starred video: {e}")
+            self.get_info_loader.ytdlp_log_handle.info(f"Error adding starred video: {e}")
             return False
         return True
 
@@ -70,7 +62,7 @@ class star_vid_handler:
             self.starred_vid_dict.pop(url,None)
             self._save()
         except Exception as e:
-            self.yt_dlp_log_handler.info(f"Error removing starred video: {e}")
+            self.get_info_loader.ytdlp_log_handle.info(f"Error removing starred video: {e}")
             return False
         return True
     
@@ -105,7 +97,7 @@ class star_vid_handler:
 
                 treeview_queue.put((info['thumb'],info['title'],info['channel']))
         except Exception as e:
-            self.yt_dlp_log_handler.info(f"Error listing starred videos: {e}")
+            self.get_info_loader.ytdlp_log_handle.info(f"Error listing starred videos: {e}")
             return False
         if loadingplaylist_flag is not None:
             loadingplaylist_flag = False

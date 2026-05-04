@@ -1,5 +1,5 @@
 import os
-
+from loader.get_info_loader import get_info_loader_
 def _create_edl_url(video_url, audio_url, duration=None):
     """
     Creates an mpv EDL URL with correct duration syntax.
@@ -29,17 +29,21 @@ def _create_edl_url(video_url, audio_url, duration=None):
     return "edl://" + ";".join(parts)
 
 
-def get_info(yt_dlp:object,
-             maxres:int,
+def get_info(
              target_url:str,
-             deno_path:str,
-             log_handler:object,
-             cookie_path:str=None)->tuple[str,dict]:
+             loader:get_info_loader_,
+             )->tuple[str,dict]:
     '''
     Returns (final_url, info_dict)
     For non-live YouTube with separate video+audio DASH streams, final_url is an EDL URL.
     For single-stream or live, final_url is the direct stream URL.
     '''
+    yt_dlp = loader.yt_dlp
+    maxres = loader.maxresolution
+    deno_path = loader.deno_exe
+    log_handler = loader.ytdlp_log_handle
+    cookie_path = loader.cookies_dir
+
     fmt = (
     f"(bv*[height<={maxres}][protocol=https]+ba[protocol=https][ext=m4a])"
     f"/(bv*[height<={maxres}][protocol!=m3u8_native]+ba[protocol!=m3u8_native])"

@@ -22,11 +22,18 @@ from utils.download_to_local import download_to_local
 from utils.check_internet import *
 from utils.check_internet import check_internet
 from utils.get_media_info import get_info
-from utils.color_picker.ctk_color_picker import AskColor    
+from utils.color_picker.ctk_color_picker import AskColor  
+from utils.additional_utils import lenght_convertor
+  
+from loader.get_info_loader import get_info_loader_
+from loader.media_data_list import media_data_list_template
+
 from notification.wintoast_notify import ToastNotification
 from notification.ctkmessagebox import ctk_messagebox
 
 from effect.blur_for_client import blur
+from ui.video_info_frame import vid_info_frame
+from ui.thumbnail import ThumbnailLoader
 
 from system.tray import Playertray
 from system.dnd_winsys import *
@@ -192,10 +199,6 @@ playing_vid_info_dict = ''
 selected_song_number = None
 yt_dlp = None
 youtube = None
-vid_url = []
-playlisttitles = []
-playlist_thumbnails = []
-playlist_channel = []
 user_playlists_name = []
 load_thread_queue = queue.Queue()
 '''
@@ -228,12 +231,8 @@ info = None
 
 
 
-def _init_load_extra_objs():
-    global dnd_handle,discord_presence,google_control,Ferner_encrptor_
-    Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
-    dnd_handle=DropHandler()
-    discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
-    google_control = google_auth_control(ver=ver,youtubeAPI=Ferner_encrptor_.decrypte_api(),current_dir=current_dir,log_handle=log_handle,ctk_messagebox=messagebox)
+
+
 
 
 
@@ -280,7 +279,19 @@ fullscreen_status = 0
 0 = normal
 1 = zoomed
 '''
-
+dnd_handle = None
+discord_presence = None
+google_control = None
+Ferner_encrptor_ = None
+get_info_loader = None
+media_data_list = media_data_list_template()
+'''
+    ### This class it the loader template for media data for playlisttreebox
+    - vid_url
+    - playlisttitles
+    - playlist_channel
+    - playlist_thumbnails
+'''
 
 # ==== 系統相關 ====
 credentials = None
@@ -345,7 +356,7 @@ def get_selected_vid(event=None):
     try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0])
     except:pass
     try:
-        if star_vid_handle.search(vid_url[selected_song_number]):
+        if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
             ui_queue.put(lambda: star_btn.configure(
                 text='★',
                 fg_color='#D4A017',
@@ -429,185 +440,23 @@ def _switch_local_server(mode:int)->None|str:
                 
         
         
-
-temp = []# to prevent garbage collection of images
-async def load_thumbnail_thread(session,id,thumburl):
-    try:
-        if playing_vid_mode == 0 or playing_vid_mode == 4:
-            async with session.get(thumburl) as response:
-                imgdata = await response.read()
-                img = Image.open(io.BytesIO(imgdata))
-                img = img.resize((int(140*tkinter_scaling/1.25), int(105*tkinter_scaling/1.25)), Image.LANCZOS)
-                img1 = img.crop((0,int(14*tkinter_scaling/1.25),int(140*tkinter_scaling/1.25),int(90*tkinter_scaling/1.25)))
-                thumbnailpic = ImageTk.PhotoImage(img1)
-                temp.append(thumbnailpic)
-                ui_queue.put(lambda id=id, pic=thumbnailpic: playlisttreebox.item(id, image=pic))
-    except Exception as e:
-        log_handle(content=str(e))
-
-
-
-@check_internet
-def vid_info_frame(mode):## 1 = selextd ;2 = playing
+def video_info_frame_main(mode:int):
     global info
-    log_handle(content=f"info frame mode: {info}")
-    try:
-        if info and info.winfo_exists():
-            info.lift()
-            info.deiconify()
-        else:raise Exception("info window already opened")
-    except:
-        if mode == 1:
-            if playing_vid_mode == 0 or playing_vid_mode == 4 or (playing_vid_mode == 3 and len(vid_url) > 0):
-                if selected_song_number == None:
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','No video selected'))
-                    return
-                if playing_vid_mode == 4 and not vid_url[selected_song_number].startswith(('https://','https://')):
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','The selected video is a local file, video info function is only available for online videos'))
-                    ui_queue.put(lambda: info.destroy())
-                    return
-                
-            if playing_vid_mode == 1 or playing_vid_mode == 2:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info function is only available for YouTube videos'))
-                return
-        elif mode == 2:
-            if playing_vid_mode == 1 or playing_vid_mode == 2:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info function is only available for YouTube videos'))
-                return
-            if playing_vid_mode == 4 and not playing_vid_info_dict:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer{ver}','Video info is not available for this video'))
-                return
-
-        info = ctk.CTkToplevel(root,fg_color='#242424')
-        info.title('Video info')
-        info.geometry('600x500')
-        info.attributes('-topmost','true')
-        info.update()
-        if blur_window.get():root.after(200,lambda:blur(win32gui.FindWindow(None,info.title()),  hexColor=blur_hexColor.get()))
-        
-        root.after(200,lambda:info.iconbitmap(icondir))
-        def leave():
-            root.attributes('-topmost','false')
-            info.destroy()
-        info.protocol('WM_DELETE_WINDOW',leave)
-
-        # Main container frame with padding
-        info_main_frame = ctk.CTkFrame(info, fg_color='transparent')
-        info_main_frame.pack(fill='both', expand=True, padx=20, pady=15)
-
-        # Video details frame (title, uploader, date, url)
-        details_frame = ctk.CTkFrame(info_main_frame, fg_color='#2E2E2E', corner_radius=10)
-        details_frame.pack(fill='x', pady=(0, 10))
-        details_frame.grid_columnconfigure(1, weight=1)
-
-        # Title row
-        title_label = ctk.CTkLabel(details_frame, text=' Title:', font=('Arial', 13, 'bold'), text_color='#9CA3AF', anchor='w', width=100)
-        title_text = ctk.CTkTextbox(details_frame, font=('Arial', 13), height=28, fg_color='#1F1F1F', border_width=1, border_color='#3B3B3B', corner_radius=6, activate_scrollbars=False, wrap="none")
-        title_label.grid(row=0, column=0, padx=(15, 5), pady=(15, 8), sticky='w')
-        title_text.grid(row=0, column=1, padx=(5, 15), pady=(15, 8), sticky='ew')
-
-        # Uploader row
-        uploader_label = ctk.CTkLabel(details_frame, text=' Uploader:', font=('Arial', 13, 'bold'), text_color='#9CA3AF', anchor='w', width=100)
-        uploader_text = ctk.CTkTextbox(details_frame, font=('Arial', 13), height=28, fg_color='#1F1F1F', border_width=1, border_color='#3B3B3B', corner_radius=6, activate_scrollbars=False, wrap="none")
-        uploader_label.grid(row=1, column=0, padx=(15, 5), pady=8, sticky='w')
-        uploader_text.grid(row=1, column=1, padx=(5, 15), pady=8, sticky='ew')
-
-        # Upload date row
-        uploaddate_label = ctk.CTkLabel(details_frame, text=' Date:', font=('Arial', 13, 'bold'), text_color='#9CA3AF', anchor='w', width=100)
-        uploaddate_text = ctk.CTkTextbox(details_frame, font=('Arial', 13), height=28, fg_color='#1F1F1F', border_width=1, border_color='#3B3B3B', corner_radius=6, activate_scrollbars=False, wrap="none")
-        uploaddate_label.grid(row=2, column=0, padx=(15, 5), pady=8, sticky='w')
-        uploaddate_text.grid(row=2, column=1, padx=(5, 15), pady=8, sticky='ew')
-
-        # URL row
-        url_label = ctk.CTkLabel(details_frame, text=' URL:', font=('Arial', 13, 'bold'), text_color='#9CA3AF', anchor='w', width=100)
-        url_text = ctk.CTkTextbox(details_frame, font=('Arial', 13), height=28, fg_color='#1F1F1F', border_width=1, border_color='#3B3B3B', corner_radius=6, activate_scrollbars=False, wrap="none")
-        url_label.grid(row=3, column=0, padx=(15, 5), pady=(8, 15), sticky='w')
-        url_text.grid(row=3, column=1, padx=(5, 15), pady=(8, 15), sticky='ew')
-
-        # Description frame
-        description_frame = ctk.CTkFrame(info_main_frame, fg_color='#2E2E2E', corner_radius=10)
-        description_frame.pack(fill='both', expand=True)
-
-        description_label = ctk.CTkLabel(description_frame, text=' Description', font=('Arial', 13, 'bold'), text_color='#9CA3AF', anchor='w')
-        description_label.pack(padx=15, pady=(12, 8), anchor='w')
-        
-        description_text = ctk.CTkTextbox(description_frame, font=('Arial', 13), fg_color='#1F1F1F', border_width=1, border_color='#3B3B3B', corner_radius=6)
-        description_text.pack(padx=15, pady=(0, 15), fill='both', expand=True)
-
-        def loadselectedinfo():
-            global info
-            log_handle(content=f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number != None and len(vid_url) > 0 else 'N/A'}")
-            try:
-                if selected_song_number is not None:
-
-                    ui_queue.put(lambda: info.title('loading info...'))
-                    _,info_dict = get_info(yt_dlp=yt_dlp,
-                                        maxres=1080,
-                                        target_url=vid_url[selected_song_number],
-                                        deno_path=deno_exe,
-                                        log_handler=ytdlp_log_handle,
-                                        cookie_path=cookies_dir)
-                        
-                    
-                    ui_queue.put(lambda: info.title('Video info '))
-                    ui_queue.put(lambda: title_text.configure(state='normal'))
-                    ui_queue.put(lambda t=info_dict.get('title'): title_text.insert(tk.END, t))
-                    ui_queue.put(lambda c=info_dict.get('channel'), u=info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
-                    ui_queue.put(lambda d=info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
-                    ui_queue.put(lambda url=info_dict.get('original_url'): url_text.insert(tk.END, url))
-                    ui_queue.put(lambda desc=info_dict.get('description'): description_text.insert(tk.END, desc))
-                    ui_queue.put(lambda: title_text.configure(state='disabled'))
-                    ui_queue.put(lambda: uploader_text.configure(state='disabled'))
-                    ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
-                    ui_queue.put(lambda: url_text.configure(state='disabled'))
-                    ui_queue.put(lambda: description_text.configure(state='disabled'))
-
-                    ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
-                else:
-                    ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','No video selected'))
-                    return
-            except Exception as e : 
-                try:       
-                    ui_queue.put(lambda: description_text.configure(state='normal'))
-                    ui_queue.put(lambda err=e: description_text.insert(tk.END, f'opps we got some problmes\n{err}'))
-                    ui_queue.put(lambda: description_text.configure(state='disabled'))
-                except:pass
-
-            except googleapiclient.errors.HttpError as err: ######  handle stupid api
-                ui_queue.put(lambda e=err: messagebox.showerror(f'JaTubePlayer {ver}', f"An error occurred: {e}"))
-                ui_queue.put(lambda: info.destroy())
-
-        def loadplayinginfo():
-
-            if not playing_vid_info_dict:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', 'No video is currently playing'))
-                ui_queue.put(lambda: info.destroy())
-                return
-            else:
-                ui_queue.put(lambda: title_text.configure(state='normal'))
-                ui_queue.put(lambda t=playing_vid_info_dict.get('title'): title_text.insert(tk.END, t))
-                ui_queue.put(lambda c=playing_vid_info_dict.get('channel'), u=playing_vid_info_dict.get('uploader_id'): uploader_text.insert(tk.END, f"{c}{u}"))
-                ui_queue.put(lambda d=playing_vid_info_dict.get('upload_date'): uploaddate_text.insert(tk.END, d))
-                ui_queue.put(lambda url=playing_vid_info_dict.get('original_url'): url_text.insert(tk.END, url))
-                ui_queue.put(lambda desc=playing_vid_info_dict.get('description'): description_text.insert(tk.END, desc))
-                ui_queue.put(lambda: title_text.configure(state='disabled'))
-                ui_queue.put(lambda: uploader_text.configure(state='disabled'))
-                ui_queue.put(lambda: uploaddate_text.configure(state='disabled'))
-                ui_queue.put(lambda: url_text.configure(state='disabled'))
-                ui_queue.put(lambda: description_text.configure(state='disabled'))
-
-                ui_queue.put(lambda t=playing_vid_info_dict.get('title'): info.configure(title=f"Playing Video info - {t}"))
-
-
-
-        if mode == 1:
-            infothread = threading.Thread(daemon = True,target=loadselectedinfo)
-            infothread.start()
-        elif mode == 2 :
-            infothread = threading.Thread(daemon = True,target=loadplayinginfo)
-            infothread.start()
-        info.mainloop()
-        
+    info = vid_info_frame(mode,
+                          log_handle=log_handle,
+                          playing_vid_mode=playing_vid_mode,
+                          selected_song_number=selected_song_number,
+                          ui_queue=ui_queue,
+                          ver=ver,
+                          messagebox=messagebox,
+                          root=root,
+                          icondir=icondir,
+                          playing_vid_info_dict=playing_vid_info_dict,
+                          vid_url = media_data_list.vid_url,
+                          get_info_loader = get_info_loader,
+                          blur_window = blur_window,
+                          blur_hexColor = blur_hexColor)
+    
 
 
 def setting_frame():
@@ -684,14 +533,14 @@ def setting_frame():
         @check_internet
         def get_resolution_setting():
             if playing_vid_mode == 0 or playing_vid_mode == 4:
-                if playing_vid_mode == 4 and not vid_url[selected_song_number].startswith(('https://','http://')):
+                if playing_vid_mode == 4 and not media_data_list.vid_url[selected_song_number].startswith(('https://','http://')):
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The selected video is a local file, downloading is not supported'))
                     return
                 try:
                     if selected_song_number != None:
                         ui_queue.put(lambda: resolution_title.configure(text='⏳ Loading resolutions...'))
                         ui_queue.put(lambda: get_resoltion_btn.configure(state='disabled'))
-                        res = get_resoltion(vid_url[selected_song_number])
+                        res = get_resoltion(media_data_list.vid_url[selected_song_number])
                         ui_queue.put(lambda r=res: resoltion_combox.configure(values=r))
                         ui_queue.put(lambda: resoltion_combox._open_dropdown_menu())
                         ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
@@ -747,8 +596,8 @@ def setting_frame():
 
                 ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
                 is_downloading.set(True)
-                _vid_url = list(vid_url)
-                _playlisttitles = list(playlisttitles)
+                _vid_url = list(media_data_list.vid_url)
+                _playlisttitles = list(media_data_list.playlisttitles)
                 _dict = dict(playing_vid_info_dict) if playing_vid_info_dict else {}
                 _selected_idx = selected_song_number
                 if not playing_vid_mode == 1 and not playing_vid_mode == 2:
@@ -774,12 +623,9 @@ def setting_frame():
                             msg="Preparing to download...\n Checking video valiability and fetching info",
                             icon=icondir,
                             )
-                            _,info_dict = get_info(yt_dlp=yt_dlp,
-                                            maxres=1080,
+                            _,info_dict = get_info(loader=get_info_loader,
                                             target_url=_vid_url[_selected_idx],
-                                            deno_path=deno_exe,
-                                            log_handler=ytdlp_log_handle,
-                                            cookie_path=cookies_dir)
+                                            )
                             if not info_dict:
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to fetch video info, the video may be unavailable or private\nPlease check the log for more details'))
                                 is_downloading.set(False)
@@ -814,7 +660,7 @@ def setting_frame():
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
                             is_downloading.set(False)
                             return
-                    print(f'title = {title},{playlisttitles}')
+                    print(f'title = {title},{_playlisttitles}')
                     ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
                     download_to_local(
                         res=resoltion_combox.get(),
@@ -1024,10 +870,10 @@ def setting_frame():
             try:
                 item_id = playlisttreebox.get_children()[selected_song_number]
                 playlisttreebox.delete(item_id)
-                vid_url.pop(selected_song_number)
-                playlisttitles.pop(selected_song_number)
-                playlist_thumbnails.pop(selected_song_number)
-                playlist_channel.pop(selected_song_number)
+                media_data_list.vid_url.pop(selected_song_number)
+                media_data_list.playlisttitles.pop(selected_song_number)
+                media_data_list.playlist_thumbnails.pop(selected_song_number)
+                media_data_list.playlist_channel.pop(selected_song_number)
                 selected_song_number = None
             except Exception as e:
                 messagebox.showerror(f'JaTubePlayer {ver}', f'Failed to remove item from playlist:\n{e}')
@@ -2112,7 +1958,7 @@ def setting_frame():
                     ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
                     
                     if playing_vid_mode ==3 and playing_vid_info_dict:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
-                    elif selected_song_number != None and playlisttitles:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playlisttitles[selected_song_number]}'))
+                    elif selected_song_number != None and media_data_list.playlisttitles:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{media_data_list.playlisttitles[selected_song_number]}'))
                     else:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
                     
                     ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
@@ -2128,7 +1974,7 @@ def setting_frame():
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         elif playing_vid_mode ==3 and _info_dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
-                        elif playing_vid_mode ==4 and not vid_url[selected_song_number].startswith(('http://','https://')):
+                        elif playing_vid_mode ==4 and not media_data_list.vid_url[selected_song_number].startswith(('http://','https://')):
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         else:
                             try:
@@ -2419,14 +2265,8 @@ def setting_frame():
         hotkey_player_frame_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
         hotkey_toggle_minimize_label.grid(row=1, column=0, padx=(24, 8), pady=(4, 12), sticky="w")
         hotkey_toggle_minimize_textbox.grid(row=1, column=1, padx=(8, 24), pady=(4, 12), sticky="e")
-        setting.mainloop()
 
-def lenght_convertor(length):
-    
-    hour = math.floor(length// 3600)
-    min = math.floor(length%3600//60)
-    sec = math.floor(length%60)
-    return hour,min,sec
+
 
 def show_mpv_log():
     global log_,log_text,insert_log
@@ -2559,7 +2399,7 @@ def get_sub_channel_thread(page_control_mode:int):
 
         for page_control_mode ==1 and 2, check if inited , and load via sub_channel() function which load the json
         '''
-        global loadingplaylist,user_playlists_name,youtube,user_playlists_id,vid_url,selected_song_number,youtubeAPI,page_num
+        global loadingplaylist,user_playlists_name,youtube,user_playlists_id,selected_song_number,youtubeAPI,page_num,media_data_list
         loadingplaylist = True
         usestoreddata = False
         stop = False## for auto sub update and check if list is empty or not
@@ -2622,10 +2462,10 @@ def get_sub_channel_thread(page_control_mode:int):
                         ui_queue.put(lambda: modetextbox.insert(tk.END, f"Subscribed\n⏳ loading..."))
                         ui_queue.put(lambda: modetextbox.configure(state='disabled'))
 
-                        vid_url = []
-                        playlisttitles.clear()
-                        playlist_thumbnails.clear()
-                        playlist_channel.clear()
+                        media_data_list.vid_url = []
+                        media_data_list.playlisttitles.clear()
+                        media_data_list.playlist_thumbnails.clear()
+                        media_data_list.playlist_channel.clear()
                         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
                         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                         ydl_opts = {
@@ -2651,10 +2491,10 @@ def get_sub_channel_thread(page_control_mode:int):
                                 
                                 if info != None:
                                     response = info['entries'][0]
-                                    vid_url.append(response['url'])## get vid info url
-                                    playlisttitles.append(response["title"])
-                                    playlist_channel.append(info['uploader'])
-                                    playlist_thumbnails.append(response['thumbnails'][0]['url'])
+                                    media_data_list.vid_url.append(response['url'])## get vid info url
+                                    media_data_list.playlisttitles.append(response["title"])
+                                    media_data_list.playlist_channel.append(info['uploader'])
+                                    media_data_list.playlist_thumbnails.append(response['thumbnails'][0]['url'])
                                     try:
                                         insert_treeview_quene.put((response['thumbnails'][0]['url'],
                                                                 f'🛑LIVE {response["title"]}' if response['live_status'] == 'is_live' else response['title'],
@@ -2698,124 +2538,124 @@ def get_sub_channel(page_control_mode:int,parent=root):
 
 
 def get_liked_vid_thread(page_control_mode:int):
-        global youtubeAPI,credentials,page_num,liked_vid_url,vid_url,selected_song_number,loadingplaylist,youtube
-        if page_control_mode !=0 and page_num == 0:
-            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please init the like page first'))
-        else:
-            selected_song_number = None
-            loadingplaylist = True
-            try:
-                if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
-                playlisttitles.clear()
-                playlist_thumbnails.clear()
-                vid_url = []
-                ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-                playlist_channel.clear()
-                stop = False#for updating the like list , both auto and user cancel auto load
-                
-                if page_control_mode == 0:#mode 0 init, mode 1 next page, mode 2 previous page
-                    log_handle(content=str(auto_like_refresh.get()))
-                    if auto_like_refresh.get():
-                        ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Liked', msg='Auto updating liked videos, please wait...', duration='short', icon=icondir)
+    global youtubeAPI,credentials,page_num,liked_vid_url,selected_song_number,loadingplaylist,youtube,media_data_list
+    if page_control_mode !=0 and page_num == 0:
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please init the like page first'))
+    else:
+        selected_song_number = None
+        loadingplaylist = True
+        try:
+            if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
+            media_data_list.playlisttitles.clear()
+            media_data_list.playlist_thumbnails.clear()
+            media_data_list.vid_url = []
+            ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+            media_data_list.playlist_channel.clear()
+            stop = False#for updating the like list , both auto and user cancel auto load
+            
+            if page_control_mode == 0:#mode 0 init, mode 1 next page, mode 2 previous page
+                log_handle(content=str(auto_like_refresh.get()))
+                if auto_like_refresh.get():
+                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Liked', msg='Auto updating liked videos, please wait...', duration='short', icon=icondir)
 
-                        ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                        ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                        ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked\n⏳ updating..."))
-                        ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                        res = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                        if res != True:
-                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','failed to update the subscription list!\ntry to Login in google and update the list manually?'))
-                            stop = True 
-                               
-                    elif not messagebox.askyesno(f'JaTubePlayer {ver}','login with stored data?'):
-                        stop = True
-                        ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','please go to "setting > Personal playlist" to login the desired account\n then go to "setting > Personal playlist" to update the list\n then try again!'))
-
-                    if not stop:
-
-                        url = liked_channel(current_dir)
-                        if url != False and url != 'NONE':
-                            liked_vid_url = url
-                        elif url == 'NONE':
-                            if messagebox.askokcancel(f'JaTubePlayer {ver}','There seems to be no stored data, load the data now?'):
-                                result = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                                if result:
-                                    ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','succeed'))
-                                    loadingplaylist = False
-                                    get_liked_vid(0)
-                                else:
-                                    stop = True
-                                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
-                        else:
-                            stop = True
-                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
-
-
-
-                
-                if not stop:
-                    if page_control_mode == 0:page_num = 1
-                    elif page_control_mode == 1 and page_num != 0:
-                        if page_num != len(liked_vid_url)//50+1:
-                            page_num += 1
-                        else: page_num = 1
-                    elif page_control_mode == 2 and page_num != 0:
-                        if page_num != 1:
-                            page_num -= 1
-                        else: page_num = len(liked_vid_url)//50+1
-
-                    ui_queue.put(lambda pn=page_num, lvu=liked_vid_url: page_num_label.configure(text=f'page {pn}/{len(lvu)//50+1}'))
-
-                    if page_num != 0:
-                        for i in range(50*(page_num-1),50*page_num):#######use len of vid url
-                            try:
-                                item = liked_vid_url[i]
-                                vid_url.append(item)
-                            except IndexError:break
-                            
-                            try:
-                                ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                                ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                                ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked\n⏳ loading... "))
-                                ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                                                        
-                                title_response = youtube.videos().list(
-                                    part='snippet',
-                                    id=item.split('watch?v=')[1]
-                                    ).execute()
-                                if title_response != None:
-                                    try:
-                                        vid_info = title_response['items'][0]['snippet']
-                                        if vid_info:
-                                            try:
-                                                title = f'🛑LIVE {vid_info["title"]}' if vid_info['live_status'] == 'is_live' else vid_info['title']
-                                            except:title = vid_info["title"]
-                                            playlisttitles.append(title)
-                                            playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
-                                            playlist_channel.append(vid_info['channelTitle'])
-                                            insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],title,vid_info['channelTitle']))
-                                            ui_queue.put(lambda: root.update())
-                                        else:
-                                            ui_queue.put(lambda: ToastNotification().notify(app_id="JaTubePlayer", 
-                                                                                            title=f'JaTubePlayer {ver}',
-                                                                                            msg='Skipped a unavailable video', 
-                                                                                            duration='short', 
-                                                                                            icon=icondir))
-                                    except:pass
-                                else:pass
-                            except Exception as e : ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
-
-                        # Check if there are any videos returned
-                
-                    # Update status box once (instead of every loop)
                     ui_queue.put(lambda: modetextbox.configure(state='normal'))
                     ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                    ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked"))
+                    ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked\n⏳ updating..."))
                     ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                else:loadingplaylist = False
-            except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
-            loadingplaylist = False
+                    res = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
+                    if res != True:
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','failed to update the subscription list!\ntry to Login in google and update the list manually?'))
+                        stop = True 
+                            
+                elif not messagebox.askyesno(f'JaTubePlayer {ver}','login with stored data?'):
+                    stop = True
+                    ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','please go to "setting > Personal playlist" to login the desired account\n then go to "setting > Personal playlist" to update the list\n then try again!'))
+
+                if not stop:
+
+                    url = liked_channel(current_dir)
+                    if url != False and url != 'NONE':
+                        liked_vid_url = url
+                    elif url == 'NONE':
+                        if messagebox.askokcancel(f'JaTubePlayer {ver}','There seems to be no stored data, load the data now?'):
+                            result = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
+                            if result:
+                                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','succeed'))
+                                loadingplaylist = False
+                                get_liked_vid(0)
+                            else:
+                                stop = True
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
+                    else:
+                        stop = True
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
+
+
+
+            
+            if not stop:
+                if page_control_mode == 0:page_num = 1
+                elif page_control_mode == 1 and page_num != 0:
+                    if page_num != len(liked_vid_url)//50+1:
+                        page_num += 1
+                    else: page_num = 1
+                elif page_control_mode == 2 and page_num != 0:
+                    if page_num != 1:
+                        page_num -= 1
+                    else: page_num = len(liked_vid_url)//50+1
+
+                ui_queue.put(lambda pn=page_num, lvu=liked_vid_url: page_num_label.configure(text=f'page {pn}/{len(lvu)//50+1}'))
+
+                if page_num != 0:
+                    for i in range(50*(page_num-1),50*page_num):#######use len of vid url
+                        try:
+                            item = liked_vid_url[i]
+                            media_data_list.vid_url.append(item)
+                        except IndexError:break
+                        
+                        try:
+                            ui_queue.put(lambda: modetextbox.configure(state='normal'))
+                            ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
+                            ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked\n⏳ loading... "))
+                            ui_queue.put(lambda: modetextbox.configure(state='disabled'))
+                                                    
+                            title_response = youtube.videos().list(
+                                part='snippet',
+                                id=item.split('watch?v=')[1]
+                                ).execute()
+                            if title_response != None:
+                                try:
+                                    vid_info = title_response['items'][0]['snippet']
+                                    if vid_info:
+                                        try:
+                                            title = f'🛑LIVE {vid_info["title"]}' if vid_info['live_status'] == 'is_live' else vid_info['title']
+                                        except:title = vid_info["title"]
+                                        media_data_list.playlisttitles.append(title)
+                                        media_data_list.playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
+                                        media_data_list.playlist_channel.append(vid_info['channelTitle'])
+                                        insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],title,vid_info['channelTitle']))
+                                        ui_queue.put(lambda: root.update())
+                                    else:
+                                        ui_queue.put(lambda: ToastNotification().notify(app_id="JaTubePlayer", 
+                                                                                        title=f'JaTubePlayer {ver}',
+                                                                                        msg='Skipped a unavailable video', 
+                                                                                        duration='short', 
+                                                                                        icon=icondir))
+                                except:pass
+                            else:pass
+                        except Exception as e : ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
+
+                    # Check if there are any videos returned
+            
+                # Update status box once (instead of every loop)
+                ui_queue.put(lambda: modetextbox.configure(state='normal'))
+                ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
+                ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked"))
+                ui_queue.put(lambda: modetextbox.configure(state='disabled'))
+            else:loadingplaylist = False
+        except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
+        loadingplaylist = False
 
 @check_internet
 def get_liked_vid(page_control_mode:int ):
@@ -2916,15 +2756,15 @@ def get_youtube_playlist_thread(playlistid_input = None):
     
     '''
     ###### get specifc info from the playlist that user choose
-    global loadingplaylist,vid_url,selected_song_number,playlistID
+    global loadingplaylist,selected_song_number,playlistID,media_data_list
     loadingplaylist = True
     try:
         selected_song_number = None
         playlistsongs =  []
-        playlisttitles.clear()
-        playlist_channel.clear()
-        playlist_thumbnails.clear()
-        vid_url.clear()
+        media_data_list.playlisttitles.clear()
+        media_data_list.playlist_channel.clear()
+        media_data_list.playlist_thumbnails.clear()
+        media_data_list.vid_url.clear()
         nextpagetoken = None
 
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
@@ -2954,11 +2794,11 @@ def get_youtube_playlist_thread(playlistid_input = None):
                         part='snippet',
                         id=video_id
                     ).execute()
-                    vid_url.append(f"https://www.youtube.com/watch?v={video_id}")
+                    media_data_list.vid_url.append(f"https://www.youtube.com/watch?v={video_id}")
                     vid_info = title_response['items'][0]['snippet']
-                    playlist_channel.append(vid_info['channelTitle'])
-                    playlisttitles.append(vid_info['title'])
-                    playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
+                    media_data_list.playlist_channel.append(vid_info['channelTitle'])
+                    media_data_list.playlisttitles.append(vid_info['title'])
+                    media_data_list.playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
                     insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],vid_info['title'],vid_info['channelTitle']))
                     tree_index += 1
                 except Exception as e:
@@ -3007,7 +2847,7 @@ def get_youtube_playlists(playlistID = None):
 
 @check_internet
 def youtube_search_thread():
-    global playing_vid_mode,loadingplaylist,vid_url,selected_song_number,playlisttitles,playlist_thumbnails,playlist_channel
+    global playing_vid_mode,loadingplaylist,selected_song_number,media_data_list
     playing_vid_mode = 0
     loadingplaylist = True
     if searchentry.get() != '':
@@ -3035,10 +2875,10 @@ def youtube_search_thread():
         
         playlisttreebox.delete(*playlisttreebox.get_children()) #########      start to process thumnail and title
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-        vid_url = []
-        playlisttitles.clear()
-        playlist_thumbnails.clear()
-        playlist_channel.clear()
+        media_data_list.vid_url = []
+        media_data_list.playlisttitles.clear()
+        media_data_list.playlist_thumbnails.clear()
+        media_data_list.playlist_channel.clear()
         index_for_tree = 1
 
         for item in stream_search_results['entries']:
@@ -3049,10 +2889,10 @@ def youtube_search_thread():
                     except IndexError:
                         thumbnail_url = f"https://i.ytimg.com/vi/{item['url'].split('shorts/')[1]}/hqdefault.jpg"
 
-                    vid_url.append(item['url'])
-                    playlisttitles.append(item['title'])
-                    playlist_thumbnails.append(thumbnail_url)
-                    playlist_channel.append(item['channel'])
+                    media_data_list.vid_url.append(item['url'])
+                    media_data_list.playlisttitles.append(item['title'])
+                    media_data_list.playlist_thumbnails.append(thumbnail_url)
+                    media_data_list.playlist_channel.append(item['channel'])
                     insert_treeview_quene.put((thumbnail_url,f"🛑LIVE {item['title']}",item['channel']))
                     index_for_tree +=1 
 
@@ -3066,10 +2906,10 @@ def youtube_search_thread():
                     except IndexError:
                         thumbnail_url = f"https://i.ytimg.com/vi/{item['url'].split('shorts/')[1]}/hqdefault.jpg"
 
-                    vid_url.append(item['url'])
-                    playlisttitles.append(item['title'])
-                    playlist_thumbnails.append(thumbnail_url)
-                    playlist_channel.append(item['channel'])
+                    media_data_list.vid_url.append(item['url'])
+                    media_data_list.playlisttitles.append(item['title'])
+                    media_data_list.playlist_thumbnails.append(thumbnail_url)
+                    media_data_list.playlist_channel.append(item['channel'])
                     insert_treeview_quene.put((thumbnail_url,item['title'],item['channel']))
                     index_for_tree +=1 
 
@@ -3092,7 +2932,7 @@ def youtube_search(event=None):
 
 @check_internet
 def get_starred_vid(event=None):
-    global vid_url,playlisttitles,playlist_channel,playlist_thumbnails,insert_treeview_quene,star_vid_handle,selected_song_number,playing_vid_mode,loadingplaylist
+    global insert_treeview_quene,star_vid_handle,selected_song_number,playing_vid_mode,loadingplaylist,media_data_list
     if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
         selected_song_number = None
         playing_vid_mode = 4
@@ -3108,16 +2948,16 @@ def get_starred_vid(event=None):
         ui_queue.put(lambda:star_vid_handle.list_all(
         
                 treeview_queue=insert_treeview_quene,
-                vid_url=vid_url,
-                playlisttitles=playlisttitles,
-                playlist_channel=playlist_channel,
-                playlist_thumbnails=playlist_thumbnails,
+                vid_url=media_data_list.vid_url,
+                playlisttitles=media_data_list.playlisttitles,
+                playlist_channel=media_data_list.playlist_channel,
+                playlist_thumbnails=media_data_list.playlist_thumbnails,
                 loadingplaylist_flag=loadingplaylist))
         loadingplaylist = False
             
 
 def switch_starred_vid(event=None):
-    global star_vid_handle,selected_song_number,playing_vid_mode,vid_url,playlist_thumbnails,playlisttitles,playlist_channel,cookies_dir,playing_vid_info_dict
+    global star_vid_handle,selected_song_number,playing_vid_mode,cookies_dir,playing_vid_info_dict,media_data_list
     
     if playing_vid_mode == 0 or playing_vid_mode == 2 or playing_vid_mode == 4:
         if selected_song_number == None:
@@ -3126,18 +2966,18 @@ def switch_starred_vid(event=None):
 
         
     if playing_vid_mode == 0 or playing_vid_mode == 4:
-        url_or_path = vid_url[selected_song_number]
-        title = playlisttitles[selected_song_number]
-        thumb = playlist_thumbnails[selected_song_number]
-        channel = playlist_channel[selected_song_number]
+        url_or_path = media_data_list.vid_url[selected_song_number]
+        title = media_data_list.playlisttitles[selected_song_number]
+        thumb = media_data_list.playlist_thumbnails[selected_song_number]
+        channel = media_data_list.playlist_channel[selected_song_number]
     elif playing_vid_mode == 1:
         url_or_path = playing_title_textbox.get(0.0,tk.END).strip()
         title = os.path.basename(url_or_path)
         thumb = None
         channel = 'local file'
     elif playing_vid_mode == 2:
-        url_or_path = vid_url[selected_song_number]
-        title = playlisttitles[selected_song_number]
+        url_or_path = media_data_list.vid_url[selected_song_number]
+        title = media_data_list.playlisttitles[selected_song_number]
         thumb = None
         channel = 'local file'
     elif playing_vid_mode == 3:
@@ -3157,10 +2997,10 @@ def switch_starred_vid(event=None):
 
         if playing_vid_mode == 4:
             try:
-                vid_url.pop(selected_song_number)
-                playlisttitles.pop(selected_song_number)
-                playlist_thumbnails.pop(selected_song_number)
-                playlist_channel.pop(selected_song_number)
+                media_data_list.vid_url.pop(selected_song_number)
+                media_data_list.playlisttitles.pop(selected_song_number)
+                media_data_list.playlist_thumbnails.pop(selected_song_number)
+                media_data_list.playlist_channel.pop(selected_song_number)
                 ui_queue.put(lambda i=selected_song_number: playlisttreebox.delete(playlisttreebox.get_children()[i]))
             except Exception as e:
                 log_handle(content=str(e))
@@ -3180,7 +3020,7 @@ def switch_starred_vid(event=None):
                         thumb=thumb,
                         title=title,
                         channel=channel,
-                        cookie_path=cookies_dir)
+                        )
         if res:
             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
@@ -3247,7 +3087,7 @@ def update_playing_pos_local_and_chrome():
                     if playing_vid_mode == 2 or playing_vid_mode == 4:
                         ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
                         if player_mode_selector.get() =='continue':
-                            if selected_song_number == len(vid_url) -1:
+                            if selected_song_number == len(media_data_list.vid_url) -1:
                                 selected_song_number = 0
                             else:    
                                 selected_song_number  = selected_song_number + 1
@@ -3255,10 +3095,10 @@ def update_playing_pos_local_and_chrome():
                             player.seek(0.1,reference='absolute')
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
-                            selected_song_number = random.randint(0,len(vid_url))
+                            selected_song_number = random.randint(0,len(media_data_list.vid_url))
                         download_and_play()
                         ui_queue.put(lambda s=selected_song_number: playlisttreebox.selection_set(playlisttreebox.get_children()[s]))
-                        if star_vid_handle.search(vid_url[selected_song_number]):
+                        if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
                         else:
                             ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -3269,7 +3109,7 @@ def update_playing_pos_local_and_chrome():
                     if player_mode_selector.get() =='replay':# =  3 chrome , =0 for chrome but added a video
                         player.seek(0.1,reference='absolute')
                         root.after(200, lambda: setattr(player, 'pause', False))
-                    elif player_mode_selector.get() =='continue' and len(vid_url) > 0:
+                    elif player_mode_selector.get() =='continue' and len(media_data_list.vid_url) > 0:
                         stop_playing_video()
                         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','Please choose a video again!'))
                         
@@ -3326,7 +3166,7 @@ def update_playing_pos_yt():
 
                         if player_mode_selector.get() =='continue':
                             player.stop()
-                            if selected_song_number == len(vid_url) -1:
+                            if selected_song_number == len(media_data_list.vid_url) -1:
                                 selected_song_number = 0
                             else:    
                                 selected_song_number  = selected_song_number + 1
@@ -3336,13 +3176,13 @@ def update_playing_pos_yt():
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            selected_song_number = random.randint(0,len(vid_url))
+                            selected_song_number = random.randint(0,len(media_data_list.vid_url))
                         
                         if player_mode_selector.get() !='replay':
                             ui_queue.put(lambda s=selected_song_number: playlisttreebox.selection_set(playlisttreebox.get_children()[s])) ## get selection
                             finish_break = True  ### so set it before enfter d.a.p fun
                             download_and_play() ### will stuck here bc of watiing while loop
-                            if star_vid_handle.search(vid_url[selected_song_number]):
+                            if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                                 ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
                             else:
                                 ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -3490,14 +3330,14 @@ def playnextsong():
                 stop_playing_video()
                 
                 playlisttreebox.selection_remove(playlisttreebox.selection())
-                if selected_song_number == len(vid_url)-1:
+                if selected_song_number == len(media_data_list.vid_url)-1:
                     selected_song_number = 0
                 else:    
                     selected_song_number  +=1 
                 playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number])
                 time.sleep(0.5)
                 download_and_play()
-                if star_vid_handle.search(vid_url[selected_song_number]):
+                if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
                 else:
                     ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -3515,12 +3355,12 @@ def playprevsong():
                 stop_playing_video()
                 
                 if selected_song_number == 0: 
-                    selected_song_number = len(vid_url) -1
+                    selected_song_number = len(media_data_list.vid_url) -1
                 else: 
                     selected_song_number  = selected_song_number - 1
                 time.sleep(0.5)
                 download_and_play()
-                if star_vid_handle.search(vid_url[selected_song_number]):
+                if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
                 else:
                     ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -3586,12 +3426,9 @@ def load_thread():  ### add every try except to a new log system for next update
                                     return None #### return if no internet
                                     #the def actually dont need to return anything but just to make sure it wont go futher
                             try:
-                                final_url,playing_vid_info_dict = get_info(yt_dlp=yt_dlp,
-                                                                        maxres=maxresolution.get(),
+                                final_url,playing_vid_info_dict = get_info(
                                                                         target_url=direct_url,
-                                                                        deno_path=deno_exe,
-                                                                        log_handler=ytdlp_log_handle,
-                                                                        cookie_path=cookies_dir)
+                                                                        loader=get_info_loader)
                                 
                                 if final_url:                                    
                                     try:
@@ -3852,7 +3689,7 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
     dnd_files_path_lists for dnd file list
     // only use kwarg
     '''
-    global playing_vid_mode,vid_url,local_single_filepath,loadingvideo,selected_song_number
+    global playing_vid_mode,local_single_filepath,loadingvideo,selected_song_number,media_data_list
     
     if mode == 0:
         
@@ -3867,9 +3704,9 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
         if local_single_filepath:
             playing_vid_mode = 1
             selected_song_number = None
-            playlisttitles.clear()
-            playlist_thumbnails.clear()
-            vid_url = []
+            media_data_list.playlisttitles.clear()
+            media_data_list.playlist_thumbnails.clear()
+            media_data_list.vid_url = []
             playlisttreebox.delete(*playlisttreebox.get_children())
             ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
 
@@ -3898,9 +3735,9 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
         if folder_path:
             playing_vid_mode = 2
             selected_song_number = None
-            playlisttitles.clear()
-            playlist_thumbnails.clear()
-            vid_url = []
+            media_data_list.playlisttitles.clear()
+            media_data_list.playlist_thumbnails.clear()
+            media_data_list.vid_url = []
             playlisttreebox.delete(*playlisttreebox.get_children())
             folder_items = [file for file in os.listdir(folder_path) if file.endswith(filetype)]
 
@@ -3911,17 +3748,17 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
 
             index_for_tree = 1
             for item in folder_items:
-                vid_url.append(os.path.join(folder_path,item))
+                media_data_list.vid_url.append(os.path.join(folder_path,item))
                 insert_treeview_quene.put((None,item,'Local files-'))
-                playlisttitles.append(item)
+                media_data_list.playlisttitles.append(item)
                 index_for_tree += 1
         
     if mode == 2 and dnd_files_path_lists:
             playing_vid_mode = 2
             selected_song_number = None
-            playlisttitles.clear()
-            playlist_thumbnails.clear()
-            vid_url = []
+            media_data_list.playlisttitles.clear()
+            media_data_list.playlist_thumbnails.clear()
+            media_data_list.vid_url = []
             playlisttreebox.delete(*playlisttreebox.get_children())
 
             modetextbox.configure(state='normal')
@@ -3931,13 +3768,13 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
 
             index_for_tree = 1
             for item in dnd_files_path_lists:
-                vid_url.append(item)
+                media_data_list.vid_url.append(item)
                 try:
                     base = os.path.basename(item)
                     insert_treeview_quene.put((None,base,'Local files-'))
                 except:
                     pass
-                playlisttitles.append(item)
+                media_data_list.playlisttitles.append(item)
                 index_for_tree += 1
 
 
@@ -3956,7 +3793,7 @@ def download_and_play(event=None):### button and double click event
         if check_internet_socket():
             #load from youtube
             if selected_song_number != None:
-                load_thread_queue.put((None,vid_url[selected_song_number]))
+                load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
         
             else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
         else:
@@ -3969,12 +3806,12 @@ def download_and_play(event=None):### button and double click event
     elif playing_vid_mode == 1 or playing_vid_mode == 2:       
         # load local file/folder
         if selected_song_number != None:
-            load_thread_queue.put((vid_url[selected_song_number],None))
+            load_thread_queue.put((media_data_list.vid_url[selected_song_number],None))
         else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
 
     elif playing_vid_mode == 4:
         if selected_song_number != None:
-            url_or_path = vid_url[selected_song_number]
+            url_or_path = media_data_list.vid_url[selected_song_number]
             if url_or_path.startswith(('http://', 'https://')):
                 if check_internet_socket():
                     load_thread_queue.put((None,url_or_path))
@@ -4004,7 +3841,7 @@ def onclose():
     try:discord_presence.close()
     except:pass
     try:
-        asyncio.run_coroutine_threadsafe(asyncio_session.close(),asynceventloop)
+        thumbnail_loader.close()
     except:pass
     try:
         shortcut_manager.cleanup()
@@ -4402,7 +4239,7 @@ def dnd_path_listener():
 
 @check_internet
 def init_get_recommendation():
-    global playlisttitles,vid_url,playlist_channel,playlist_thumbnails,cookies_dir,loadingplaylist,playing_vid_mode
+    global cookies_dir,loadingplaylist,playing_vid_mode,media_data_list
     if not loadingplaylist or loadingplaylist and messagebox.askokcancel(f'JaTubePlayer {ver}','Player is already loading, sure to load again?'):
         loadingplaylist = True
         playing_vid_mode = 0
@@ -4415,12 +4252,16 @@ def init_get_recommendation():
         ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
         ui_queue.put(lambda: modetextbox.insert(tk.END,"Recommendation\n⏳Loading..."))
         ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-        playlisttitles,vid_url,playlist_channel,playlist_thumbnails = get_related_video(yt_dlp.YoutubeDL,current_dir,cookies_dir)
-        zipped = list(zip(playlisttitles,vid_url,playlist_channel,playlist_thumbnails))
+        titles, urls, channels, thumbs = get_related_video(yt_dlp.YoutubeDL,current_dir,cookies_dir)
+        media_data_list.playlisttitles = titles
+        media_data_list.vid_url = urls
+        media_data_list.playlist_channel = channels
+        media_data_list.playlist_thumbnails = thumbs
+        zipped = list(zip(media_data_list.playlisttitles,media_data_list.vid_url,media_data_list.playlist_channel,media_data_list.playlist_thumbnails))
         shuffle(zipped)
-        playlisttitles,vid_url,playlist_channel,playlist_thumbnails = map(list, zip(*zipped))
-        for i in range(len(playlisttitles)):
-            insert_treeview_quene.put((playlist_thumbnails[i],playlisttitles[i],playlist_channel[i]))
+        media_data_list.playlisttitles,media_data_list.vid_url,media_data_list.playlist_channel,media_data_list.playlist_thumbnails = map(list, zip(*zipped))
+        for i in range(len(media_data_list.playlisttitles)):
+            insert_treeview_quene.put((media_data_list.playlist_thumbnails[i],media_data_list.playlisttitles[i],media_data_list.playlist_channel[i]))
         ui_queue.put(lambda: modetextbox.configure(state='normal'))
         ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
         ui_queue.put(lambda: modetextbox.insert(tk.END,"Recommendation"))
@@ -4598,15 +4439,34 @@ def create_mpv_player():
 
 
 
-
+def _init_load_extra_objs():
+    global dnd_handle,discord_presence,google_control,Ferner_encrptor_,get_info_loader,star_vid_handle,thumbnail_loader
+    Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
+    dnd_handle=DropHandler()
+    discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
+    google_control = google_auth_control(ver=ver,youtubeAPI=Ferner_encrptor_.decrypte_api(),current_dir=current_dir,log_handle=log_handle,ctk_messagebox=messagebox)
+    get_info_loader = get_info_loader_(yt_dlp = lambda:yt_dlp,
+                                      maxresolution = lambda: maxresolution.get(),
+                                      deno_exe = lambda: deno_exe,
+                                      ytdlp_log_handle = lambda: ytdlp_log_handle,
+                                      cookies_dir = lambda: cookies_dir
+                                      )
+    
+    media_data_list.vid_url = []
+    star_vid_handle = star_vid_handler(current_dir=current_dir,
+                                        get_info_loader=get_info_loader)
     
 
-def init_star_vid_instance():
-    global star_vid_handle
-    star_vid_handle = star_vid_handler(current_dir=current_dir,
-                                        yt_dlp=yt_dlp,
-                                        deno_path=os.path.join(current_dir,'_internal','deno'),
-                                        yt_dlp_log_handler=ytdlp_log_handler())
+    thumbnail_loader = ThumbnailLoader(playing_vid_mode=lambda: playing_vid_mode,
+                                       insert_treeview_quene=insert_treeview_quene,
+                                       playlisttreebox=playlisttreebox,
+                                       ui_queue=ui_queue,
+                                       tkinter_scaling=lambda: tkinter_scaling,
+                                       log_handle=log_handle,
+                                       root=root)
+                                    
+    
+    
 
 def init_set_smtc():
     smtc.next_song_fun = playnextsong
@@ -4628,43 +4488,6 @@ def init_set_playertray():
     tray.run()
 
 
-async def async_thumb():
-    global asyncio_session,async_task
-    try:
-        if not asyncio_session:asyncio_session = aiohttp.ClientSession()##needs in async def ,in order to use the same session repeatedly
-        if async_task:
-            task_temp = async_task.copy()
-            await asyncio.gather(*task_temp)
-            async_task.remove(item for item in task_temp)
-    except:pass
-    await asyncio.sleep(0.25)  # Use asyncio.sleep instead of root.after
-    asyncio.create_task(async_thumb())
-
-def init_tree_view_quene():
-    global async_task,asyncio_session
-    try:
-        while not insert_treeview_quene.empty():
-            thumb, title, ch = insert_treeview_quene.get_nowait()
-            id = playlisttreebox.insert('', 'end', values=(f'{title}\n{ch}',))
-            if playing_vid_mode == 0 or playing_vid_mode == 4:
-                async_task.append(load_thumbnail_thread(asyncio_session,id,thumb))
-
-            #adjust column width in playlisttreebox insert thread
-            if playing_vid_mode ==0 or playing_vid_mode == 4:
-                playlisttreebox.column("#0", width=180,anchor='center')
-            else:
-                playlisttreebox.column("#0", width=0,anchor='center')
-
-
-
-    except Exception as e:log_handle(content=str(e))
-    root.after(20,init_tree_view_quene)
-
-asynceventloop = asyncio.new_event_loop()
-def start_async_eventloop():
-    asyncio.set_event_loop(asynceventloop)
-    asynceventloop.call_soon_threadsafe(lambda: asynceventloop.create_task(async_thumb()))
-    asynceventloop.run_forever()
 
 def init_listen_chromeextension():
     global playing_vid_mode,selected_song_number,star_vid_handle
@@ -4676,10 +4499,10 @@ def init_listen_chromeextension():
             load_thread_queue.put((None,chrome_extension_url))
             selected_song_number = None
 
-            vid_url.clear()
-            playlisttitles.clear()
-            playlist_thumbnails.clear()
-            playlist_channel.clear()
+            media_data_list.vid_url.clear()
+            media_data_list.playlisttitles.clear()
+            media_data_list.playlist_thumbnails.clear()
+            media_data_list.playlist_channel.clear()
             if star_vid_handle.search(chrome_extension_url):
                 ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             else:
@@ -4740,12 +4563,8 @@ def init_listen_chromeextension():
                                                msg='Added video to playlist\nFetching data...', 
                                                duration='short', 
                                                icon=icondir)
-                    _,info = get_info(
-                        yt_dlp=yt_dlp,
-                        maxres=1080,
-                        target_url=url,
-                        deno_path=deno_exe,
-                        log_handler=ytdlp_log_handler()
+                    _,info = get_info(loader=get_info_loader,          
+                                      target_url=url
                     )
                     log_handle(content = info['thumbnail'])
 
@@ -4753,10 +4572,10 @@ def init_listen_chromeextension():
                     except:thumb = None
                     log_handle(content=f"Added video to playlist: {info['title']} thumbnail: {thumb}")
                     insert_treeview_quene.put((thumb,f"[ADDED]{info['title']}",info['uploader']))
-                    vid_url.append(url)
-                    playlisttitles.append(info['title'])
-                    playlist_channel.append(info['uploader'])
-                    playlist_thumbnails.append(thumb)
+                    media_data_list.vid_url.append(url)
+                    media_data_list.playlisttitles.append(info['title'])
+                    media_data_list.playlist_channel.append(info['uploader'])
+                    media_data_list.playlist_thumbnails.append(thumb)
                     ToastNotification().notify(app_id="JaTubePlayer",
                                                title=f'JaTubePlayer {ver}',
                                                msg='Added video to playlist',
@@ -4908,9 +4727,6 @@ def _start_up():
     init_read_dlp()
     log_handle(content=f'dlp fin')
 
-    init_star_vid_instance()
-    log_handle(content=f'star vid fin')
-
     _init_load_extra_objs()
     log_handle(content=f'extra obj fin')
     
@@ -4924,10 +4740,7 @@ def _start_up():
 
     init_read_config()
     log_handle(content=f'config fin')
-    
-    init_tree_view_quene()
-    log_handle(content=f'treeview quene fin')
-    
+        
     check_keyboard()
     log_handle(content=f'keyboard fin')
 
@@ -5377,13 +5190,13 @@ star_btn.place(relx=0.270, rely=0.06, relwidth=0.175, relheight=0.88)
 
 
 select_info_btn = ctk.CTkButton(action_btn_frame, text='ℹ️ Sel',
-                                 command=lambda: vid_info_frame(1), fg_color='#2E2E2E',
+                                 command=lambda: video_info_frame_main(1), fg_color='#2E2E2E',
                                  hover_color='#404040', corner_radius=8, font=('Segoe UI', 11),
                                  border_width=1, border_color='#444444')
 select_info_btn.place(relx=0.460, rely=0.06, relwidth=0.175, relheight=0.88)
 
 playing_info_btn = ctk.CTkButton(action_btn_frame, text='📊 Now',
-                                  command=lambda: vid_info_frame(2), fg_color='#2E2E2E',
+                                  command=lambda: video_info_frame_main(2), fg_color='#2E2E2E',
                                   hover_color='#404040', corner_radius=8, font=('Segoe UI', 11),
                                   border_width=1, border_color='#444444')
 playing_info_btn.place(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
