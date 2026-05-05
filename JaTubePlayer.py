@@ -3,7 +3,7 @@ time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
 from tkinter import *
-import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,asyncio,win32gui
+import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,win32gui
 from PIL import Image, ImageTk 
 from random import shuffle
 import googleapiclient.errors
@@ -17,7 +17,7 @@ ctk.set_appearance_mode("dark")
 from utils.get_scaling import get_window_dpi
 from utils.ctk_get_scaling_patch import _apply_google_auth_patch
 from utils.load_yt_dlp import *
-from utils.get_related_video import *
+from video_media_control.get_related_video import *
 from utils.download_to_local import download_to_local
 from utils.check_internet import *
 from utils.check_internet import check_internet
@@ -40,7 +40,7 @@ from system.dnd_winsys import *
 from system.keyboard import *
 from system.presence import DiscordPresence
 
-from video_media_control.page_control import MediaList_PageControl_
+from video_media_control.media_list_page_control import MediaList_PageControl_
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
 
@@ -4470,7 +4470,8 @@ def _init_load_extra_objs():
         media_data_list=media_data_list,
         ui_queue=ui_queue,
         tree_view_queue=insert_treeview_quene,
-        log_handle=log_handle)
+        log_handle=log_handle,
+        thumbnail_loader=thumbnail_loader)
                                     
     
     
@@ -4635,13 +4636,12 @@ def _init_load_smtc_obj():
 
 def _start_up_import():
     """Import heavy modules sequentially with timing"""
-    global aiohttp,build, Credentials,google_auth_control,Ferner_encrptor,star_vid_handler
+    global build, Credentials,google_auth_control,Ferner_encrptor,star_vid_handler
     global get_latest_player_version,get_latest_dlp_version
     import time
     
 
     t = time.time()
-    import aiohttp
     log_handle(content=f"aiohttp: {time.time()-t:.3f}s")
     
     # Google API
@@ -4666,7 +4666,7 @@ def _start_up_import():
     log_handle(content=f"version_funcs: {time.time()-t:.3f}s")
     
     t = time.time()
-    from utils.star_vid import star_vid_handler
+    from video_media_control.star_vid import star_vid_handler
     log_handle(content=f"version_funcs: {time.time()-t:.3f}s")
 
     log_handle(content=f"Total import time: {time.time()-time1:.3f}s")
@@ -4684,7 +4684,7 @@ def _extra_startup_imports():
     global shortcut_manager
 
     t = time.time()
-    from utils.sub_and_like_public import update_sub_list, update_like_list, liked_channel, sub_channel
+    from video_media_control.sub_and_like_public import update_sub_list, update_like_list, liked_channel, sub_channel
     log_handle(content=f"sub_and_like: {time.time()-t:.3f}s")
     
     # YT-DLP Update

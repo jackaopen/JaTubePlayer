@@ -1,7 +1,7 @@
 import enum
 import queue
 from loader.media_data_list import media_data_list_template
-
+from ui.thumbnail import ThumbnailLoader
 
 class MediaType(enum.IntEnum):
     '''
@@ -22,14 +22,18 @@ class MediaType(enum.IntEnum):
 class MediaList_PageControl_:
     '''
     this class controls the media list and page control,
-    include online/local
+    include online/local,
+    will insert the current page data to ui queue, to update the ui
+    This will only do job for yt playlist(playlist,sub,like), folders, star 
+    search currently dose not support page control
     '''
     def __init__(self,
                  media_data_list:media_data_list_template,
                  ui_queue:queue.Queue,
                  tree_view_queue:queue.Queue,
                  log_handle:object,
-                 thumbnail_loader:object
+                 thumbnail_loader:ThumbnailLoader,
+                 page_num_label = object
                  ):
         self.media_data_list = media_data_list
         self.total_page = 0
@@ -39,12 +43,21 @@ class MediaList_PageControl_:
         self.tree_view_queue = tree_view_queue
         self.log_handle = log_handle
         self.thumbnail_loader = thumbnail_loader
+        self.page_num_label = page_num_label # for controling UI
+
+    def _video_info_ytdlp(self,url):
+        #TODO
+        pass
+    def _video_info_yt_api(self,url):
+        #TODO   
+
+        pass
     def _insert_to_ui_queue(self):
         '''
         insert the current page data to ui queue, to update the ui
         '''
         self.thumbnail_loader.clear_thumbnails()
-
+        self.ui_queue.put(lambda: self.page_num_label.configure(text=f'page {self.current_page}/{self.total_page}'))
         start_index = (self.current_page - 1) * 50
         end_index = min(self.current_page * 50, len(self.media_data_list.vid_url))
         self.log_handle(errtype='info', component='page_control',
@@ -57,14 +70,25 @@ class MediaList_PageControl_:
     def init_and_reload(self,
                         media_type:int,
                         new_media_data_list:media_data_list_template):
-        
+        '''
+        Mediatype:
+            0. youtube video
+            1. single open with (local file)
+            2. folder (local folder)
+            3. chrome
+            4. starred video (starred video list)
+        only support 0 (except search) 2 4 
+        '''
         self.media_data_list = new_media_data_list
         self.total_page = len(self.media_data_list.vid_url) // 50 + 1
         self.current_page = 1
         self.media_type = MediaType(media_type)
         self.log_handle(errtype='info', component='page_control',
                         content=f'init reload media_type={self.media_type.name} total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+        
+        #TODO:seperate the video type and do geting vid, fetching info, and  _insert
         self._insert_to_ui_queue()
+        
 
     def next_page(self):
         if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
