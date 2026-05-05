@@ -1,4 +1,8 @@
 import time
+
+from itsdangerous import exc
+
+from video_media_control import media_list_page_control
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
@@ -7,7 +11,7 @@ import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random
 from PIL import Image, ImageTk 
 from random import shuffle
 import googleapiclient.errors
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, thread
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
@@ -2384,13 +2388,19 @@ def enterplaylist(event=None):
 
 
 def page_control(mode):
-    log_handle(content=str(modetextbox.get(0.0,tk.END).strip()))
-    if modetextbox.get(0.0,tk.END).strip() == 'Subscribed':get_sub_channel(mode)
-    elif modetextbox.get(0.0,tk.END).strip() == 'Liked':get_liked_vid(mode)
-    else:
-        if 'loading' in modetextbox.get(0.0,tk.END).strip() or 'updating' in modetextbox.get(0.0,tk.END).strip():
-            messagebox.showinfo(f'JaTubePlayer {ver}','still loading, please wait!')
-        else:messagebox.showerror(f'JaTubePlayer {ver}','Please init subsciption or like page first!')
+    '''
+    mode == 1: next page, mode == 2: prev page'''
+    if mode == 1:
+        nextpageresult = Media_list_page_controller.next_page()
+    elif mode == 2:
+        nextpageresult = Media_list_page_controller.prev_page()
+    if nextpageresult == -1:
+        ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','page still loading, please wait...'))
+    elif nextpageresult == -2:
+        ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','we got an error while loading the page, please refer to the log for more details'))
+    elif nextpageresult == -3:
+        ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','your current video list does not support page control!'))
+
 
 
 def get_sub_channel_thread(page_control_mode:int):
@@ -2463,10 +2473,7 @@ def get_sub_channel_thread(page_control_mode:int):
                         ui_queue.put(lambda: modetextbox.insert(tk.END, f"Subscribed\n⏳ loading..."))
                         ui_queue.put(lambda: modetextbox.configure(state='disabled'))
 
-                        media_data_list.vid_url = []
-                        media_data_list.playlisttitles.clear()
-                        media_data_list.playlist_thumbnails.clear()
-                        media_data_list.playlist_channel.clear()
+                        media_data_list.clear()
                         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
                         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
                         ydl_opts = {
@@ -2547,12 +2554,9 @@ def get_liked_vid_thread(page_control_mode:int):
         loadingplaylist = True
         try:
             if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
-            media_data_list.playlisttitles.clear()
-            media_data_list.playlist_thumbnails.clear()
-            media_data_list.vid_url = []
+            media_data_list.clear()
             ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
             ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-            media_data_list.playlist_channel.clear()
             stop = False#for updating the like list , both auto and user cancel auto load
             
             if page_control_mode == 0:#mode 0 init, mode 1 next page, mode 2 previous page
@@ -2761,12 +2765,7 @@ def get_youtube_playlist_thread(playlistid_input = None):
     loadingplaylist = True
     try:
         selected_song_number = None
-        playlistsongs =  []
-        media_data_list.playlisttitles.clear()
-        media_data_list.playlist_channel.clear()
-        media_data_list.playlist_thumbnails.clear()
-        media_data_list.vid_url.clear()
-        nextpagetoken = None
+        media_data_list.clear()
 
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -2774,45 +2773,17 @@ def get_youtube_playlist_thread(playlistid_input = None):
             google_control.get_cred()
             ui_queue.put(lambda: google_status_update())
             get_user_playlists(0)
+
+
         elif playlistID.get() or playlistid_input:
             ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
-            while True:
-                playlist_response = youtube.playlistItems().list(
-                    part='contentDetails',
-                    playlistId=playlistID.get() if not playlistid_input else playlistid_input,
-                    maxResults=100,
-                    pageToken=nextpagetoken
-                ).execute()
-                playlistsongs.extend(playlist_response['items'])
-                nextpagetoken = playlist_response.get('nextPageToken')
-                if not nextpagetoken:
-                    break
-            tree_index = 1
-            for item in playlistsongs:
-                try:
-                    video_id = item['contentDetails']['videoId']
-                    title_response = youtube.videos().list(
-                        part='snippet',
-                        id=video_id
-                    ).execute()
-                    media_data_list.vid_url.append(f"https://www.youtube.com/watch?v={video_id}")
-                    vid_info = title_response['items'][0]['snippet']
-                    media_data_list.playlist_channel.append(vid_info['channelTitle'])
-                    media_data_list.playlisttitles.append(vid_info['title'])
-                    media_data_list.playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
-                    insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],vid_info['title'],vid_info['channelTitle']))
-                    tree_index += 1
-                except Exception as e:
-                    log_handle(content=str(e))
-
-        
-
-    except googleapiclient.errors.HttpError as err: ######  handle stupid api
-            ui_queue.put(lambda e=err: messagebox.showerror(f'JaTubePlayer {ver}', f"An error occurred: {e}"))
-    except Exception as e:
-            ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', err))
+            Media_list_page_controller.youtube_init_and_reload(
+                media_data_list=media_data_list,
+                youtube=youtube,
+                playlist_id=playlistID.get() if not playlistid_input else playlistid_input
+            )
+    except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))    
     ui_queue.put(lambda: playlistlabel.configure(text='📁'))
-    ui_queue.put(lambda: page_num_label.configure(text=''))
     loadingplaylist = False
 
 @check_internet
@@ -2876,10 +2847,7 @@ def youtube_search_thread():
         
         playlisttreebox.delete(*playlisttreebox.get_children()) #########      start to process thumnail and title
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-        media_data_list.vid_url = []
-        media_data_list.playlisttitles.clear()
-        media_data_list.playlist_thumbnails.clear()
-        media_data_list.playlist_channel.clear()
+        media_data_list.clear()
         index_for_tree = 1
 
         for item in stream_search_results['entries']:
@@ -4467,11 +4435,12 @@ def _init_load_extra_objs():
                                        root=root)
     
     Media_list_page_controller = MediaList_PageControl_(
-        media_data_list=media_data_list,
         ui_queue=ui_queue,
         tree_view_queue=insert_treeview_quene,
         log_handle=log_handle,
-        thumbnail_loader=thumbnail_loader)
+        thumbnail_loader=thumbnail_loader,
+        page_num_label=page_num_label
+        )
                                     
     
     
@@ -4507,10 +4476,7 @@ def init_listen_chromeextension():
             load_thread_queue.put((None,chrome_extension_url))
             selected_song_number = None
 
-            media_data_list.vid_url.clear()
-            media_data_list.playlisttitles.clear()
-            media_data_list.playlist_thumbnails.clear()
-            media_data_list.playlist_channel.clear()
+            media_data_list.clear()
             if star_vid_handle.search(chrome_extension_url):
                 ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             else:

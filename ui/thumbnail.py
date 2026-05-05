@@ -95,7 +95,14 @@ class ThumbnailLoader:
     # Thumbnail Loading and Treeview Insertion, put thumbnail loading tasks in async_task list
     # ─────────────────────────────────────────────────────────────────────────
     def clear_thumbnails(self):
-        self.ui_queue.put(lambda: self.playlisttreebox.delete(*self.playlisttreebox.get_children()))
+        self.playlisttreebox.delete(*self.playlisttreebox.get_children())
+        try:
+            while True:
+                self.insert_treeview_quene.get_nowait()
+        except queue.Empty:
+            pass
+        self.async_task.clear()
+        self.temp.clear()
     
     def treeview_queue_GetterLoop(self):
         try:

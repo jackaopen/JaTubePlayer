@@ -11,5 +11,11 @@ class media_data_list_template:
         self.playlisttitles = []
         self.playlist_channel = []
         self.playlist_thumbnails = []
+        
+    def clear(self):
+        self.vid_url.clear()
+        self.playlisttitles.clear()
+        self.playlist_channel.clear()
+        self.playlist_thumbnails.clear()
 
     

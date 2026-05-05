@@ -2,6 +2,8 @@ import enum
 import queue
 from loader.media_data_list import media_data_list_template
 from ui.thumbnail import ThumbnailLoader
+from .playlist_retriever import playlist_retriever
+
 
 class MediaType(enum.IntEnum):
     '''
@@ -28,30 +30,28 @@ class MediaList_PageControl_:
     search currently dose not support page control
     '''
     def __init__(self,
-                 media_data_list:media_data_list_template,
                  ui_queue:queue.Queue,
                  tree_view_queue:queue.Queue,
                  log_handle:object,
                  thumbnail_loader:ThumbnailLoader,
                  page_num_label = object
                  ):
-        self.media_data_list = media_data_list
         self.total_page = 0
         self.current_page = 1
         self.media_type = MediaType.NONE
+        self.media_data_list = None
         self.ui_queue = ui_queue
         self.tree_view_queue = tree_view_queue
         self.log_handle = log_handle
         self.thumbnail_loader = thumbnail_loader
         self.page_num_label = page_num_label # for controling UI
+        
+        self.yt_playlist_retriever = playlist_retriever(
+            log_handle=self.log_handle,
+            ui_queue=self.ui_queue)
 
-    def _video_info_ytdlp(self,url):
-        #TODO
-        pass
-    def _video_info_yt_api(self,url):
-        #TODO   
 
-        pass
+
     def _insert_to_ui_queue(self):
         '''
         insert the current page data to ui queue, to update the ui
@@ -67,49 +67,92 @@ class MediaList_PageControl_:
                                       self.media_data_list.playlisttitles[i],
                                       self.media_data_list.playlist_channel[i]))
 
-    def init_and_reload(self,
-                        media_type:int,
-                        new_media_data_list:media_data_list_template):
-        '''
-        Mediatype:
-            0. youtube video
-            1. single open with (local file)
-            2. folder (local folder)
-            3. chrome
-            4. starred video (starred video list)
-        only support 0 (except search) 2 4 
-        '''
-        self.media_data_list = new_media_data_list
-        self.total_page = len(self.media_data_list.vid_url) // 50 + 1
-        self.current_page = 1
-        self.media_type = MediaType(media_type)
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'init reload media_type={self.media_type.name} total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
-        
-        #TODO:seperate the video type and do geting vid, fetching info, and  _insert
-        self._insert_to_ui_queue()
-        
 
-    def next_page(self):
-        if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
-            if self.current_page < self.total_page:
-                self.current_page += 1
+
+
+    def youtube_init_and_reload(self,
+                        media_data_list:media_data_list_template,
+                        youtube:object=None,
+                        playlist_id:str=None,
+                        ):
+               
+        self.current_page = 1
+        self.media_data_list = media_data_list
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+        self.media_type = MediaType.YOUTUBE
+        
+        
+        self.yt_playlist_retriever.init_playlist_items(
+            youtube=youtube,
+            playlist_id=playlist_id,
+            media_data_list=self.media_data_list,
+        )
+        self.total_page = (self.yt_playlist_retriever.total_playlist_count + 49) // 50
+
+        self._insert_to_ui_queue()
+    
+    def add():
+        #TODO: add media item to current media list
+        pass
+
+    def next_page(self)->int:
+        '''
+        return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
+        
+        '''
+        _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
+        if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
+            self.log_handle(errtype='warning', component='page_control',
+                            content=f'page still loading, current_page={self.current_page} total_page={self.total_page}')
+            
+            
+            
+            return -1
+        try:
+            if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
+                if self.current_page < self.total_page:
+                    self.current_page += 1
+                else:
+                    self.current_page = 1
+                self.log_handle(errtype='info', component='page_control',
+                                content=f'next page -> {self.current_page}/{self.total_page}')
+                self._insert_to_ui_queue()
+                return 0
             else:
-                self.current_page = 1
-            self.log_handle(errtype='info', component='page_control',
-                            content=f'next page -> {self.current_page}/{self.total_page}')
-            self._insert_to_ui_queue()
+                self.log_handle(errtype='warning', component='page_control',
+                                content=f'current media type does not support page control, media_type={self.media_type}')
+                return -3
+        except Exception as e:
+            self.log_handle(content=str(e))
+            return -2
 
     def prev_page(self):
-        if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
-            if self.current_page > 1:
-                self.current_page -= 1
+        '''
+         return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
+        '''
+        _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
+        if _total_page_of_current_data < self.current_page and self.current_page != self.total_page:
+            self.log_handle(errtype='warning', component='page_control',
+                            content=f'page still loading, current_page={self.current_page} total_page={self.total_page}')
+            return -1
+        try:
+            if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
+                if self.current_page > 1:
+                    self.current_page -= 1
+                else:
+                    self.current_page = self.total_page
+                self.log_handle(errtype='info', component='page_control',
+                                content=f'previous page -> {self.current_page}/{self.total_page}')
+                self._insert_to_ui_queue()
+                return 0
             else:
-                self.current_page = self.total_page
-            self.log_handle(errtype='info', component='page_control',
-                            content=f'previous page -> {self.current_page}/{self.total_page}')
-            self._insert_to_ui_queue()
-    
+                self.log_handle(errtype='warning', component='page_control',
+                                content=f'current media type does not support page control, media_type={self.media_type}')
+        except Exception as e:
+            self.log_handle(content=str(e)) 
+            return -3
+
     def clear(self):
         '''
         mainly for single and chrome mode, clear the media data list and reset the page control

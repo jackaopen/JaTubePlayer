@@ -1,5 +1,5 @@
 import json,os
-from ..utils.get_media_info import *
+from utils.get_media_info import *
 from loader.get_info_loader import get_info_loader_
 import queue
 
