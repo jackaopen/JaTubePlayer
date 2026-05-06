@@ -874,11 +874,9 @@ def setting_frame():
                 return
             try:
                 item_id = playlisttreebox.get_children()[selected_song_number]
-                playlisttreebox.delete(item_id)
-                media_data_list.vid_url.pop(selected_song_number)
-                media_data_list.playlisttitles.pop(selected_song_number)
-                media_data_list.playlist_thumbnails.pop(selected_song_number)
-                media_data_list.playlist_channel.pop(selected_song_number)
+                Media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
+                                                          selected_tree_ID=item_id)
+                
                 selected_song_number = None
             except Exception as e:
                 messagebox.showerror(f'JaTubePlayer {ver}', f'Failed to remove item from playlist:\n{e}')
@@ -4527,7 +4525,6 @@ def init_listen_chromeextension():
                     ui_queue.put(lambda: modetextbox.configure(state="disabled"))
 
 
-
                     if playing_vid_mode == 3:
                         playing_vid_mode = 0
                         selected_song_number = None
@@ -4544,12 +4541,15 @@ def init_listen_chromeextension():
 
                     try:thumb = info['thumbnail']
                     except:thumb = None
-                    log_handle(content=f"Added video to playlist: {info['title']} thumbnail: {thumb}")
-                    insert_treeview_quene.put((thumb,f"[ADDED]{info['title']}",info['uploader']))
-                    media_data_list.vid_url.append(url)
-                    media_data_list.playlisttitles.append(info['title'])
-                    media_data_list.playlist_channel.append(info['uploader'])
-                    media_data_list.playlist_thumbnails.append(thumb)
+                    
+                    Media_list_page_controller.add_to_page_end(
+                        video_url=url,
+                        title=info['title'],
+                        channel=info['uploader'],
+                        thumbnail_url=thumb
+                    )
+
+
                     ToastNotification().notify(app_id="JaTubePlayer",
                                                title=f'JaTubePlayer {ver}',
                                                msg='Added video to playlist',

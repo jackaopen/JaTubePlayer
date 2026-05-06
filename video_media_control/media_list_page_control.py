@@ -7,18 +7,21 @@ from .playlist_retriever import playlist_retriever
 
 class MediaType(enum.IntEnum):
     '''
-    0. youtube video
-    1. single open with (local file)
-    2. folder (local folder)
-    3. chrome
-    4. starred video (starred video list)
+    - -1:None
+    - 0 Youtube playlist
+    - 1 Youtube liked videos    
+    - 2 Youtube subscriptions
+    - 3 Youtube recommend videos
+    - 4 Local folder
+    - 5 Starred video 
     '''
     NONE = -1# not inited
     YOUTUBE = 0
-    SINGLE_OPEN_WITH = 1
-    FOLDER = 2
-    CHROME = 3
-    STARRED_VIDEO = 4
+    LIKE = 1
+    SUB = 2
+    RECOMMEND = 3
+    FOLDER = 4
+    STARRED_VIDEO = 5
 
 
 class MediaList_PageControl_:
@@ -39,7 +42,8 @@ class MediaList_PageControl_:
         self.total_page = 0
         self.current_page = 1
         self.media_type = MediaType.NONE
-        self.media_data_list = None
+        self.media_data_list = media_data_list_template()
+
         self.ui_queue = ui_queue
         self.tree_view_queue = tree_view_queue
         self.log_handle = log_handle
@@ -92,9 +96,59 @@ class MediaList_PageControl_:
 
         self._insert_to_ui_queue()
     
-    def add():
-        #TODO: add media item to current media list
+    def _other_loading(self):
+        #TODO
         pass
+    
+    def add_to_page_end(self,
+            video_url:str,
+            title:str, 
+            channel:str,
+            thumbnail_url:str):
+        '''
+        insert video wether there is page inited or not,
+        at the last current page, miaght exceed 50
+        
+        
+        '''
+        try:
+            if self.current_page == self.total_page:
+                insert_idx = len(self.media_data_list.vid_url)
+            else:
+                insert_idx = (self.current_page) * 50
+
+            title = f"[Added] {title}"
+            self.media_data_list.vid_url.insert(insert_idx, video_url)
+            self.media_data_list.playlisttitles.insert(insert_idx, title)
+            self.media_data_list.playlist_channel.insert(insert_idx, channel)
+            self.media_data_list.playlist_thumbnails.insert(insert_idx, thumbnail_url)
+
+            self.tree_view_queue.put((self.media_data_list.playlist_thumbnails[insert_idx],
+                                        self.media_data_list.playlisttitles[insert_idx],
+                                        self.media_data_list.playlist_channel[insert_idx]))
+            self.log_handle(errtype='info', component='page_control',
+                            content=f'added video to media list, at index {insert_idx}, title={title} channel={channel} url={video_url} thumbnail={thumbnail_url}')
+
+        except Exception as e:
+            self.log_handle(content=str(e))
+
+
+    def clear_selected(self,
+                        selected_idx:int,
+                        selected_tree_ID:str):
+        try:
+            self.media_data_list.vid_url.pop(selected_idx)
+            self.media_data_list.playlisttitles.pop(selected_idx)
+            self.media_data_list.playlist_channel.pop(selected_idx)
+            self.media_data_list.playlist_thumbnails.pop(selected_idx)
+            self.thumbnail_loader.clear_thumb(selected_tree_ID)
+
+
+
+        except Exception as e:
+            self.log_handle(content=str(e))
+        
+
 
     def next_page(self)->int:
         '''
@@ -164,6 +218,7 @@ class MediaList_PageControl_:
         self.media_type = MediaType.NONE
         self.log_handle(errtype='info', component='page_control',
                         content=f'cleared media data and reset page control')
+        
         
         
 

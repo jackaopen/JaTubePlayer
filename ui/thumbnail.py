@@ -124,3 +124,7 @@ class ThumbnailLoader:
         if self.asyncio_session:
             self.asynceventloop.call_soon_threadsafe(lambda: asyncio.create_task(self.asyncio_session.close()))
         self.asynceventloop.call_soon_threadsafe(self.asynceventloop.stop)
+
+    def clear_thumb(self,selected_ID:str):
+        self.playlisttreebox.delete(selected_ID)
+        
