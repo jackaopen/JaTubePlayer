@@ -120,6 +120,19 @@ class ThumbnailLoader:
             self.log_handle(content=str(e))
         self.root.after(20, self.treeview_queue_GetterLoop)
     
+    def select_first_item(self):
+        children = self.playlisttreebox.get_children()
+        if children:
+            self.playlisttreebox.selection_set(children[0])
+        self.log_handle(content='selected first item in the playlist')
+
+            
+    def select_last_item(self):
+        children = self.playlisttreebox.get_children()
+        if children:
+            self.playlisttreebox.selection_set(children[-1])
+
+
     def close(self):
         if self.asyncio_session:
             self.asynceventloop.call_soon_threadsafe(lambda: asyncio.create_task(self.asyncio_session.close()))

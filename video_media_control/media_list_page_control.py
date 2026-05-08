@@ -49,6 +49,8 @@ class MediaList_PageControl_:
         self.log_handle = log_handle
         self.thumbnail_loader = thumbnail_loader
         self.page_num_label = page_num_label # for controling UI
+
+        self.loading_page = False
         
         self.yt_playlist_retriever = playlist_retriever(
             log_handle=self.log_handle,
@@ -150,7 +152,8 @@ class MediaList_PageControl_:
         
 
 
-    def next_page(self)->int:
+    def next_page(self,
+                  select_first_of_next_page:bool=False)->int:
         '''
         return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
         
@@ -164,6 +167,11 @@ class MediaList_PageControl_:
             
             return -1
         try:
+            if self.loading_page:
+                self.log_handle(errtype='warning', component='page_control',
+                                content=f'still loading page, current_page={self.current_page} total_page={self.total_page}')
+                return -1
+            self.loading_page = True
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
                 if self.current_page < self.total_page:
                     self.current_page += 1
@@ -172,6 +180,9 @@ class MediaList_PageControl_:
                 self.log_handle(errtype='info', component='page_control',
                                 content=f'next page -> {self.current_page}/{self.total_page}')
                 self._insert_to_ui_queue()
+                
+                if select_first_of_next_page:self.thumbnail_loader.select_first_item()
+
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -180,8 +191,11 @@ class MediaList_PageControl_:
         except Exception as e:
             self.log_handle(content=str(e))
             return -2
+        finally:
+            self.loading_page = False
 
-    def prev_page(self):
+    def prev_page(self, 
+                    select_first_of_prev_page:bool=False):
         '''
          return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
         '''
@@ -191,6 +205,11 @@ class MediaList_PageControl_:
                             content=f'page still loading, current_page={self.current_page} total_page={self.total_page}')
             return -1
         try:
+            if self.loading_page:
+                self.log_handle(errtype='warning', component='page_control',
+                                content=f'still loading page, current_page={self.current_page} total_page={self.total_page}')
+                return -1
+            self.loading_page = True   
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
                 if self.current_page > 1:
                     self.current_page -= 1
@@ -199,6 +218,8 @@ class MediaList_PageControl_:
                 self.log_handle(errtype='info', component='page_control',
                                 content=f'previous page -> {self.current_page}/{self.total_page}')
                 self._insert_to_ui_queue()
+                if select_first_of_prev_page:
+                    self.thumbnail_loader.select_last_item()
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
