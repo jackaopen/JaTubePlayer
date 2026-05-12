@@ -124,6 +124,7 @@ class ThumbnailLoader:
         children = self.playlisttreebox.get_children()
         if children:
             self.playlisttreebox.selection_set(children[0])
+            self.playlisttreebox.see(children[0])  
         self.log_handle(content='selected first item in the playlist')
 
             
@@ -131,6 +132,7 @@ class ThumbnailLoader:
         children = self.playlisttreebox.get_children()
         if children:
             self.playlisttreebox.selection_set(children[-1])
+            self.playlisttreebox.see(children[-1])  
 
 
     def close(self):

@@ -1,19 +1,12 @@
 import time
-
-from PIL.XVThumbImagePlugin import b
-from flask.cli import F
-from itsdangerous import exc
-
-from video_media_control import media_list_page_control
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
 from tkinter import *
 import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,win32gui
-from PIL import Image, ImageTk 
+from PIL import Image 
 from random import shuffle
-import googleapiclient.errors
-from concurrent.futures import ThreadPoolExecutor, thread
+from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
 import customtkinter as ctk
@@ -2701,6 +2694,7 @@ def get_user_playlists_thread(mode):#0 = normal fun, 1 = init fun
     user_playlists_id = []
 
     ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
+    ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
     try:
         if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
     except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
@@ -2728,8 +2722,9 @@ def get_user_playlists_thread(mode):#0 = normal fun, 1 = init fun
             except:pass
 
     except Exception as e:log_handle(content=str(e))
-
-    ui_queue.put(lambda: playlistlabel.configure(text="📁"))
+    finally:
+        ui_queue.put(lambda: playlistlabel.configure(text="📁"))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
     
 @check_internet
 def get_user_playlists(mode):
@@ -2777,13 +2772,16 @@ def get_youtube_playlist_thread(playlistid_input = None):
 
         elif playlistID.get() or playlistid_input:
             ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
+            ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
             Media_list_page_controller.youtube_init_and_reload(
                 media_data_list=media_data_list,
                 youtube=youtube,
                 playlist_id=playlistID.get() if not playlistid_input else playlistid_input
             )
     except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))    
-    ui_queue.put(lambda: playlistlabel.configure(text='📁'))
+    finally:
+        ui_queue.put(lambda: playlistlabel.configure(text='📁'))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
     loadingplaylist = False
 
 @check_internet
@@ -3311,8 +3309,8 @@ def playnextsong():
                 else:    
                     selected_song_number  +=1 
                 if not loaded_next_page:
-                    playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number%49])
-                print(f"selected song number {selected_song_number}")
+                    playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number%50])
+                    playlisttreebox.see(playlisttreebox.get_children()[selected_song_number%50])
                 time.sleep(0.5)
                 
                 
@@ -3335,7 +3333,7 @@ def playprevsong():
                 loaded_prev_page = False
                 stop_playing_video()
                 if selected_song_number % 50 == 0:
-                    pageRes = Media_list_page_controller.prev_page(select_first_of_prev_page=True)
+                    pageRes = Media_list_page_controller.prev_page(select_last_of_prev_page=True)
                     loaded_prev_page = True
                     if pageRes == -1:messagebox.showinfo(f'JaTubePlayer {ver}','The previous page is still loading')
                     if pageRes == -2:messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the previous page, see log for more details')
@@ -3346,8 +3344,8 @@ def playprevsong():
                 else: 
                     selected_song_number-=1
                 if not loaded_prev_page:
-                    playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number%49])
-                time.sleep(0.5)
+                    playlisttreebox.selection_set(playlisttreebox.get_children()[selected_song_number%50])
+                    playlisttreebox.see(playlisttreebox.get_children()[selected_song_number%50])
                 download_and_play()
                 if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))

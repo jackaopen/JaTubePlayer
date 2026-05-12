@@ -72,6 +72,7 @@ class MediaList_PageControl_:
             self.tree_view_queue.put((self.media_data_list.playlist_thumbnails[i],
                                       self.media_data_list.playlisttitles[i],
                                       self.media_data_list.playlist_channel[i]))
+        
 
 
 
@@ -84,10 +85,8 @@ class MediaList_PageControl_:
                
         self.current_page = 1
         self.media_data_list = media_data_list
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
         self.media_type = MediaType.YOUTUBE
-        
+    
         
         self.yt_playlist_retriever.init_playlist_items(
             youtube=youtube,
@@ -97,6 +96,9 @@ class MediaList_PageControl_:
         self.total_page = (self.yt_playlist_retriever.total_playlist_count + 49) // 50
 
         self._insert_to_ui_queue()
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+
     
     def _other_loading(self):
         #TODO
@@ -161,15 +163,17 @@ class MediaList_PageControl_:
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
             self.log_handle(errtype='warning', component='page_control',
-                            content=f'page still loading, current_page={self.current_page} total_page={self.total_page}')
+                            content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}')
             
             
             
             return -1
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'try to load next page,totalpagecurrentdata ={_total_page_of_current_data}, current_page={self.current_page} total_page={self.total_page}')
         try:
             if self.loading_page:
                 self.log_handle(errtype='warning', component='page_control',
-                                content=f'still loading page, current_page={self.current_page} total_page={self.total_page}')
+                                content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}')
                 return -1
             self.loading_page = True
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
@@ -181,7 +185,10 @@ class MediaList_PageControl_:
                                 content=f'next page -> {self.current_page}/{self.total_page}')
                 self._insert_to_ui_queue()
                 
-                if select_first_of_next_page:self.thumbnail_loader.select_first_item()
+                if select_first_of_next_page:
+                    self.thumbnail_loader.root.after(100, self.thumbnail_loader.select_first_item)
+                    self.log_handle(errtype='info', component='page_control',
+                                    content=f'select first item of next page')
 
                 return 0
             else:
@@ -195,19 +202,21 @@ class MediaList_PageControl_:
             self.loading_page = False
 
     def prev_page(self, 
-                    select_first_of_prev_page:bool=False):
+                    select_last_of_prev_page:bool=False):
         '''
          return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
-        if _total_page_of_current_data < self.current_page and self.current_page != self.total_page:
+        if self.current_page == 1 and _total_page_of_current_data < self.total_page:
             self.log_handle(errtype='warning', component='page_control',
-                            content=f'page still loading, current_page={self.current_page} total_page={self.total_page}')
+                            content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}')
             return -1
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'try to load previous page,totalpagecurrentdata ={_total_page_of_current_data}, current_page={self.current_page} total_page={self.total_page}')
         try:
             if self.loading_page:
                 self.log_handle(errtype='warning', component='page_control',
-                                content=f'still loading page, current_page={self.current_page} total_page={self.total_page}')
+                                content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}')
                 return -1
             self.loading_page = True   
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
@@ -218,8 +227,8 @@ class MediaList_PageControl_:
                 self.log_handle(errtype='info', component='page_control',
                                 content=f'previous page -> {self.current_page}/{self.total_page}')
                 self._insert_to_ui_queue()
-                if select_first_of_prev_page:
-                    self.thumbnail_loader.select_last_item()
+                if select_last_of_prev_page:
+                    self.thumbnail_loader.root.after(100, self.thumbnail_loader.select_last_item)
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -227,6 +236,8 @@ class MediaList_PageControl_:
         except Exception as e:
             self.log_handle(content=str(e)) 
             return -3
+        finally:
+            self.loading_page = False
 
     def clear(self):
         '''
