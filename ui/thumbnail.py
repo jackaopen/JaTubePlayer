@@ -122,7 +122,7 @@ class ThumbnailLoader:
     
 
     def select_first_item(self):
-        self.root.after(100, self._select_first_item)
+        self.root.after(500, self._select_first_item)
 
     def _select_first_item(self):
         children = self.playlisttreebox.get_children()
@@ -132,7 +132,7 @@ class ThumbnailLoader:
         self.log_handle(content='selected first item in the playlist')
 
     def select_last_item(self):
-        self.root.after(100, self._select_last_item)
+        self.root.after(500, self._select_last_item)
 
     def _select_last_item(self):
         children = self.playlisttreebox.get_children()
@@ -141,14 +141,19 @@ class ThumbnailLoader:
             self.playlisttreebox.see(children[-1])  
 
     def select_item(self,idx = int):
-        self.root.after(100, lambda: self._select_item(idx))
+        '''
+        This function is for selecting the item with the given idx, and scroll to it.
+        will raise exception if idx is out of range, so please make sure the idx is valid before calling this function.
+        run in root.after to avoid blocking the main thread, and also to sync with the treeview update, since the treeview update is also run in root.after, so we can ensure that the item is selected after the treeview is updated.
+        '''
+        try:
+            self.root.after(500, lambda: self._select_item(idx))
+        except Exception as e:
+            raise e
 
     def _select_item(self,
                     idx = int):
-        '''
-        This function is for selecting the item with the given idx, and scroll to it.
-        If out of bound, will simply ignore the request and do nothing.
-        '''
+        
         children = self.playlisttreebox.get_children()
         if 0 <= idx < len(children):
             self.playlisttreebox.selection_set(children[idx])
