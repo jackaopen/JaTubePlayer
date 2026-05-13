@@ -120,20 +120,40 @@ class ThumbnailLoader:
             self.log_handle(content=str(e))
         self.root.after(20, self.treeview_queue_GetterLoop)
     
+
     def select_first_item(self):
+        self.root.after(100, self._select_first_item)
+
+    def _select_first_item(self):
         children = self.playlisttreebox.get_children()
         if children:
             self.playlisttreebox.selection_set(children[0])
             self.playlisttreebox.see(children[0])  
         self.log_handle(content='selected first item in the playlist')
 
-            
     def select_last_item(self):
+        self.root.after(100, self._select_last_item)
+
+    def _select_last_item(self):
         children = self.playlisttreebox.get_children()
         if children:
             self.playlisttreebox.selection_set(children[-1])
             self.playlisttreebox.see(children[-1])  
 
+    def select_item(self,idx = int):
+        self.root.after(100, lambda: self._select_item(idx))
+
+    def _select_item(self,
+                    idx = int):
+        '''
+        This function is for selecting the item with the given idx, and scroll to it.
+        If out of bound, will simply ignore the request and do nothing.
+        '''
+        children = self.playlisttreebox.get_children()
+        if 0 <= idx < len(children):
+            self.playlisttreebox.selection_set(children[idx])
+            self.playlisttreebox.see(children[idx])
+    
 
     def close(self):
         if self.asyncio_session:

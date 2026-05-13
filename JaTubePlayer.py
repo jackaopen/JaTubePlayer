@@ -1,4 +1,6 @@
 import time
+
+from video_media_control import media_list_page_control
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
@@ -3142,8 +3144,17 @@ def update_playing_pos_yt():
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            selected_song_number = random.randint(0,len(media_data_list.vid_url))
-                        
+                            media_idx = Media_list_page_controller.random_media()
+                            if media_idx == -2:
+                                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
+                                break
+                            elif media_idx == -1:
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
+                                break
+                            else:
+                                selected_song_number = media_idx
+                                download_and_play()
+
                         if player_mode_selector.get() !='replay':
                             ui_queue.put(lambda s=selected_song_number: playlisttreebox.selection_set(playlisttreebox.get_children()[s])) ## get selection
                             finish_break = True  ### so set it before enfter d.a.p fun

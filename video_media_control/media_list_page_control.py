@@ -1,5 +1,8 @@
 import enum
 import queue
+import random
+
+from itsdangerous import exc
 from loader.media_data_list import media_data_list_template
 from ui.thumbnail import ThumbnailLoader
 from .playlist_retriever import playlist_retriever
@@ -26,6 +29,7 @@ class MediaType(enum.IntEnum):
 
 class MediaList_PageControl_:
     '''
+    The MLPC (Media List Page Control)
     this class controls the media list and page control,
     include online/local,
     will insert the current page data to ui queue, to update the ui
@@ -186,7 +190,7 @@ class MediaList_PageControl_:
                 self._insert_to_ui_queue()
                 
                 if select_first_of_next_page:
-                    self.thumbnail_loader.root.after(100, self.thumbnail_loader.select_first_item)
+                    self.thumbnail_loader.select_first_item()
                     self.log_handle(errtype='info', component='page_control',
                                     content=f'select first item of next page')
 
@@ -228,7 +232,9 @@ class MediaList_PageControl_:
                                 content=f'previous page -> {self.current_page}/{self.total_page}')
                 self._insert_to_ui_queue()
                 if select_last_of_prev_page:
-                    self.thumbnail_loader.root.after(100, self.thumbnail_loader.select_last_item)
+                    self.thumbnail_loader.select_last_item()
+                    self.log_handle(errtype='info', component='page_control',
+                                    content=f'select last item of previous page')
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -238,6 +244,30 @@ class MediaList_PageControl_:
             return -3
         finally:
             self.loading_page = False
+
+
+    def random_media(self)->int:
+        '''
+        random select a video from the mediadata list and return the idx
+        will automatically load the page of the video if the video is not in the current page
+        return -2 if list are not fully loaded, return -1 if failed
+        '''
+        if len(self.media_data_list.vid_url)//50+1 != self.total_page:
+            return -2
+        try:
+            random_idx = random.randint(0, len(self.media_data_list.vid_url)-1)
+            self.current_page = random_idx//50+1
+            self._insert_to_ui_queue()
+            self.thumbnail_loader.select_item(random_idx%50)
+            self.log_handle(errtype='info', component='page_control',
+                            content=f'randomly selected video: {random_idx}, page: {self.current_page}')
+            
+        except Exception as e:
+            self.log_handle(content=str(e))
+            return -1
+        return random_idx
+
+
 
     def clear(self):
         '''
