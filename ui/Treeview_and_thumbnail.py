@@ -38,7 +38,7 @@ class ThumbnailLoader:
 
 
         playlisttreebox.tag_configure("normal", background="#1e1e1e", foreground="white")
-        playlisttreebox.tag_configure("playing", background="#ffa200", foreground="#000000", font=('Segoe UI', 12, 'bold'))
+        playlisttreebox.tag_configure("playing", background="#ffa200", foreground="#000000")
     
     @property
     def playing_vid_mode(self):
@@ -175,6 +175,11 @@ class ThumbnailLoader:
             self.root.after(500, lambda: self._set_item_color(idx, color))
         except Exception as e:
             raise e
+        
+    def _set_item_color(self, idx = int, color:str = 'playing'):
+        children = self.playlisttreebox.get_children()
+        if 0 <= idx < len(children):
+            self.playlisttreebox.item(children[idx], tags=(color,))
         
         
     def close(self):
