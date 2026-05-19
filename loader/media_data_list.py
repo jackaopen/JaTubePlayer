@@ -11,11 +11,13 @@ class media_data_list_template:
         self.playlisttitles = []
         self.playlist_channel = []
         self.playlist_thumbnails = []
+        self.current_media_page = 0
+        self.current_tree_selected_iid = None
         
     def clear(self):
         self.vid_url.clear()
         self.playlisttitles.clear()
         self.playlist_channel.clear()
         self.playlist_thumbnails.clear()
-
-    
+        self.current_media_page = 0
+        self.current_tree_selected_iid = None

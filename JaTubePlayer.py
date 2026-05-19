@@ -34,7 +34,7 @@ from notification.ctkmessagebox import ctk_messagebox
 
 from effect.blur_for_client import blur
 from ui.video_info_frame import vid_info_frame
-from ui.thumbnail import ThumbnailLoader
+from ui.Treeview_and_thumbnail import ThumbnailLoader
 
 from system.tray import Playertray
 from system.dnd_winsys import *
@@ -3561,7 +3561,6 @@ def load_thread():  ### add every try except to a new log system for next update
                                             discord_presence.update(song_title=playing_vid_info_dict['title'])
                                         else:discord_presence.idle()
                                     except:pass
-
                                 player.volume = (int(player_volume_scale.get()))
                                 if playing_vid_mode == 3:pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
                                 else :pos_thread = threading.Thread(daemon = True,target=update_playing_pos_yt)
@@ -3716,6 +3715,7 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
             modetextbox.configure(state='disabled')
             
             load_thread_queue.put((local_single_filepath,None))
+
     if mode == 1:
         
 
@@ -3792,6 +3792,7 @@ def download_and_play(event=None):### button and double click event
             #load from youtube
             if selected_song_number != None:
                 load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
+                
         
             else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
         else:
@@ -4950,6 +4951,8 @@ def google_status_update():
     
     threading.Thread(target=_google_status_update, daemon=True).start()
 
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # RIGHT PANEL - Playlist Treeview & Mode Info
 # ─────────────────────────────────────────────────────────────────────────────
@@ -4980,6 +4983,7 @@ playlisttreebox.column("title", width=1000, anchor="w", stretch=False)
 playlisttreebox.place(relx=0.020, rely=0.125, relwidth=0.925, relheight=0.838)
 playlisttreebox.bind('<Double-1>', download_and_play)
 playlisttreebox.bind('<ButtonRelease-1>', get_selected_vid)
+
 
 Y_scrollbar = ttk.Scrollbar(right_panel_frame)
 X_scrollbar = ttk.Scrollbar(right_panel_frame, orient='horizontal')

@@ -35,6 +35,10 @@ class ThumbnailLoader:
         # Start the async event loop in a separate thread
         self.root.after(0, self.treeview_queue_GetterLoop)
         threading.Thread(target=self.start_async_eventloop, daemon=True).start()
+
+
+        playlisttreebox.tag_configure("normal", background="#1e1e1e", foreground="white")
+        playlisttreebox.tag_configure("playing", background="#ffa200", foreground="#000000", font=('Segoe UI', 12, 'bold'))
     
     @property
     def playing_vid_mode(self):
@@ -150,6 +154,8 @@ class ThumbnailLoader:
             self.root.after(500, lambda: self._select_item(idx))
         except Exception as e:
             raise e
+        
+
 
     def _select_item(self,
                     idx = int):
@@ -159,7 +165,18 @@ class ThumbnailLoader:
             self.playlisttreebox.selection_set(children[idx])
             self.playlisttreebox.see(children[idx])
     
-
+    def set_item_color(self, idx = int, color:str = 'playing'):
+        '''
+        This function is for setting the item with the given idx to the given color, and scroll to it.
+        will raise exception if idx is out of range, so please make sure the idx is valid before calling this function.
+        run in root.after to avoid blocking the main thread, and also to sync with the treeview update, since the treeview update is also run in root.after, so we can ensure that the item is updated after the treeview is updated.
+        '''
+        try:
+            self.root.after(500, lambda: self._set_item_color(idx, color))
+        except Exception as e:
+            raise e
+        
+        
     def close(self):
         if self.asyncio_session:
             self.asynceventloop.call_soon_threadsafe(lambda: asyncio.create_task(self.asyncio_session.close()))

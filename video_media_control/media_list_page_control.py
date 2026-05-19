@@ -4,7 +4,7 @@ import random
 
 from itsdangerous import exc
 from loader.media_data_list import media_data_list_template
-from ui.thumbnail import ThumbnailLoader
+from ui.Treeview_and_thumbnail import ThumbnailLoader
 from .playlist_retriever import playlist_retriever
 
 
@@ -193,7 +193,8 @@ class MediaList_PageControl_:
                     self.thumbnail_loader.select_first_item()
                     self.log_handle(errtype='info', component='page_control',
                                     content=f'select first item of next page')
-
+                if self.current_page == self.media_data_list.current_media_page:
+                    self.thumbnail_loader.set_item_color(self.media_data_list.current_tree_selected_iid, "playing")
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -235,6 +236,8 @@ class MediaList_PageControl_:
                     self.thumbnail_loader.select_last_item()
                     self.log_handle(errtype='info', component='page_control',
                                     content=f'select last item of previous page')
+                if self.current_page == self.media_data_list.current_media_page:
+                    self.thumbnail_loader.set_item_color(self.media_data_list.current_tree_selected_iid, "playing")
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -266,6 +269,18 @@ class MediaList_PageControl_:
             self.log_handle(content=str(e))
             return -1
         return random_idx
+
+
+    def set_playing_tag(self, idx:int):
+        '''
+        idx: the index of the video in the media data list, will automatically load the page of the video if the video is not in the current page, and set the playing tag to the video
+        '''
+        page_idx = idx % 50
+        new_iid = self.thumbnail_loader.playlisttreebox.get_children()[page_idx]
+        if self.media_data_list.current_media_page:
+            self.thumbnail_loader.set_item_color(self.media_data_list.current_tree_selected_iid, "normal")
+        self.media_data_list.current_tree_selected_iid = new_iid
+        self.thumbnail_loader.set_item_color(new_iid, "playing")
 
 
 
