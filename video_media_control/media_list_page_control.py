@@ -144,6 +144,9 @@ class MediaList_PageControl_:
     def clear_selected(self,
                         selected_idx:int,
                         selected_tree_ID:str):
+        '''
+        clear the selected video from the media data list and treeview, and clear the playing tag if the selected video is playing
+        '''
         try:
             self.media_data_list.vid_url.pop(selected_idx)
             self.media_data_list.playlisttitles.pop(selected_idx)
@@ -186,7 +189,7 @@ class MediaList_PageControl_:
                 else:
                     self.current_page = 1
                 self.log_handle(errtype='info', component='page_control',
-                                content=f'next page -> {self.current_page}/{self.total_page}')
+                                content=f'next page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
                 self._insert_to_ui_queue()
                 
                 if select_first_of_next_page:
@@ -230,7 +233,7 @@ class MediaList_PageControl_:
                 else:
                     self.current_page = self.total_page
                 self.log_handle(errtype='info', component='page_control',
-                                content=f'previous page -> {self.current_page}/{self.total_page}')
+                                content=f'previous page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
                 self._insert_to_ui_queue()
                 if select_last_of_prev_page:
                     self.thumbnail_loader.select_last_item()
@@ -274,27 +277,16 @@ class MediaList_PageControl_:
     def set_playing_tag(self, idx:int, tag:str = "playing"):
         '''
         idx: the index of the video in the media data list, 
-        this function will set the playing tag to the video, and remove the playing tag from the previous video 
-        and will auto set the MDL current_playing_idx_num and current_media_page to the video     
         tag : "playing" or "normal"
         '''
         page_idx = idx % 50
-        
-        self.media_data_list.current_playing_idx_num = idx
-        self.media_data_list.current_media_page = self.current_page
         self.thumbnail_loader.set_item_color(page_idx % 50, tag)
 
-    def remove_playing_tag(self, idx:int=-1):
+    def remove_playing_tag(self)->None:
         '''
-        if doesnt pass idx, it will try to remove the current playing tag, if there is any, if pass idx, it will remove the playing tag from the video with the idx
+        remove ALL the placed tag in current page
         '''
-        try:
-            if idx == -1:
-                idx = self.media_data_list.current_playing_idx_num
-            page_idx = idx % 50
-            self.thumbnail_loader.set_item_color(page_idx, "normal")
-        except Exception as e:
-            self.log_handle(content=str(e))
+        self.thumbnail_loader.clear_all_tag()
             
     def clear(self):
         '''

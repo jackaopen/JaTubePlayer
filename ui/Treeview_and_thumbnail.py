@@ -181,7 +181,18 @@ class ThumbnailLoader:
         if 0 <= idx < len(children):
             self.playlisttreebox.item(children[idx], tags=(color,))
         
-        
+    def clear_all_tag(self)->None:
+        '''
+        clear ALL the tag in current page
+        '''
+        try:
+            children = self.playlisttreebox.get_children()
+            for child in children:
+                self.playlisttreebox.item(child, tags=("normal",))
+                
+        except Exception as e:
+            self.log_handle(content=str(e))
+
     def close(self):
         if self.asyncio_session:
             self.asynceventloop.call_soon_threadsafe(lambda: asyncio.create_task(self.asyncio_session.close()))
