@@ -15,6 +15,9 @@ class media_data_list_template:
         self.playlist_thumbnails = []
         self.current_media_page = 0
         self.current_playing_idx_num = -1
+        '''
+        globally from 0 to len(vid_url)-1, default -1
+        '''
         
     def clear(self):
         self.vid_url.clear()

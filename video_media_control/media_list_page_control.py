@@ -162,10 +162,11 @@ class MediaList_PageControl_:
 
 
     def next_page(self,
-                  select_first_of_next_page:bool=False)->int:
+                  select_first_of_next_page:bool=False,
+                  selected_follow:bool=True)->int:
         '''
         return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
-        
+        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
@@ -184,20 +185,23 @@ class MediaList_PageControl_:
                 return -1
             self.loading_page = True
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
-                if self.current_page < self.total_page:
-                    self.current_page += 1
-                else:
-                    self.current_page = 1
-                self.log_handle(errtype='info', component='page_control',
-                                content=f'next page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
-                self._insert_to_ui_queue()
-                
-                if select_first_of_next_page:
-                    self.thumbnail_loader.select_first_item()
+                if selected_follow:
+                    if self.current_page < self.total_page:
+                        self.current_page += 1
+                    else:
+                        self.current_page = 1
                     self.log_handle(errtype='info', component='page_control',
-                                    content=f'select first item of next page')
-                if self.current_page == self.media_data_list.current_media_page:
-                    self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+                                    content=f'next page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
+                
+                    self._insert_to_ui_queue()
+                    
+                    if select_first_of_next_page:
+                        self.thumbnail_loader.select_first_item()
+                        
+                        self.log_handle(errtype='info', component='page_control',
+                                        content=f'select first item of next page')
+                    if self.current_page == self.media_data_list.current_media_page:
+                        self.set_playing_tag(self.media_data_list.current_playing_idx_num)
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -210,9 +214,11 @@ class MediaList_PageControl_:
             self.loading_page = False
 
     def prev_page(self, 
-                    select_last_of_prev_page:bool=False):
+                select_last_of_prev_page:bool=False,
+                selected_follow:bool=True)->int:
         '''
-         return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
+        return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
+        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if self.current_page == 1 and _total_page_of_current_data < self.total_page:
@@ -228,19 +234,21 @@ class MediaList_PageControl_:
                 return -1
             self.loading_page = True   
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
-                if self.current_page > 1:
-                    self.current_page -= 1
-                else:
-                    self.current_page = self.total_page
-                self.log_handle(errtype='info', component='page_control',
-                                content=f'previous page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
-                self._insert_to_ui_queue()
-                if select_last_of_prev_page:
-                    self.thumbnail_loader.select_last_item()
+                if selected_follow:
+                    if self.current_page > 1:
+                        self.current_page -= 1
+                    else:
+                        self.current_page = self.total_page
                     self.log_handle(errtype='info', component='page_control',
-                                    content=f'select last item of previous page')
-                if self.current_page == self.media_data_list.current_media_page:
-                    self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+                                    content=f'previous page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
+                    
+                    self._insert_to_ui_queue()
+                    if select_last_of_prev_page:
+                        self.thumbnail_loader.select_last_item()
+                        self.log_handle(errtype='info', component='page_control',
+                                        content=f'select last item of previous page')
+                    if self.current_page == self.media_data_list.current_media_page:
+                        self.set_playing_tag(self.media_data_list.current_playing_idx_num)
                 return 0
             else:
                 self.log_handle(errtype='warning', component='page_control',
@@ -252,7 +260,8 @@ class MediaList_PageControl_:
             self.loading_page = False
 
 
-    def random_media(self)->int:
+    def random_media(self,
+                     selected_idx : int = -1) -> int:
         '''
         random select a video from the mediadata list and return the idx
         will automatically load the page of the video if the video is not in the current page
@@ -263,11 +272,14 @@ class MediaList_PageControl_:
         try:
             random_idx = random.randint(0, len(self.media_data_list.vid_url)-1)
             self.current_page = random_idx//50+1
-            self._insert_to_ui_queue()
-            self.thumbnail_loader.select_item(random_idx%50)
+            if self.media_data_list.current_playing_idx_num == selected_idx:
+                self._insert_to_ui_queue()
+                self.thumbnail_loader.root.after(1000, lambda: self.thumbnail_loader.select_item(random_idx%50))
             self.log_handle(errtype='info', component='page_control',
                             content=f'randomly selected video: {random_idx}, page: {self.current_page}')
-            
+            self.media_data_list.current_media_page = self.current_page
+            self.media_data_list.current_playing_idx_num = random_idx
+
         except Exception as e:
             self.log_handle(content=str(e))
             return -1
@@ -278,9 +290,12 @@ class MediaList_PageControl_:
         '''
         idx: the index of the video in the media data list, 
         tag : "playing" or "normal"
+        only set the tag when the video is in the current page, otherwise do nothing, since the tag will be set when the page is loaded
         '''
+
         page_idx = idx % 50
-        self.thumbnail_loader.set_item_color(page_idx % 50, tag)
+        if self.media_data_list.current_media_page == self.current_page:
+            self.thumbnail_loader.set_item_color(page_idx % 50, tag)
 
     def remove_playing_tag(self)->None:
         '''

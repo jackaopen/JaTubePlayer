@@ -1,9 +1,4 @@
-import select
 import time
-
-from click import style
-
-from video_media_control import media_list_page_control
 time1 = time.time()
 import tkinter as tk
 from tkinter import ttk,filedialog
@@ -3137,12 +3132,13 @@ def update_playing_pos_yt():
                         if player_mode_selector.get() =='continue':
                             playnextsong()
                             break
+                            
                         elif player_mode_selector.get() =='replay':
                             player.seek(0.1,reference='absolute')
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            media_idx = Media_list_page_controller.random_media()
+                            media_idx = Media_list_page_controller.random_media(selected_song_number)
                             if media_idx == -2:
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
@@ -3285,61 +3281,91 @@ def stop_playing_video():
     playing_title_textbox.configure(state='disabled')
     if selected_song_number is not None and playing_vid_mode in [0,2,4]:
         Media_list_page_controller.remove_playing_tag()
-        MediaList_PageControl_
     try:
         player.stop()
     except:pass
 
 def playnextsong():
-    if media_data_list.current_playing_idx_num != -1:
-        if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
-            stop_playing_video()
-            if media_data_list.current_playing_idx_num % 50 == 49 or media_data_list.current_playing_idx_num == len(media_data_list.vid_url)-1:
-                pageRes = Media_list_page_controller.next_page(select_first_of_next_page=True)
-                if pageRes == 0:
-                    log_handle(content="successfully load the next page")
-                    media_data_list.current_media_page = Media_list_page_controller.current_page
+    global selected_song_number 
+    if media_data_list.current_playing_idx_num == -1:
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first'))
+        return
+    if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
+        stop_playing_video()
+        selected_follow = media_data_list.current_playing_idx_num == selected_song_number 
+        log_handle(content=f"[next]selected follow is {selected_follow}, current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}")
+        if media_data_list.current_playing_idx_num % 50 == 49 or media_data_list.current_playing_idx_num == len(media_data_list.vid_url)-1:
+            pageRes = Media_list_page_controller.next_page(select_first_of_next_page=True,
+                                                           selected_follow=selected_follow)
+            if pageRes == 0:
+                log_handle(content="successfully load the next page")
+                if media_data_list.current_media_page != 0:
+                    if media_data_list.current_media_page == Media_list_page_controller.total_page:
+                        media_data_list.current_media_page = 1
+                        if selected_follow:selected_song_number = -1
+                    else:
+                        media_data_list.current_media_page +=1
+                    log_handle(content=f"[next]current media page is {media_data_list.current_media_page}")
 
-                if pageRes == -1:messagebox.showinfo(f'JaTubePlayer {ver}','The next page is still loading')
-                if pageRes == -2:messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the next page, see log for more details')
-                if pageRes == -3:messagebox.showinfo(f'JaTubePlayer {ver}','does not support next page for this source')
+            if pageRes == -1:messagebox.showinfo(f'JaTubePlayer {ver}','The next page is still loading')
+            if pageRes == -2:messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the next page, see log for more details')
+            if pageRes == -3:messagebox.showinfo(f'JaTubePlayer {ver}','does not support next page for this source')
 
-            if media_data_list.current_playing_idx_num == len(media_data_list.vid_url)-1:
-                media_data_list.current_playing_idx_num = 0
+        if media_data_list.current_playing_idx_num == len(media_data_list.vid_url)-1:
+            media_data_list.current_playing_idx_num = 0
+        else:    
+            media_data_list.current_playing_idx_num  +=1 
+        
+        if selected_follow:
+            cur_page_idx = media_data_list.current_playing_idx_num % 50
+            root.after(1000, lambda: playlisttreebox.selection_set(playlisttreebox.get_children()[cur_page_idx]))
+            root.after(1000, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
+            selected_song_number += 1
 
-            else:    
-                media_data_list.current_playing_idx_num  +=1 
+        load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+        if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
+                    ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+        else:
+            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
 
-            time.sleep(0.5)
-            
-            
-            load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
-            if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
-                        ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
-            else:
-                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-    else:messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
 
 
 def playprevsong():
+    global selected_song_number
     if media_data_list.current_playing_idx_num != -1:
         if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
             playlisttreebox.selection_remove(playlisttreebox.selection())
             stop_playing_video()
-            if media_data_list.current_playing_idx_num % 50 == 0:
-                pageRes = Media_list_page_controller.prev_page(select_last_of_prev_page=True)
+            selected_follow = media_data_list.current_playing_idx_num  == selected_song_number 
+            if media_data_list.current_playing_idx_num % 50 == 0 or media_data_list.current_playing_idx_num == 0:
+                pageRes = Media_list_page_controller.prev_page(select_last_of_prev_page=True,
+                                                                selected_follow=selected_follow)
                 if pageRes == 0:
                     log_handle(content="successfully load the previous page")
-                    media_data_list.current_media_page = Media_list_page_controller.current_page
+                    if media_data_list.current_media_page != 0:
+                        if media_data_list.current_media_page == 1:
+                            media_data_list.current_media_page = Media_list_page_controller.total_page
+                            if selected_follow:selected_song_number = len(media_data_list.vid_url)
+                        else:
+                            media_data_list.current_media_page -= 1
+                        log_handle(content=f"[prev]current media page is {media_data_list.current_media_page}")
                 if pageRes == -1:messagebox.showinfo(f'JaTubePlayer {ver}','The previous page is still loading')
                 if pageRes == -2:messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the previous page, see log for more details')
                 if pageRes == -3:messagebox.showinfo(f'JaTubePlayer {ver}','does not support previous page for this source')
+        
+            
             if media_data_list.current_playing_idx_num == 0: 
                 media_data_list.current_playing_idx_num = len(media_data_list.vid_url) -1
                 
             else: 
                 media_data_list.current_playing_idx_num-=1
             
+            if selected_follow:
+                log_handle(content=f"[prev]selected follow is True, {media_data_list.current_playing_idx_num} , {selected_song_number}")
+                cur_page_idx = media_data_list.current_playing_idx_num % 50
+                root.after(1000, lambda: playlisttreebox.selection_set(playlisttreebox.get_children()[cur_page_idx]))
+                root.after(1000, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
+                selected_song_number -= 1   
             load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
             if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
                         ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
