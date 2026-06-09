@@ -623,14 +623,16 @@ def setting_frame():
                             msg="Preparing to download...\n Checking video valiability and fetching info",
                             icon=icondir,
                             )
+                            log_handle(content=f"Start fetching video info for downloading, url: {_vid_url[_selected_idx]}")
                             _,info_dict = get_info(loader=get_info_loader,
                                             target_url=_vid_url[_selected_idx],
                                             )
+                            log_handle(content=f"Finished fetching video info for downloading, info: {info_dict}")
                             if not info_dict:
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to fetch video info, the video may be unavailable or private\nPlease check the log for more details'))
                                 is_downloading.set(False)
                                 return
-                            if info_dict.get('is_live'):
+                            if info_dict.get('live_status') == "is_live":
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
                                 is_downloading.set(False)
                                 return
@@ -648,7 +650,7 @@ def setting_frame():
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
                             is_downloading.set(False)
                             return
-                        if _dict['is_live'] == 'is_live':
+                        if _dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
                             is_downloading.set(False)
                             return

@@ -5,7 +5,7 @@ from tkinter import messagebox
 import time,threading
 import customtkinter as ctk
 import queue
-
+from pathlib import Path
 cancel_download = threading.Event()
 ytdlp_killed = threading.Event()
 file_deletion_queue = queue.Queue()
@@ -39,7 +39,13 @@ def download_to_local(res:str,
     def _pre_download_cleanup():
         if not os.path.exists(os.path.join(current_dir,'user_data','downloaded_file')):
             os.makedirs(os.path.join(current_dir,'user_data','downloaded_file'))
-            
+        try:
+            folder = Path(os.path.join(current_dir,'user_data','downloaded_file'))
+            for pattern in ("*.mp4.ytdl", "*.mp4.part*"):
+                for f in folder.glob(pattern):
+                    f.unlink(missing_ok=True)
+        except :pass
+
         try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
         except:pass
         try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
@@ -131,63 +137,83 @@ def download_to_local(res:str,
                 main_label.configure(state='disabled')
                 
             else:
+                
 
                 if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                 if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-                down_tdl_opt = {
-                            'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'),
-                            'format' : f'bestvideo[height<={res}]',
-                            'progress_hooks': [progress_hook],
-                            'ignore_no_formats_error': True,
-                            'logger': ytdlp_log_handle,
-                            'js-runtimes':f'deno:{deno_path}'
-        
-
-                            }
                 
-                if cookies_dir:
-                    down_tdl_opt['cookiefile'] = cookies_dir 
-                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
-                down_tdl_opt = {
-                            'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
-                            'format' : 'bestaudio',
-                            'progress_hooks': [progress_hook],
-                            'ignore_no_formats_error': True,
-                            'logger': ytdlp_log_handle,
-                            'js-runtimes':f'deno:{deno_path}'
-                            }    
-                if cookies_dir:
-                    down_tdl_opt['cookiefile'] = cookies_dir   
-                if cancel_download.is_set():return
-                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
-                vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                if download_path == '[player]/user_data/downloaded_file':
+                            download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4')
+                else:
+                    download_path = os.path.join(download_path,f'{better_name}.mp4')
 
-                try:
-                    try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
-                    except:pass
-                    bar.place_forget()
-                    main_label.configure(state='normal')
-                    main_label.delete('0.0', 'end')
-                    main_label.insert('0.0', f"processing video and audio...")
-                    main_label.configure(state='disabled')
 
-                    download_frame.update()
+                if "twitch" in target_vid_url:
+                    down_tdl_opt = {
+                                'outtmpl':download_path,
+                                'format' : f'best[height<={res}]',
+                                'progress_hooks': [progress_hook],
+                                'ignore_no_formats_error': True,
+                                'logger': ytdlp_log_handle,
+                                'js-runtimes':f'deno:{deno_path}'
+                                }
+                    if cookies_dir:
+                        down_tdl_opt['cookiefile'] = cookies_dir 
+                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
 
-                    if download_path == '[player]/user_data/downloaded_file':
-                        download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4')
-                    else:
-                        download_path = os.path.join(download_path,f'{better_name}.mp4')
-                    ffmpeg.output(vid,aud,
-                                download_path,
-                                vcodec='copy', 
-                                acodec='aac',
-                                audio_bitrate='192k',
-                                ).run()
                     
-                except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
-                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                else:
+                    down_tdl_opt = {
+                                'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'),
+                                'format' : f'bestvideo[height<={res}]',
+                                'progress_hooks': [progress_hook],
+                                'ignore_no_formats_error': True,
+                                'logger': ytdlp_log_handle,
+                                'js-runtimes':f'deno:{deno_path}'
+            
+
+                                }
+                    
+                    if cookies_dir:
+                        down_tdl_opt['cookiefile'] = cookies_dir 
+                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                    down_tdl_opt = {
+                                'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
+                                'format' : 'bestaudio',
+                                'progress_hooks': [progress_hook],
+                                'ignore_no_formats_error': True,
+                                'logger': ytdlp_log_handle,
+                                'js-runtimes':f'deno:{deno_path}'
+                                }    
+                    if cookies_dir:
+                        down_tdl_opt['cookiefile'] = cookies_dir   
+                    if cancel_download.is_set():return
+                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                    vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                    aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+
+                    try:
+                        try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
+                        except:pass
+                        bar.place_forget()
+                        main_label.configure(state='normal')
+                        main_label.delete('0.0', 'end')
+                        main_label.insert('0.0', f"processing video and audio...")
+                        main_label.configure(state='disabled')
+
+                        download_frame.update()
+
+                        
+                        ffmpeg.output(vid,aud,
+                                    download_path,
+                                    vcodec='copy', 
+                                    acodec='aac',
+                                    audio_bitrate='192k',
+                                    ).run()
+                        
+                    except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
+                    os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                    os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
 
             main_label.configure(state='normal')
             main_label.delete('0.0', 'end')
