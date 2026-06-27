@@ -2,11 +2,11 @@ import enum
 import queue
 import random
 
-from itsdangerous import exc
 from loader.media_data_list import media_data_list_template
 from ui.Treeview_and_thumbnail import ThumbnailLoader
 from .playlist_retriever import playlist_retriever
-
+from .star_vid import star_vid_handler
+from .local_media_handle import local_media_handle
 
 class MediaType(enum.IntEnum):
     '''
@@ -41,12 +41,14 @@ class MediaList_PageControl_:
                  tree_view_queue:queue.Queue,
                  log_handle:object,
                  thumbnail_loader:ThumbnailLoader,
-                 page_num_label = object
+                 page_num_label :object,
                  ):
         self.total_page = 0
         self.current_page = 1
         self.media_type = MediaType.NONE
         self.media_data_list = media_data_list_template()
+        self.local_media_handler = local_media_handle(log_handle=log_handle)
+
 
         self.ui_queue = ui_queue
         self.tree_view_queue = tree_view_queue
@@ -65,7 +67,10 @@ class MediaList_PageControl_:
     def _insert_to_ui_queue(self):
         '''
         insert the current page data to ui queue, to update the ui
+
+        will calculate the start and end index of the current page, and insert the data to ui queue
         '''
+
         self.thumbnail_loader.clear_thumbnails()
         self.ui_queue.put(lambda: self.page_num_label.configure(text=f'page {self.current_page}/{self.total_page}'))
         start_index = (self.current_page - 1) * 50
@@ -91,7 +96,7 @@ class MediaList_PageControl_:
         self.media_data_list = media_data_list
         self.media_type = MediaType.YOUTUBE
     
-        
+        self.media_data_list.clear()
         self.yt_playlist_retriever.init_playlist_items(
             youtube=youtube,
             playlist_id=playlist_id,
@@ -104,6 +109,53 @@ class MediaList_PageControl_:
                         content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
 
     
+
+    def star_video_init_and_reload(self,
+                                    star_vid_handler_:star_vid_handler,
+                                    media_data_list:media_data_list_template,
+                                    ):
+        self.current_page = 1
+        self.media_data_list = media_data_list
+        self.media_type = MediaType.STARRED_VIDEO
+        
+        self.media_data_list.clear()
+        (media_data_list.vid_url,
+         media_data_list.playlisttitles,
+         media_data_list.playlist_channel,
+         media_data_list.playlist_thumbnails) = star_vid_handler_.list_all()
+        self.media_data_list.current_media_page
+        self.media_data_list.current_playing_idx_num = -1
+        
+        self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+
+        self._insert_to_ui_queue()
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'init reload media_type= starred videos total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+
+        
+    def local_files_init_and_reload(self,
+                                    media_data_list:media_data_list_template = None,
+                                    mode_for_local_files:int = -1,
+                                    ):
+        '''
+        will be called by local_media_handler to init and reload the media_data_list for local files
+        mode_for_local_files: 0 for single file, 1 for folder
+        '''
+        self.current_page = 1
+        self.media_type = MediaType.FOLDER
+        self.media_data_list.clear()
+
+        if media_data_list is None:# JTP called this, calling local_media_handler to get the data
+            self.media_data_list= self.local_media_handler.load_local_files(mode=mode_for_local_files)
+        else:# dnd called this, media_data_list is already filled
+            self.media_data_list = media_data_list
+
+        
+
+
+
+        
+        
     def _other_loading(self):
         #TODO
         pass
@@ -212,6 +264,8 @@ class MediaList_PageControl_:
             return -2
         finally:
             self.loading_page = False
+
+
 
     def prev_page(self, 
                 select_last_of_prev_page:bool=False,

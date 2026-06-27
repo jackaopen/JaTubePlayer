@@ -2,8 +2,10 @@ import ctypes
 from ctypes import  wintypes
 import os
 from tkinter import messagebox
-from typing import Callable
+import time
 import queue
+import threading
+from ..video_media_control.media_list_page_control import MediaList_PageControl_
 
 
 user32 = ctypes.windll.user32
@@ -38,12 +40,23 @@ shell32.DragAcceptFiles.argtypes = [wintypes.HWND, wintypes.BOOL]
 handler = None
 
 class DropHandler(object):
+    '''
+    include the WINAPI , and the listener    
+    '''
     def __init__(self,
-                 dnd_path_queue:queue.Queue=None,
+                 media_list_page_control:MediaList_PageControl_,
+                 log_handle:object,
+                 ui_queue:queue.Queue,
                  root=None)->None:
+        '''
+        MLPC object must be created from JTP
+        '''
         self.root = root
-        self.dnd_path_queue = dnd_path_queue
-
+        self.log_handle = log_handle
+        self.ui_queue = ui_queue
+        self.dnd_path_queue = queue.Queue()
+        self.media_list_page_control = media_list_page_control
+        threading.Thread(target=self._dnd_path_listener, daemon=True).start()
     
     def handle_file_drop(self,file_paths:list):
         self.dnd_path_queue.put(file_paths)
@@ -128,3 +141,44 @@ class DropHandler(object):
         handler = WindowProc(self.on_file_drop)
         original_handler = user32.SetWindowLongPtrW(hwnd, -4, handler)# redirect WndProc, with our handler
 
+    def _dnd_path_listener(self):       
+            global selected_song_number 
+
+            '''
+            if the dropped file is valid, return the list of file paths
+            valid file: return a single folder or multiple files
+            
+            '''
+            while True:
+                file_paths = self.dnd_path_queue.get()
+                if file_paths:
+                    try:
+                        valid_type = True
+                        self.log_handle(content=f"Files dropped: {file_paths}")
+                        for i in range(len(file_paths)):# check every file type if its valid
+                            if os.path.isdir(file_paths[i]) and len(file_paths)> 1 :
+                                self.ui_queue.put(lambda: messagebox.showerror("Jatubeplater drag&drop", "You can only drop a single folder or multiple files at once."))
+                                valid_type = False
+                                break
+                            elif os.path.isfile(file_paths[i]):
+                                _,ext = os.path.splitext(file_paths[i])
+                                if ext.lower() not in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogv', '.ts', '.mts', '.vob', '.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.aiff', '.opus', '.amr']:
+                                    _file_path = file_paths[i]  # Capture for lambda
+                                    self.ui_queue.put(lambda fp=_file_path: messagebox.showerror("Jatubeplater drag&drop", f"The file '{fp}' is not contain valid media file."))
+                                    valid_type = False
+                                    break
+                        #call thing to add to playlist
+                        #TODO 
+                        if valid_type:
+                            if len(file_paths) == 1:
+                                if os.path.isfile(file_paths[0]):
+                                    meload_local_files(mode=0,dnd_single_file_path=file_paths[0])#still put a file into it
+                                    selected_song_number = None
+                                    load_thread_queue.put((file_paths[0],None))#play the first file
+                                elif os.path.isdir(file_paths[0]):
+                                    load_local_files(mode=1,local_folder_path=file_paths[0])
+                            elif len(file_paths) > 0:
+                                load_local_files(mode=2,dnd_files_path_lists=file_paths)
+                    finally:
+                        time.sleep(0.5)
+                else:time.sleep(1)

@@ -2914,15 +2914,11 @@ def get_starred_vid(event=None):
         ui_queue.put(lambda: page_num_label.configure(text=''))
         ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-        ui_queue.put(lambda:star_vid_handle.list_all(
         
-                treeview_queue=insert_treeview_quene,
-                vid_url=media_data_list.vid_url,
-                playlisttitles=media_data_list.playlisttitles,
-                playlist_channel=media_data_list.playlist_channel,
-                playlist_thumbnails=media_data_list.playlist_thumbnails,
-                loadingplaylist_flag=loadingplaylist))
         loadingplaylist = False
+        Media_list_page_controller.star_video_init_and_reload(
+            star_vid_handle,
+            media_data_list)
             
 
 def switch_starred_vid(event=None):
@@ -3438,10 +3434,8 @@ def load_thread():  ### add every try except to a new log system for next update
                                 else:
                                     ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Internet connection failed, please check your internet connection', duration='short', icon=icondir)
                                     loadingvideo = False
-                                    return None #### return if no internet
-                                    #the def actually dont need to return anything but just to make sure it wont go futher
+                                    continue
                             try:
-                                _current_page = Media_list_page_controller.current_page # For MDL
                                 final_url,playing_vid_info_dict = get_info(
                                                                         target_url=direct_url,
                                                                         loader=get_info_loader)
@@ -3509,7 +3503,8 @@ def load_thread():  ### add every try except to a new log system for next update
                                                     if i >=2:break
                                             log_handle(content=f"{tag} {channel_url}")
                                             save_recent_vid_info(tag,channel_url,current_dir)
-                                    except:pass
+                                    except Exception as ex:
+                                        log_handle(content=f"Error occurred while saving video info: {ex}")
                                 else:
                                     force_stop_loading = True 
                                     messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to extract video information, Please refer to log for more details')
@@ -3579,9 +3574,14 @@ def load_thread():  ### add every try except to a new log system for next update
                                         if discord_presence_show_playing.get():
                                             discord_presence.update(song_title=playing_vid_info_dict['title'])
                                         else:discord_presence.idle()
-                                    except:pass
+                                    except Exception as ex:
+                                        log_handle(content=f"Error occurred while updating Discord presence: {ex}")
+                                
+
                                 if current_idx is not None:
+                                    log_handle(content=f"Setting playing tag for index {current_idx}")
                                     Media_list_page_controller.set_playing_tag(current_idx, 'playing')
+
                                 player.volume = (int(player_volume_scale.get()))
                                 if playing_vid_mode == 3:pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
                                 else :pos_thread = threading.Thread(daemon = True,target=update_playing_pos_yt)
@@ -3605,7 +3605,6 @@ def load_thread():  ### add every try except to a new log system for next update
                     try:
                         if chosen_file:
                                 current_idx = media_data_list.current_playing_idx_num if playing_vid_mode == 2 else None #for MLPC
-                                _current_page = Media_list_page_controller.current_page if playing_vid_mode == 2 else None #for MDL
                                 loadingvideo = True
                                 succed = False
                                 ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
@@ -3824,9 +3823,7 @@ def download_and_play(event=None):### button and double click event
             #load from youtube
             if selected_song_number != None:
                 load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
-                if playing_vid_mode in [0,2,4]:
-                    media_data_list.current_playing_idx_num = selected_song_number
-                    media_data_list.current_media_page = Media_list_page_controller.current_page
+                
                     
         
             else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
@@ -3863,7 +3860,9 @@ def download_and_play(event=None):### button and double click event
             else:
                 load_thread_queue.put((url_or_path,None))
         else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
-
+    if playing_vid_mode in [0,2,4]:
+        media_data_list.current_playing_idx_num = selected_song_number
+        media_data_list.current_media_page = Media_list_page_controller.current_page
 
 
 def onclose():
@@ -4232,47 +4231,7 @@ def read_and_check_creditial():
 
 
 
-def dnd_path_listener():       
-        global selected_song_number 
 
-        '''
-        if the dropped file is valid, return the list of file paths
-        valid file: return a single folder or multiple files
-        
-        '''
-        while True:
-            file_paths = dnd_path_queue.get()
-            if file_paths:
-                try:
-                    valid_type = True
-                    log_handle(content=f"Files dropped: {file_paths}")
-                    for i in range(len(file_paths)):# check every file type if its valid
-                        if os.path.isdir(file_paths[i]) and len(file_paths)> 1 :
-                            ui_queue.put(lambda: messagebox.showerror("Jatubeplater drag&drop", "You can only drop a single folder or multiple files at once."))
-                            valid_type = False
-                            break
-                        elif os.path.isfile(file_paths[i]):
-                            _,ext = os.path.splitext(file_paths[i])
-                            if ext.lower() not in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogv', '.ts', '.mts', '.vob', '.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.aiff', '.opus', '.amr']:
-                                _file_path = file_paths[i]  # Capture for lambda
-                                ui_queue.put(lambda fp=_file_path: messagebox.showerror("Jatubeplater drag&drop", f"The file '{fp}' is not contain valid media file."))
-                                valid_type = False
-                                break
-                    #call thing to add to playlist
-                    
-                    if valid_type:
-                        if len(file_paths) == 1:
-                            if os.path.isfile(file_paths[0]):
-                                load_local_files(mode=0,dnd_single_file_path=file_paths[0])#still put a file into it
-                                selected_song_number = None
-                                load_thread_queue.put((file_paths[0],None))#play the first file
-                            elif os.path.isdir(file_paths[0]):
-                                load_local_files(mode=1,local_folder_path=file_paths[0])
-                        elif len(file_paths) > 0:
-                            load_local_files(mode=2,dnd_files_path_lists=file_paths)
-                finally:
-                    time.sleep(0.5)
-            else:time.sleep(1)
 
 
 @check_internet

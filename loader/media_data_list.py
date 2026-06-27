@@ -14,6 +14,9 @@ class media_data_list_template:
         self.playlist_channel = []
         self.playlist_thumbnails = []
         self.current_media_page = 0
+        '''
+        default 0, globally from 1 to end
+        '''
         self.current_playing_idx_num = -1
         '''
         globally from 0 to len(vid_url)-1, default -1
