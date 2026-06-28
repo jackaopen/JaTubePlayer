@@ -1,6 +1,6 @@
 from tkinter import filedialog
 import tkinter as tk
-from ..loader.media_data_list import media_data_list_template
+from loader.media_data_list import media_data_list_template
 import os
 
 

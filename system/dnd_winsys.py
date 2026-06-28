@@ -5,11 +5,24 @@ from tkinter import messagebox
 import time
 import queue
 import threading
-from ..video_media_control.media_list_page_control import MediaList_PageControl_
+from video_media_control.media_list_page_control import MediaList_PageControl_
+from loader.media_data_list import media_data_list_template
+
+
+
+
+FILE_TYPE_EXT = [
+                ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mpeg", ".mpg", ".3gp", ".webm", ".ogv",
+                ".ts", ".mts", ".vob", ".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", ".aiff", ".opus", ".amr"
+]
+
 
 
 user32 = ctypes.windll.user32
 shell32 = ctypes.windll.shell32
+
+
+
 
 # Define type
 WindowProc = ctypes.WINFUNCTYPE(ctypes.c_long, 
@@ -47,15 +60,25 @@ class DropHandler(object):
                  media_list_page_control:MediaList_PageControl_,
                  log_handle:object,
                  ui_queue:queue.Queue,
+                 selected_song_number_status_changer:object,
+                 playing_vid_mode:int,
+                 media_data_list:media_data_list_template,
                  root=None)->None:
         '''
         MLPC object must be created from JTP
+        selected song number, playing_vid_mode : for dnd to refresh
+        mdl must belong to jtp
+
         '''
         self.root = root
         self.log_handle = log_handle
         self.ui_queue = ui_queue
         self.dnd_path_queue = queue.Queue()
         self.media_list_page_control = media_list_page_control
+        self.selected_song_number_status_changer = selected_song_number_status_changer
+        self.playing_vid_mode = playing_vid_mode
+        self.media_data_list = media_data_list
+        
         threading.Thread(target=self._dnd_path_listener, daemon=True).start()
     
     def handle_file_drop(self,file_paths:list):
@@ -117,6 +140,7 @@ class DropHandler(object):
                     print(size)
                     buffer = ctypes.create_unicode_buffer(size + 1) # alloc buffer, +1 for null terminator
                     shell32.DragQueryFileW(drop, i, buffer, size + 1) # put file name into buffer
+                    self.log_handle(f"File dropped: {buffer.value}")
                     files.append(f"{buffer.value}")
                 except Exception as e:  
                     print(f"Error retrieving file {i}: {e}")
@@ -142,7 +166,6 @@ class DropHandler(object):
         original_handler = user32.SetWindowLongPtrW(hwnd, -4, handler)# redirect WndProc, with our handler
 
     def _dnd_path_listener(self):       
-            global selected_song_number 
 
             '''
             if the dropped file is valid, return the list of file paths
@@ -150,35 +173,51 @@ class DropHandler(object):
             
             '''
             while True:
+                print("nlkwd")
                 file_paths = self.dnd_path_queue.get()
                 if file_paths:
+                    self.selected_song_number = None
+                    
                     try:
-                        valid_type = True
-                        self.log_handle(content=f"Files dropped: {file_paths}")
-                        for i in range(len(file_paths)):# check every file type if its valid
-                            if os.path.isdir(file_paths[i]) and len(file_paths)> 1 :
-                                self.ui_queue.put(lambda: messagebox.showerror("Jatubeplater drag&drop", "You can only drop a single folder or multiple files at once."))
-                                valid_type = False
-                                break
-                            elif os.path.isfile(file_paths[i]):
-                                _,ext = os.path.splitext(file_paths[i])
-                                if ext.lower() not in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogv', '.ts', '.mts', '.vob', '.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.aiff', '.opus', '.amr']:
-                                    _file_path = file_paths[i]  # Capture for lambda
-                                    self.ui_queue.put(lambda fp=_file_path: messagebox.showerror("Jatubeplater drag&drop", f"The file '{fp}' is not contain valid media file."))
-                                    valid_type = False
-                                    break
-                        #call thing to add to playlist
-                        #TODO 
-                        if valid_type:
-                            if len(file_paths) == 1:
-                                if os.path.isfile(file_paths[0]):
-                                    meload_local_files(mode=0,dnd_single_file_path=file_paths[0])#still put a file into it
-                                    selected_song_number = None
-                                    load_thread_queue.put((file_paths[0],None))#play the first file
-                                elif os.path.isdir(file_paths[0]):
-                                    load_local_files(mode=1,local_folder_path=file_paths[0])
-                            elif len(file_paths) > 0:
-                                load_local_files(mode=2,dnd_files_path_lists=file_paths)
+
+                        
+                        self.log_handle(content=f"Valid files/folder dropped: {file_paths}")
+
+                        if len(file_paths) == 1:
+                            if os.path.isfile(file_paths[0]):
+                                self.log_handle(content=f"Single file dropped: {file_paths[0]}")
+                                
+
+                                self.media_data_list.vid_url.append(file_paths[0])
+                                self.media_data_list.playlisttitles.append(os.path.basename(file_paths[0]))
+                                self.media_data_list.playlist_channel.append("local file")
+                                self.media_data_list.playlist_thumbnails.append("")
+
+                                self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list)#still put a file into it
+                                self.selected_song_number_status_changer(1)
+                            elif os.path.isdir(file_paths[0]):
+                                self.log_handle(content=f"Folder dropped: {file_paths[0]}")
+                                for dir,_,files in os.walk(file_paths[0]):
+                                    self.log_handle(content=f": {files}")
+                                    for file in files:
+                                        if os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
+                                            
+                                            self.media_data_list.vid_url.append(os.path.join(dir,file))
+                                            self.media_data_list.playlisttitles.append(file)
+                                            self.media_data_list.playlist_channel.append("local file")
+                                            self.media_data_list.playlist_thumbnails.append("")
+                                self.selected_song_number_status_changer(2)
+                                self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list)
+                        elif len(file_paths) > 0:
+                            for file in file_paths:
+                                if os.path.isfile(file) and os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
+                                    self.media_data_list.vid_url.append(file)
+                                    self.media_data_list.playlisttitles.append(os.path.basename(file))
+                                    self.media_data_list.playlist_channel.append("local file")
+                                    self.media_data_list.playlist_thumbnails.append("")
+                            
+                            self.selected_song_number_status_changer(2)
+                            self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list)
                     finally:
                         time.sleep(0.5)
                 else:time.sleep(1)

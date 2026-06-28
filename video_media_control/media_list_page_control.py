@@ -1,7 +1,7 @@
 import enum
 import queue
 import random
-
+import copy
 from loader.media_data_list import media_data_list_template
 from ui.Treeview_and_thumbnail import ThumbnailLoader
 from .playlist_retriever import playlist_retriever
@@ -35,6 +35,8 @@ class MediaList_PageControl_:
     will insert the current page data to ui queue, to update the ui
     This will only do job for yt playlist(playlist,sub,like), folders, star 
     search currently dose not support page control
+
+    all passed mdl must belong to jtp
     '''
     def __init__(self,
                  ui_queue:queue.Queue,
@@ -42,13 +44,13 @@ class MediaList_PageControl_:
                  log_handle:object,
                  thumbnail_loader:ThumbnailLoader,
                  page_num_label :object,
+                 
                  ):
         self.total_page = 0
         self.current_page = 1
         self.media_type = MediaType.NONE
         self.media_data_list = media_data_list_template()
         self.local_media_handler = local_media_handle(log_handle=log_handle)
-
 
         self.ui_queue = ui_queue
         self.tree_view_queue = tree_view_queue
@@ -123,7 +125,7 @@ class MediaList_PageControl_:
          media_data_list.playlisttitles,
          media_data_list.playlist_channel,
          media_data_list.playlist_thumbnails) = star_vid_handler_.list_all()
-        self.media_data_list.current_media_page
+        self.media_data_list.current_media_page = 1  
         self.media_data_list.current_playing_idx_num = -1
         
         self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
@@ -134,7 +136,7 @@ class MediaList_PageControl_:
 
         
     def local_files_init_and_reload(self,
-                                    media_data_list:media_data_list_template = None,
+                                    media_data_list:media_data_list_template,
                                     mode_for_local_files:int = -1,
                                     ):
         '''
@@ -143,14 +145,23 @@ class MediaList_PageControl_:
         '''
         self.current_page = 1
         self.media_type = MediaType.FOLDER
-        self.media_data_list.clear()
+        
 
         if media_data_list is None:# JTP called this, calling local_media_handler to get the data
             self.media_data_list= self.local_media_handler.load_local_files(mode=mode_for_local_files)
         else:# dnd called this, media_data_list is already filled
+
             self.media_data_list = media_data_list
 
+        self.media_data_list.current_media_page = 1  
+        self.media_data_list.current_playing_idx_num = -1
         
+        self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+
+        self._insert_to_ui_queue()
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+    
 
 
 

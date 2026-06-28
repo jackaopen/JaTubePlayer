@@ -23,6 +23,7 @@ from utils.check_internet import check_internet
 from utils.get_media_info import get_info
 from utils.color_picker.ctk_color_picker import AskColor  
 from utils.additional_utils import lenght_convertor
+
   
 from loader.get_info_loader import get_info_loader_
 from loader.media_data_list import media_data_list_template
@@ -40,10 +41,16 @@ from system.keyboard import *
 from system.presence import DiscordPresence
 
 from video_media_control.media_list_page_control import MediaList_PageControl_
+
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
 
-
+def mode_change_status(sta:int):
+    '''
+    mainly for dnd
+    '''
+    global playing_vid_mode
+    playing_vid_mode = sta
 
 
 
@@ -243,7 +250,6 @@ info = None
 loadingplaylist = False
 loadingvideo = False
 insert_treeview_quene = queue.Queue()
-dnd_path_queue = queue.Queue()
 auto_check_ver = tk.BooleanVar()
 save_history = tk.BooleanVar()
 init_quickstartup_mode = tk.StringVar()
@@ -3320,7 +3326,18 @@ def playnextsong():
             root.after(1000, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
             selected_song_number += 1
 
-        load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+        if playing_vid_mode == 1:#classify local file and direct url
+            load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+        elif playing_vid_mode == 4:
+            if "http" in media_data_list.vid_url[media_data_list.current_playing_idx_num] or "https" in media_data_list.vid_url[media_data_list.current_playing_idx_num] :
+                load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+
+            else:
+                load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
+
+        else:
+            load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
+
         if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
                     ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
         else:
@@ -3364,7 +3381,19 @@ def playprevsong():
                 root.after(1000, lambda: playlisttreebox.selection_set(playlisttreebox.get_children()[cur_page_idx]))
                 root.after(1000, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
                 selected_song_number -= 1   
-            load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+
+                if playing_vid_mode == 1:#classify local file and direct url
+                    load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+                elif playing_vid_mode == 4:
+                    if "http" in media_data_list.vid_url[media_data_list.current_playing_idx_num] or "https" in media_data_list.vid_url[media_data_list.current_playing_idx_num] :
+                        load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+
+                    else:
+                        load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
+
+                else:
+                    load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
+
             if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
                         ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             else:
@@ -3821,7 +3850,7 @@ def download_and_play(event=None):### button and double click event
     if playing_vid_mode == 0:
         if check_internet_socket():
             #load from youtube
-            if selected_song_number != None:
+            if selected_song_number is not None:
                 load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
                 
                     
@@ -3836,7 +3865,8 @@ def download_and_play(event=None):### button and double click event
             )
     elif playing_vid_mode == 1 or playing_vid_mode == 2:       
         # load local file/folder
-        if selected_song_number != None:
+        if selected_song_number is not None:
+            print(f"Loading local file: {media_data_list.vid_url}")
             load_thread_queue.put((media_data_list.vid_url[selected_song_number],None))
             if playing_vid_mode ==2 :
                 media_data_list.current_media_page = Media_list_page_controller.current_page
@@ -4439,7 +4469,7 @@ def create_mpv_player():
 def _init_load_extra_objs():
     global dnd_handle,discord_presence,google_control,Ferner_encrptor_,get_info_loader,star_vid_handle,thumbnail_loader,Media_list_page_controller
     Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
-    dnd_handle=DropHandler()
+    
     discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
     google_control = google_auth_control(ver=ver,youtubeAPI=Ferner_encrptor_.decrypte_api(),current_dir=current_dir,log_handle=log_handle,ctk_messagebox=messagebox)
     get_info_loader = get_info_loader_(yt_dlp = lambda:yt_dlp,
@@ -4469,9 +4499,16 @@ def _init_load_extra_objs():
         thumbnail_loader=thumbnail_loader,
         page_num_label=page_num_label
         )
-                                    
     
-    
+    dnd_handle=DropHandler(media_list_page_control=Media_list_page_controller,
+                           log_handle=log_handle,
+                           ui_queue=ui_queue,
+                           selected_song_number_status_changer=mode_change_status,
+                           media_data_list=media_data_list,
+                           playing_vid_mode=playing_vid_mode)                  
+
+
+
 
 def init_set_smtc():
     smtc.next_song_fun = playnextsong
@@ -4484,7 +4521,6 @@ def init_set_dnd_handle():
     global dnd_handle
     log_handle(content=f"dnd {enable_drag_and_drop.get()}")
     dnd_handle.enable_drop(hwnd, enable_drag_and_drop.get())
-    dnd_handle.dnd_path_queue = dnd_path_queue
     dnd_handle.root = root
 
 def init_set_playertray():
@@ -4761,9 +4797,7 @@ def _start_up():
     
     
 if __name__ == '__main__':
-    root.after(200,lambda:threading.Thread(daemon = True,target=dnd_path_listener).start())
     root.after(100,lambda:threading.Thread(daemon = True,target=load_thread).start())
-    root.after(50,lambda:threading.Thread(daemon = True,target=start_async_eventloop).start())
     root.after(200,lambda:threading.Thread(daemon = True,target=fullscreen_detect_thread).start())
     root.after(850,lambda:threading.Thread(daemon = True,target=init_set_playertray).start())
     root.after(400,lambda:threading.Thread(daemon = True,target=full_screen_contorl_hover_thread).start())
