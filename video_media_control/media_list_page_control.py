@@ -146,12 +146,11 @@ class MediaList_PageControl_:
         self.current_page = 1
         self.media_type = MediaType.FOLDER
         
-
         if media_data_list is None:# JTP called this, calling local_media_handler to get the data
             self.media_data_list= self.local_media_handler.load_local_files(mode=mode_for_local_files)
         else:# dnd called this, media_data_list is already filled
-
             self.media_data_list = media_data_list
+            self.log_handle(   media_data_list.vid_url)
 
         self.media_data_list.current_media_page = 1  
         self.media_data_list.current_playing_idx_num = -1

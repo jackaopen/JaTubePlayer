@@ -45,9 +45,10 @@ from video_media_control.media_list_page_control import MediaList_PageControl_
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
 
-def mode_change_status(sta:int):
+def dnd_mode_change_status(sta:int):
     '''
     mainly for dnd
+    will change the global var playing_vid_mode to sta
     '''
     global playing_vid_mode
     playing_vid_mode = sta
@@ -3725,13 +3726,13 @@ def load_thread():  ### add every try except to a new log system for next update
                                     loadingvideo = False
                                     ui_queue.put(lambda: player_loading_label.configure(text=''))
                                     if current_idx is not None:
-                                        Media_list_page_controller.remove_playing_tag(current_idx)
+                                        Media_list_page_controller.remove_playing_tag()
                     except Exception as e:
                         ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play local file:  {str(err)}"))
                         loadingvideo = False
                         ui_queue.put(lambda: player_loading_label.configure(text=''))
                         if current_idx is not None:
-                            Media_list_page_controller.remove_playing_tag(current_idx)
+                            Media_list_page_controller.remove_playing_tag()
                             media_data_list.current_playing_idx_num = -1
                             media_data_list.current_media_page = 0
 
@@ -4503,7 +4504,7 @@ def _init_load_extra_objs():
     dnd_handle=DropHandler(media_list_page_control=Media_list_page_controller,
                            log_handle=log_handle,
                            ui_queue=ui_queue,
-                           selected_song_number_status_changer=mode_change_status,
+                           selected_song_number_status_changer=dnd_mode_change_status,
                            media_data_list=media_data_list,
                            playing_vid_mode=playing_vid_mode)                  
 

@@ -131,19 +131,17 @@ class DropHandler(object):
             
             # Get file count
             count = shell32.DragQueryFileW(drop, 0xFFFFFFFF, None, 0)
-            print(f"\n{count} file(s) dropped:")
             files = []
             for i in range(count):
                 try:
                     size = shell32.DragQueryFileW(drop, i, None, 0)  # number of characters
 
-                    print(size)
                     buffer = ctypes.create_unicode_buffer(size + 1) # alloc buffer, +1 for null terminator
                     shell32.DragQueryFileW(drop, i, buffer, size + 1) # put file name into buffer
-                    self.log_handle(f"File dropped: {buffer.value}")
+                    self.log_handle(content=f"File dropped: {buffer.value}")
                     files.append(f"{buffer.value}")
                 except Exception as e:  
-                    print(f"Error retrieving file {i}: {e}")
+                    self.log_handle(content=f"Error retrieving file {i}: {e}")
             
             shell32.DragFinish(drop)
             self.handle_file_drop(file_paths=files)
@@ -173,10 +171,10 @@ class DropHandler(object):
             
             '''
             while True:
-                print("nlkwd")
                 file_paths = self.dnd_path_queue.get()
                 if file_paths:
                     self.selected_song_number = None
+                    self.media_data_list.clear()
                     
                     try:
 
