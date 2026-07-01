@@ -6,9 +6,15 @@ import time,threading
 import customtkinter as ctk
 import queue
 from pathlib import Path
+
+
+
 cancel_download = threading.Event()
 ytdlp_killed = threading.Event()
 file_deletion_queue = queue.Queue()
+
+
+
 def download_to_local(res:str,
                       mode:int,
                       cookies_dir:str,

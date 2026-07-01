@@ -1,4 +1,5 @@
 import json,os
+from loader.media_data_list import media_data_list_template
 from utils.get_media_info import *
 from loader.get_info_loader import get_info_loader_
 import queue
@@ -72,7 +73,7 @@ class star_vid_handler:
     
     def list_all(self,
                  loadingplaylist_flag=None
-                 )->tuple[list, list, list, list]|bool:
+                 )->media_data_list_template|bool:
         '''
         Run this in thread to avoid blocking the main thread, it will clear the input lists and fill them with the starred videos info, and also put the info into the treeview_queue for updating the treeview in the main thread
         This function is designed to be called when the user clicks the "Starred Videos" button, it will update the treeview with the starred videos info
@@ -82,29 +83,19 @@ class star_vid_handler:
         playlist_thumbnails])
         '''
         try:
-            vid_url = []
-            playlisttitles = []
-            playlist_channel = []
-            playlist_thumbnails = []
-            
-            for url in self.starred_vid_dict.keys():
-                vid_url.append(url)
-                info = self.starred_vid_dict[url]
-                playlisttitles.append(info['title'])
-                playlist_channel.append(info['channel'])
-                playlist_thumbnails.append(info['thumb'])
+            media_data_list = media_data_list_template()
 
+            for url in self.starred_vid_dict.keys():
+                media_data_list.vid_url.append(url)
+                info = self.starred_vid_dict[url]
+                media_data_list.playlisttitles.append(info['title'])
+                media_data_list.playlist_channel.append(info['channel'])
+                media_data_list.playlist_thumbnails.append(info['thumb'])
+            return media_data_list
         except Exception as e:
             self.get_info_loader.ytdlp_log_handle.info(f"Error listing starred videos: {e}")
             return False
-        if loadingplaylist_flag is not None:
-            loadingplaylist_flag = False
-
-        return ([vid_url, 
-                playlisttitles, 
-                playlist_channel, 
-                playlist_thumbnails])
-
+        
 
 
 if __name__ == "__main__":

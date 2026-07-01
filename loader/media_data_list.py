@@ -32,3 +32,11 @@ class media_data_list_template:
     def stopped_playing(self):
         self.current_playing_idx_num = -1
         self.current_media_page = 0
+        
+    def set(self, mdl: 'media_data_list_template'):
+        self.vid_url = mdl.vid_url
+        self.playlisttitles = mdl.playlisttitles
+        self.playlist_channel = mdl.playlist_channel
+        self.playlist_thumbnails = mdl.playlist_thumbnails
+        self.current_media_page = mdl.current_media_page
+        self.current_playing_idx_num = mdl.current_playing_idx_num

@@ -172,8 +172,9 @@ class ThumbnailLoader:
         run in root.after to avoid blocking the main thread, and also to sync with the treeview update, since the treeview update is also run in root.after, so we can ensure that the item is updated after the treeview is updated.
         '''
         try:
-            self.root.after(500, lambda: self._set_item_color(idx, color))
+            self.root.after(50, lambda: self._set_item_color(idx, color))
         except Exception as e:
+            self.log_handle(f"[set_item_color] error: {str(e)}")
             raise e
         
     def _set_item_color(self, idx = int, color:str = 'playing'):

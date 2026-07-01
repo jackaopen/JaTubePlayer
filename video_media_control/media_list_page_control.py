@@ -48,6 +48,9 @@ class MediaList_PageControl_:
                  ):
         self.total_page = 0
         self.current_page = 1
+        '''
+        page num for which page treebox is showing
+        '''
         self.media_type = MediaType.NONE
         self.media_data_list = media_data_list_template()
         self.local_media_handler = local_media_handle(log_handle=log_handle)
@@ -120,11 +123,9 @@ class MediaList_PageControl_:
         self.media_data_list = media_data_list
         self.media_type = MediaType.STARRED_VIDEO
         
-        self.media_data_list.clear()
-        (media_data_list.vid_url,
-         media_data_list.playlisttitles,
-         media_data_list.playlist_channel,
-         media_data_list.playlist_thumbnails) = star_vid_handler_.list_all()
+        
+        media_data_list.set(star_vid_handler_.list_all())
+        self.media_data_list.set(media_data_list)
         self.media_data_list.current_media_page = 1  
         self.media_data_list.current_playing_idx_num = -1
         
@@ -137,20 +138,29 @@ class MediaList_PageControl_:
         
     def local_files_init_and_reload(self,
                                     media_data_list:media_data_list_template,
+                                    quick_start_folder_path:str=None,
                                     mode_for_local_files:int = -1,
-                                    ):
+                                    dnd_mode:bool=False,
+                                    )->None|bool:
         '''
         will be called by local_media_handler to init and reload the media_data_list for local files
         mode_for_local_files: 0 for single file, 1 for folder
+
+        return : None if successfully load, False if failed
         '''
         self.current_page = 1
         self.media_type = MediaType.FOLDER
         
-        if media_data_list is None:# JTP called this, calling local_media_handler to get the data
-            self.media_data_list= self.local_media_handler.load_local_files(mode=mode_for_local_files)
-        else:# dnd called this, media_data_list is already filled
+        if dnd_mode is False:# JTP called this, calling local_media_handler to get the data
+            mdl_result = self.local_media_handler.load_local_files(mode=mode_for_local_files, 
+                                                                             local_folder_path=quick_start_folder_path)
+            if mdl_result is not None:
+                media_data_list.set(mdl_result)
+                self.media_data_list = media_data_list
+            else:
+                return False
+        else: # dnd called this, media_data_list is already filled
             self.media_data_list = media_data_list
-            self.log_handle(   media_data_list.vid_url)
 
         self.media_data_list.current_media_page = 1  
         self.media_data_list.current_playing_idx_num = -1

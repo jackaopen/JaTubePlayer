@@ -28,7 +28,8 @@ class local_media_handle:
 
     def load_local_files(self,
                          mode:int,
-                        )->media_data_list_template:
+                         local_folder_path:str=None,
+                        )->media_data_list_template|None:
         '''
         mode 0 == single file mode and dnd single file
         mode 1 == folder mode and dnd folder(must have muti files for better single file control balance)
@@ -37,33 +38,42 @@ class local_media_handle:
         dnd_files_path_lists for dnd file list
         // only use kwarg
         '''
+
         media_data_list = media_data_list_template()
-        if mode == 0:
-            
-            local_single_filepath = filedialog.askopenfilename(filetypes = FILE_TYPE)
-            
-            if local_single_filepath:
-                media_data_list.clear()
+        try:
+            if mode == 0:
+                
+                local_single_filepath = filedialog.askopenfilename(filetypes = FILE_TYPE)
+                
+                if local_single_filepath:
+                    media_data_list.clear()
 
-                media_data_list.vid_url.append(local_single_filepath)
-                media_data_list.playlisttitles.append(os.path.basename(local_single_filepath))
-                media_data_list.playlist_channel.append("local file")
-                media_data_list.playlist_thumbnails.append(None)
+                    media_data_list.vid_url.append(local_single_filepath)
+                    media_data_list.playlisttitles.append(os.path.basename(local_single_filepath))
+                    media_data_list.playlist_channel.append("local file")
+                    media_data_list.playlist_thumbnails.append("")
 
 
-        if mode == 1:
-                            
-            folder_path = filedialog.askdirectory()
-            self.log_handle(content=str(folder_path))
-            if folder_path:
-                media_data_list.playlisttitles.clear()
-                media_data_list.playlist_thumbnails.clear()
-                media_data_list.vid_url = []
-                folder_items = [file for file in os.listdir(folder_path) if file.endswith(FILE_TYPE_EXT)]
+            if mode == 1:
+                if local_folder_path is not None:
+                    folder_path = local_folder_path
+                else:
+                    folder_path = filedialog.askdirectory()
 
-                index_for_tree = 1
-                for item in folder_items:
-                    media_data_list.vid_url.append(os.path.join(folder_path,item))
-                    media_data_list.playlisttitles.append(item)
-                    index_for_tree += 1
-            
+                self.log_handle(content=str(folder_path))
+                if folder_path:
+                    media_data_list.playlisttitles.clear()
+                    media_data_list.playlist_thumbnails.clear()
+                    media_data_list.vid_url = []
+                    folder_items = [file for file in os.listdir(folder_path) if file.endswith(FILE_TYPE_EXT)]
+
+                    for item in folder_items:
+                        media_data_list.vid_url.append(os.path.join(folder_path,item))
+                        media_data_list.playlisttitles.append(item)
+                        media_data_list.playlist_channel.append("local file")
+                        media_data_list.playlist_thumbnails.append("")
+            return media_data_list
+          
+        except Exception as e:
+            self.log_handle(content=f'Error loading local files: {e}')
+            return None

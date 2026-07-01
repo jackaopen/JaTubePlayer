@@ -1,3 +1,4 @@
+from statistics import mode
 import time
 time1 = time.time()
 import tkinter as tk
@@ -3055,21 +3056,28 @@ def update_playing_pos_local_and_chrome():
                     ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
             if player.eof_reached and length != -1: ## video ends
                 if selected_song_number != None:
-                    ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
                     if playing_vid_mode == 2 or playing_vid_mode == 4:
-                        ui_queue.put(lambda: playlisttreebox.selection_remove(playlisttreebox.selection()))
                         if player_mode_selector.get() =='continue':
-                            if selected_song_number == len(media_data_list.vid_url) -1:
-                                selected_song_number = 0
-                            else:    
-                                selected_song_number  = selected_song_number + 1
+                            playprevnext(1)()
+                            break
+                            
                         elif player_mode_selector.get() =='replay':
                             player.seek(0.1,reference='absolute')
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
-                            selected_song_number = random.randint(0,len(media_data_list.vid_url))
-                        download_and_play()
-                        ui_queue.put(lambda s=selected_song_number: playlisttreebox.selection_set(playlisttreebox.get_children()[s]))
+                            player.stop()
+                            media_idx = Media_list_page_controller.random_media(selected_song_number)
+                            if media_idx == -2:
+                                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
+                                break
+                            elif media_idx == -1:
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
+                                break
+                            else:
+                                selected_song_number = media_idx
+                                download_and_play()
+
+
                         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
                         else:
@@ -3135,7 +3143,7 @@ def update_playing_pos_yt():
                     if selected_song_number != None:
 
                         if player_mode_selector.get() =='continue':
-                            playnextsong()
+                            playprevnext(1)()
                             break
                             
                         elif player_mode_selector.get() =='replay':
@@ -3153,6 +3161,13 @@ def update_playing_pos_yt():
                             else:
                                 selected_song_number = media_idx
                                 download_and_play()
+
+
+
+                            if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
+                                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                            else:
+                                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
 
                     else:
                         stop_playing_video()
@@ -3232,7 +3247,8 @@ def set_position_keyboard_thread(mode):#1 == backward 2 == forward
             log_handle(content=str(e))
             seeking = False
 
-def set_position_keyboard(mode):threading.Thread(daemon=True,target=lambda:set_position_keyboard_thread(mode)).start()    
+def set_position_keyboard(mode):
+    threading.Thread(daemon=True,target=lambda:set_position_keyboard_thread(mode)).start()    
 def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
     try:
         global paused
@@ -3290,127 +3306,117 @@ def stop_playing_video():
         player.stop()
     except:pass
 
-def playnextsong():
+def playprevnext(direction:int)->None:
+    '''
+    direction:int = 1 -> next,
+    direction:int = 2 -> previous
+    '''
     global selected_song_number 
-    if media_data_list.current_playing_idx_num == -1:
-        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first'))
-        return
-    if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
-        stop_playing_video()
-        selected_follow = media_data_list.current_playing_idx_num == selected_song_number 
-        log_handle(content=f"[next]selected follow is {selected_follow}, current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}")
-        if media_data_list.current_playing_idx_num % 50 == 49 or media_data_list.current_playing_idx_num == len(media_data_list.vid_url)-1:
-            pageRes = Media_list_page_controller.next_page(select_first_of_next_page=True,
-                                                           selected_follow=selected_follow)
-            if pageRes == 0:
-                log_handle(content="successfully load the next page")
-                if media_data_list.current_media_page != 0:
-                    if media_data_list.current_media_page == Media_list_page_controller.total_page:
-                        media_data_list.current_media_page = 1
-                        if selected_follow:selected_song_number = -1
+    PER_PAGE = 50
+    if direction == 1:
+        edge_index_per_page = 49
+        edge_index_all_page = len(media_data_list.vid_url)-1
+
+        edge_page_count = Media_list_page_controller.total_page
+        opposite_edge_page_count = 1
+
+        opposite_edge_idx_all_page = 0
+        page_direction_val = 1
+        '''
+        idx after change
+        '''
+    else:
+        edge_index_per_page = 0
+        edge_index_all_page = 0
+
+        edge_page_count = 1
+        opposite_edge_page_count = Media_list_page_controller.total_page
+
+        opposite_edge_idx_all_page = len(media_data_list.vid_url)-1
+        page_direction_val = -1
+        '''
+        idx after change
+        '''
+
+    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number 
+    try:
+        if media_data_list.current_playing_idx_num == -1:
+            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first'))
+            return
+        if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
+            stop_playing_video()
+            
+            log_handle(content=f"[next]selected follow is {SELECTED_FOLLOW}, current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}")
+            if Media_list_page_controller.total_page > 1:
+                if media_data_list.current_playing_idx_num % PER_PAGE == edge_index_per_page or media_data_list.current_playing_idx_num == edge_index_all_page:
+                    if direction == 1:
+                        pageRes = Media_list_page_controller.next_page(select_first_of_next_page=True,
+                                                                    selected_follow=SELECTED_FOLLOW)
                     else:
-                        media_data_list.current_media_page +=1
-                    log_handle(content=f"[next]current media page is {media_data_list.current_media_page}")
+                        pageRes = Media_list_page_controller.prev_page(select_last_of_prev_page=True,
+                                                                        selected_follow=SELECTED_FOLLOW)
 
-            if pageRes == -1:messagebox.showinfo(f'JaTubePlayer {ver}','The next page is still loading')
-            if pageRes == -2:messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the next page, see log for more details')
-            if pageRes == -3:messagebox.showinfo(f'JaTubePlayer {ver}','does not support next page for this source')
+                    if pageRes == 0:
+                        log_handle(content="successfully load the next page")
+                        if media_data_list.current_media_page != 0:
+                            
+                            if media_data_list.current_media_page == edge_page_count:
+                                media_data_list.current_media_page = opposite_edge_page_count
+                            else:
+                                media_data_list.current_media_page += page_direction_val
 
-        if media_data_list.current_playing_idx_num == len(media_data_list.vid_url)-1:
-            media_data_list.current_playing_idx_num = 0
-        else:    
-            media_data_list.current_playing_idx_num  +=1 
-        
-        if selected_follow:
-            cur_page_idx = media_data_list.current_playing_idx_num % 50
-            root.after(1000, lambda: playlisttreebox.selection_set(playlisttreebox.get_children()[cur_page_idx]))
-            root.after(1000, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
-            selected_song_number += 1
+                            log_handle(content=f"[next]current media page is {media_data_list.current_media_page}")
 
-        if playing_vid_mode == 1:#classify local file and direct url
-            load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
-        elif playing_vid_mode == 4:
-            if "http" in media_data_list.vid_url[media_data_list.current_playing_idx_num] or "https" in media_data_list.vid_url[media_data_list.current_playing_idx_num] :
+                    if pageRes == -1:
+                        messagebox.showinfo(f'JaTubePlayer {ver}','The next page is still loading')
+                        return
+                    if pageRes == -2:
+                        messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the next page, see log for more details')
+                        return
+                    if pageRes == -3:
+                        messagebox.showinfo(f'JaTubePlayer {ver}','does not support next page for this source')
+                        return
+
+            if media_data_list.current_playing_idx_num == edge_index_all_page:
+                media_data_list.current_playing_idx_num = opposite_edge_idx_all_page
+                if SELECTED_FOLLOW:
+                    selected_song_number = opposite_edge_idx_all_page - page_direction_val 
+            else:    
+                media_data_list.current_playing_idx_num  += page_direction_val
+            
+            if SELECTED_FOLLOW:
+                cur_page_idx = media_data_list.current_playing_idx_num % 50
+                root.after(50, lambda: playlisttreebox.selection_set(playlisttreebox.get_children()[cur_page_idx]))
+                root.after(50, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
+                selected_song_number += page_direction_val
+                
+
+            if playing_vid_mode == 0:#classify local file and direct url
                 load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
-
+            elif playing_vid_mode == 4:
+                if media_data_list.vid_url[media_data_list.current_playing_idx_num].startswith(("http://", "https://")) :
+                    load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
+                else:
+                    load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
             else:
                 load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
 
-        else:
-            load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
-
-        if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
-                    ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
-        else:
-            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-
-
-
-def playprevsong():
-    global selected_song_number
-    if media_data_list.current_playing_idx_num != -1:
-        if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
-            playlisttreebox.selection_remove(playlisttreebox.selection())
-            stop_playing_video()
-            selected_follow = media_data_list.current_playing_idx_num  == selected_song_number 
-            if media_data_list.current_playing_idx_num % 50 == 0 or media_data_list.current_playing_idx_num == 0:
-                pageRes = Media_list_page_controller.prev_page(select_last_of_prev_page=True,
-                                                                selected_follow=selected_follow)
-                if pageRes == 0:
-                    log_handle(content="successfully load the previous page")
-                    if media_data_list.current_media_page != 0:
-                        if media_data_list.current_media_page == 1:
-                            media_data_list.current_media_page = Media_list_page_controller.total_page
-                            if selected_follow:selected_song_number = len(media_data_list.vid_url)
-                        else:
-                            media_data_list.current_media_page -= 1
-                        log_handle(content=f"[prev]current media page is {media_data_list.current_media_page}")
-                if pageRes == -1:messagebox.showinfo(f'JaTubePlayer {ver}','The previous page is still loading')
-                if pageRes == -2:messagebox.showinfo(f'JaTubePlayer {ver}','Failed to load the previous page, see log for more details')
-                if pageRes == -3:messagebox.showinfo(f'JaTubePlayer {ver}','does not support previous page for this source')
-        
-            
-            if media_data_list.current_playing_idx_num == 0: 
-                media_data_list.current_playing_idx_num = len(media_data_list.vid_url) -1
-                
-            else: 
-                media_data_list.current_playing_idx_num-=1
-            
-            if selected_follow:
-                log_handle(content=f"[prev]selected follow is True, {media_data_list.current_playing_idx_num} , {selected_song_number}")
-                cur_page_idx = media_data_list.current_playing_idx_num % 50
-                root.after(1000, lambda: playlisttreebox.selection_set(playlisttreebox.get_children()[cur_page_idx]))
-                root.after(1000, lambda: playlisttreebox.see(playlisttreebox.get_children()[cur_page_idx]))
-                selected_song_number -= 1   
-
-                if playing_vid_mode == 1:#classify local file and direct url
-                    load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
-                elif playing_vid_mode == 4:
-                    if "http" in media_data_list.vid_url[media_data_list.current_playing_idx_num] or "https" in media_data_list.vid_url[media_data_list.current_playing_idx_num] :
-                        load_thread_queue.put((None,media_data_list.vid_url[media_data_list.current_playing_idx_num]))
-
-                    else:
-                        load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
-
-                else:
-                    load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
-
             if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
-                        ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
             else:
                 ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-            
-            
-    else:messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
+
+            log_handle(content=f"[next]current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}")
+    except Exception as e:
+        log_handle(content=f"Error in playprevnext(1): {e}")
+        messagebox.showerror(f'JaTubePlayer {ver}',f'An error occurred: {e}')
 
 
 
 
 
 def load_thread():  ### add every try except to a new log system for next update
-
     """
-
     Note for direct url:for lists, only the top/playing video will be sent inside
 
     it is a queue based thread, so to load a video, just put the (file_path,direct_url) into the load_thread_queue
@@ -3423,322 +3429,363 @@ def load_thread():  ### add every try except to a new log system for next update
     file_path for folder/file/dnd
     
     """
-    global stoped, pos_thread , stream ,playing_vid_url,playing_vid_info_dict,loadingvideo,force_stop_loading,subtitle_namelist,subtitle_urllist,subtitlecombobox
+    global stoped, pos_thread, stream, playing_vid_url, playing_vid_info_dict, loadingvideo, force_stop_loading, subtitle_namelist, subtitle_urllist, subtitlecombobox
+
     while True:
         while load_thread_queue.empty():
-                time.sleep(0.3)  ### wait for loading command
+            time.sleep(0.3)  ### wait for loading command
+
         # start loading
-        chosen_file,direct_url = load_thread_queue.get()
+        chosen_file, direct_url = load_thread_queue.get()
 
         current_idx = media_data_list.current_playing_idx_num if media_data_list.current_playing_idx_num != -1 else None
+
         try:
             Media_list_page_controller.remove_playing_tag()
         except Exception as e:
-            log_handle(content=f"Failed to remove playing tag: {e}" )
+            log_handle(content=f"Failed to remove playing tag: {e}")
 
         log_handle(content=f"load thread got cmd {chosen_file} {direct_url}")
-        force_stop_loading = False # reset force stop loading bc it is a new load command
-        while not load_thread_queue.empty():load_thread_queue.get() # clear the queue
+        force_stop_loading = False  # reset force stop loading bc it is a new load command
 
-        if direct_url:direct_url = direct_url.split('&')[0]
-        if loadingvideo == True and messagebox.askokcancel(f'JaTubePlayer {ver}','The Video is already loading, Sure to load again?') or loadingvideo == False:
+        while not load_thread_queue.empty():
+            load_thread_queue.get()  # clear the queue
+
+        if direct_url:
+            direct_url = direct_url.split('&')[0]
+
+        if (
+            loadingvideo == True
+            and messagebox.askokcancel(f'JaTubePlayer {ver}', 'The Video is already loading, Sure to load again?')
+            or loadingvideo == False
+        ):
             create_mpv_player()
 
-            Media_list_page_controller.remove_playing_tag() 
-            if not chosen_file:  
-                
-                    loadingvideo = True
-                    
-                    stop_playing_video()  
-                    ui_queue.put(lambda: player_loading_label.configure(text='⏳ loading...') if player_loading_label.cget('text') != 'retrying...' else None)
-                    ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
-                    ui_queue.put(lambda: playing_title_textbox.delete(1.0,tk.END))
-                    ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
-                    player.volume =int(player_volume_scale.get())
-                    
-                    try:    
-                            if direct_url and playing_vid_mode == 3:
-                                if check_internet_socket():
-                                    playing_vid_url = direct_url
-                                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Playing video from chrome\n{direct_url}', duration='short', icon=icondir)
-                                else:
-                                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Internet connection failed, please check your internet connection', duration='short', icon=icondir)
-                                    loadingvideo = False
-                                    continue
+            Media_list_page_controller.remove_playing_tag()
+
+            if not chosen_file:
+                loadingvideo = True
+
+                stop_playing_video()
+                ui_queue.put(lambda: player_loading_label.configure(text='⏳ loading...') if player_loading_label.cget('text') != 'retrying...' else None)
+                ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
+                ui_queue.put(lambda: playing_title_textbox.delete(1.0, tk.END))
+                ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
+                player.volume = int(player_volume_scale.get())
+
+                try:
+                    if direct_url and playing_vid_mode == 3:
+                        if check_internet_socket():
+                            playing_vid_url = direct_url
+                            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Playing video from chrome\n{direct_url}', duration='short', icon=icondir)
+                        else:
+                            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Internet connection failed, please check your internet connection', duration='short', icon=icondir)
+                            loadingvideo = False
+                            continue
+
+                    try:
+                        final_url, playing_vid_info_dict = get_info(
+                            target_url=direct_url,
+                            loader=get_info_loader
+                        )
+
+                        if final_url:
                             try:
-                                final_url,playing_vid_info_dict = get_info(
-                                                                        target_url=direct_url,
-                                                                        loader=get_info_loader)
-                                
-                                if final_url:                                    
-                                    try:
-                                        http_headers = dict(playing_vid_info_dict.get('http_headers', {}))
-                                        if http_headers:
-                                            http_headers['User-Agent'] = (
-                                                "Mozilla/5.0 (Linux; Android 13; Pixel 7) "
-                                                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
-                                            )
-                                            player.http_header_fields = [
-                                                f"{k}: {v}" for k, v in http_headers.items()
-                                            ]
-                                            log_handle(content=f"[headers] set {list(http_headers.keys())}")
-                                    except Exception as e:
-                                        log_handle(content=f"[headers] failed to set: {e}")
+                                http_headers = dict(playing_vid_info_dict.get('http_headers', {}))
+                                if http_headers:
+                                    http_headers['User-Agent'] = (
+                                        "Mozilla/5.0 (Linux; Android 13; Pixel 7) "
+                                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+                                    )
+                                    player.http_header_fields = [
+                                        f"{k}: {v}" for k, v in http_headers.items()
+                                    ]
+                                    log_handle(content=f"[headers] set {list(http_headers.keys())}")
+                            except Exception as e:
+                                log_handle(content=f"[headers] failed to set: {e}")
 
-                                    player.play(final_url)
-                                    subtitle_selection_idx.set(0)
-                                    subtitle_namelist = ['No subtitles']
-                                    subtitle_urllist = []
+                            player.play(final_url)
+                            subtitle_selection_idx.set(0)
+                            subtitle_namelist = ['No subtitles']
+                            subtitle_urllist = []
 
-                                    for sub in playing_vid_info_dict.get('subtitles').values():
-                                        try:
-                                            if len(sub) == 7:
-                                                subtitle_namelist.append(sub[6]['name'])
-                                                subtitle_urllist.append(sub[6]['url'])
-                                            ui_queue.put(lambda:subtitlecombobox.configure(values=subtitle_namelist))
-                                            ui_queue.put(lambda:subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
-                                        except Exception as e:
-                                            log_handle(type='error',content=f"Error processing subtitle: {e}")
+                            for sub in playing_vid_info_dict.get('subtitles').values():
+                                try:
+                                    if len(sub) == 7:
+                                        subtitle_namelist.append(sub[6]['name'])
+                                        subtitle_urllist.append(sub[6]['url'])
 
-                                    log_handle(content=f"Available subtitles: {subtitle_namelist}")
-                
-                                    try:## try to make the vid play info somehow ytdlp fail to get info dict
-                                        if playing_vid_info_dict.get('live_status') == 'is_live':
-                                            global stream
-                                            stream = True
-            
-                                        else:
-                                            stream = False
-                                    except:
-                                        stream = False
-                                        log_handle(type='error',content='failed to get live status')
+                                    ui_queue.put(lambda: subtitlecombobox.configure(values=subtitle_namelist))
+                                    ui_queue.put(lambda: subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
+                                except Exception as e:
+                                    log_handle(type='error', content=f"Error processing subtitle: {e}")
 
+                            log_handle(content=f"Available subtitles: {subtitle_namelist}")
 
-
-
-                                    try:# save to history
-                                        if save_history.get():
-                                            desc = playing_vid_info_dict.get('description')
-                                            infotags = playing_vid_info_dict.get('tags')
-                                            channel_url = playing_vid_info_dict.get('channel_id')
-                                            taglist = re.findall(r"[#＃](\w+)", f"{desc}")
-                                            tag = ''
-                                            if taglist != []:
-                                                for i in range(len(taglist)):
-                                                    tag = tag +''.join(taglist[i]) + ' '
-                                                    if i >=2:break
-                                            else :
-                                                for i in range(len(infotags)):
-                                                    tag = tag +''.join(infotags[i]) + ' '
-                                                    if i >=2:break
-                                            log_handle(content=f"{tag} {channel_url}")
-                                            save_recent_vid_info(tag,channel_url,current_dir)
-                                    except Exception as ex:
-                                        log_handle(content=f"Error occurred while saving video info: {ex}")
+                            try:  ## try to make the vid play info somehow ytdlp fail to get info dict
+                                if playing_vid_info_dict.get('live_status') == 'is_live':
+                                    global stream
+                                    stream = True
                                 else:
-                                    force_stop_loading = True 
-                                    messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to extract video information, Please refer to log for more details')
-                            except Exception as e :
-                                playing_vid_info_dict = None
-                                threading.Thread(daemon= True,target=lambda:messagebox.showerror(f'JaTubePlayer {ver}',f'we got some problem {e}\n\n we can still play the video, but some information make be missing, and you live streams cannot be played smoothly!')).start()
-                            
-                            except yt_dlp.utils.DownloadError as e:
-                                log_handle(type='[error]',msg=f'ytdlp error {e}')
-                            
-                            for i in range(31):####### for wating mpv to load the vid
+                                    stream = False
+                            except:
+                                stream = False
+                                log_handle(type='error', content='failed to get live status')
 
-                                if force_stop_loading:
-                                    loadingvideo = False
-                                    ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                    force_stop_loading = False
-                                    succed = False
-                                    break
+                            try:  # save to history
+                                if save_history.get():
+                                    desc = playing_vid_info_dict.get('description')
+                                    infotags = playing_vid_info_dict.get('tags')
+                                    channel_url = playing_vid_info_dict.get('channel_id')
+                                    taglist = re.findall(r"[#＃](\w+)", f"{desc}")
+                                    tag = ''
 
-
-                                ui_queue.put(lambda: root.update())
-                                mpv_log.append(f'loading_thread {i} ')
-                                
-                                if i %2 ==0:
-                                    ui_queue.put(lambda: player_loading_label.configure(text='loading..'))
-                                else:ui_queue.put(lambda: player_loading_label.configure(text='loading.'))
-                                if i == 15:player.play(direct_url)
-
-                                if i > 29:
-                                    if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
-                                        loadingvideo = False
-                                        ui_queue.put(lambda: player_loading_label.configure(text='retrying...'))
-                                        load_thread_queue.put((chosen_file,direct_url)) #put it back to queue to retry
-                                        succed = False
-                                        break
+                                    if taglist != []:
+                                        for i in range(len(taglist)):
+                                            tag = tag + ''.join(taglist[i]) + ' '
+                                            if i >= 2:
+                                                break
                                     else:
-                                        ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                        succed = False
+                                        for i in range(len(infotags)):
+                                            tag = tag + ''.join(infotags[i]) + ' '
+                                            if i >= 2:
+                                                break
+
+                                    log_handle(content=f"{tag} {channel_url}")
+                                    save_recent_vid_info(tag, channel_url, current_dir)
+                            except Exception as ex:
+                                log_handle(content=f"Error occurred while saving video info: {ex}")
+                        else:
+                            force_stop_loading = True
+                            messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to extract video information, Please refer to log for more details')
+                    except Exception as e:
+                        playing_vid_info_dict = None
+                        threading.Thread(
+                            daemon=True,
+                            target=lambda: messagebox.showerror(
+                                f'JaTubePlayer {ver}',
+                                f'we got some problem {e}\n\n we can still play the video, but some information make be missing, and you live streams cannot be played smoothly!'
+                            )
+                        ).start()
+                    except yt_dlp.utils.DownloadError as e:
+                        log_handle(type='[error]', msg=f'ytdlp error {e}')
+
+                    for i in range(31):  ####### for wating mpv to load the vid
+                        if force_stop_loading:
+                            loadingvideo = False
+                            ui_queue.put(lambda: player_loading_label.configure(text=''))
+                            force_stop_loading = False
+                            succed = False
+                            break
+
+                        ui_queue.put(lambda: root.update())
+                        mpv_log.append(f'loading_thread {i} ')
+
+                        if i % 2 == 0:
+                            ui_queue.put(lambda: player_loading_label.configure(text='loading..'))
+                        else:
+                            ui_queue.put(lambda: player_loading_label.configure(text='loading.'))
+
+                        if i == 15:
+                            player.play(direct_url)
+
+                        if i > 29:
+                            if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}', 'The player encounter some problem while loading, retry?'):
+                                loadingvideo = False
+                                ui_queue.put(lambda: player_loading_label.configure(text='retrying...'))
+                                load_thread_queue.put((chosen_file, direct_url))  #put it back to queue to retry
+                                succed = False
+                                break
+                            else:
+                                ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                succed = False
+                                loadingvideo = False
+                                break
+
+                        if player.duration != None:
+                            succed = True
+                            break
+
+                        time.sleep(0.4)
+
+                    if succed:
+                        ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
+                        try:
+                            ui_queue.put(lambda: playing_title_textbox.insert(tk.END, playing_vid_info_dict['title']))
+
+                            if fullscreen_status == 0:
+                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                            else:
+                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen - {playing_vid_info_dict["title"]}'))
+                        except Exception as e:
+                            log_handle(content=f"Error inserting title: {e}")
+
+                        ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
+                        ui_queue.put(lambda: smtc.update_media_info(
+                            title=playing_vid_info_dict['title'],
+                            artist=playing_vid_info_dict['uploader'],
+                            album='JaTubePlayer',
+                            thumbnail_url=playing_vid_info_dict['thumbnail']
+                        ))
+
+                        if enable_discord_presence.get():
+                            try:
+                                if discord_presence_show_playing.get():
+                                    discord_presence.update(song_title=playing_vid_info_dict['title'])
+                                else:
+                                    discord_presence.idle()
+                            except Exception as ex:
+                                log_handle(content=f"Error occurred while updating Discord presence: {ex}")
+
+                        if current_idx is not None:
+                            log_handle(content=f"Setting playing tag for index {current_idx}")
+                            Media_list_page_controller.set_playing_tag(current_idx, 'playing')
+
+                        player.volume = (int(player_volume_scale.get()))
+
+                        if playing_vid_mode == 3:
+                            pos_thread = threading.Thread(daemon=True, target=update_playing_pos_local_and_chrome)
+                        else:
+                            pos_thread = threading.Thread(daemon=True, target=update_playing_pos_yt)
+
+                        pos_thread.start()
+                        ui_queue.put(lambda: player_loading_label.configure(text=''))
+                        ui_queue.put(lambda: pauseStr.set('||'))
+                except Exception as e:
+                    ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play video: {str(err)}"))
+
+                    if current_idx is not None:
+                        Media_list_page_controller.remove_playing_tag()
+                        media_data_list.current_playing_idx_num = -1
+                        media_data_list.current_media_page = 0
+
+                loadingvideo = False
+            else:
+                try:
+                    stop_playing_video()
+                except:
+                    pass
+
+                try:
+                    if chosen_file:
+                        current_idx = media_data_list.current_playing_idx_num if playing_vid_mode == 2 else None  #for MLPC
+                        loadingvideo = True
+                        succed = False
+                        ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
+
+                        if os.path.exists(chosen_file):
+                            player.play(chosen_file)
+                            player.volume = int(player_volume_scale.get())
+                            log_handle(content=str(chosen_file))
+                            time.sleep(0.1)
+
+                            if player.duration == None:
+                                for i in range(31):
+                                    log_handle(content='testing point')
+
+                                    if force_stop_loading:
                                         loadingvideo = False
+                                        ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                        force_stop_loading = False
+                                        succed = False
                                         break
 
-                                if player.duration != None:
-                                    succed = True
-                                    break      
-                                time.sleep(0.4)
+                                    if player.duration != None:
+                                        succed = True
+                                        break
+
+                                    log_handle(content=str(i))
+
+                                    if i > 29:
+                                        if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}', 'The player encounter some problem while loading, retry?'):
+                                            loadingvideo = False
+                                            ui_queue.put(lambda: player_loading_label.configure(text='retrying...'))
+                                            load_thread_queue.put((chosen_file, direct_url))  #put it back to queue to retry
+                                            succed = False
+                                            break
+                                        else:
+                                            ui_queue.put(lambda: player_loading_label.configure(text=''))
+                                            succed = False
+                                            loadingvideo = False
+                                            break
+
+                                    log_handle(content='loading')
+                                    time.sleep(0.1)
+                            else:
+                                succed = True
+
+                            if fullscreen_status == 0:
+                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                            else:
+                                ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {os.path.basename(cf)}'))
 
                             if succed:
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
-                                try:
-                                    ui_queue.put(lambda: playing_title_textbox.insert(tk.END, playing_vid_info_dict['title']))
-                                    if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
-                                    else:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen - {playing_vid_info_dict["title"]}')) 
+                                log_handle(content=f"playing mode {playing_vid_mode}")
 
-                                except Exception as e:
-                                    log_handle(content=f"Error inserting title: {e}")
+                                if playing_vid_mode == 1:
+                                    ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, str(cf)))
+                                else:
+                                    ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, os.path.basename(str(cf))))
+
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
-                                
-                                ui_queue.put(lambda: smtc.update_media_info(
-                                    title = playing_vid_info_dict['title'],
-                                    artist = playing_vid_info_dict['uploader'],
-                                    album = 'JaTubePlayer',
-                                    thumbnail_url = playing_vid_info_dict['thumbnail']
-                                ))
+
+                                if fullscreen_status == 0:
+                                    ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                else:
+                                    ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}'))
+
+                                try:
+                                    ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
+                                        title=os.path.basename(cf),
+                                        artist='-local file',
+                                        album='JaTubePlayer',
+                                        thumbnail_url=None
+                                    ))
+                                except Exception as e:
+                                    log_handle(content=f"Error updating media info: {e}")
 
                                 if enable_discord_presence.get():
                                     try:
                                         if discord_presence_show_playing.get():
-                                            discord_presence.update(song_title=playing_vid_info_dict['title'])
-                                        else:discord_presence.idle()
-                                    except Exception as ex:
-                                        log_handle(content=f"Error occurred while updating Discord presence: {ex}")
-                                
+                                            discord_presence.update(song_title="A Local media file :)")
+                                        else:
+                                            discord_presence.idle()
+                                    except:
+                                        pass
 
                                 if current_idx is not None:
-                                    log_handle(content=f"Setting playing tag for index {current_idx}")
                                     Media_list_page_controller.set_playing_tag(current_idx, 'playing')
 
-                                player.volume = (int(player_volume_scale.get()))
-                                if playing_vid_mode == 3:pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
-                                else :pos_thread = threading.Thread(daemon = True,target=update_playing_pos_yt)
-                                
+                                player.volume = int(player_volume_scale.get())
+                                pos_thread = threading.Thread(daemon=True, target=update_playing_pos_local_and_chrome)
                                 pos_thread.start()
                                 ui_queue.put(lambda: player_loading_label.configure(text=''))
                                 ui_queue.put(lambda: pauseStr.set('||'))
-                            
-                    except Exception as e:
-                        ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play video: {str(err)}"))
-                        if current_idx is not None:
-                            Media_list_page_controller.remove_playing_tag()
-                            media_data_list.current_playing_idx_num = -1
-                            media_data_list.current_media_page = 0
+                                time.sleep(0.1)
+                                playing_vid_info_dict = {}
+                                loadingvideo = False
+                        else:
+                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
+                            loadingvideo = False
+                            ui_queue.put(lambda: player_loading_label.configure(text=''))
+
+                            if current_idx is not None:
+                                Media_list_page_controller.remove_playing_tag()
+                except Exception as e:
+                    ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play local file:  {str(err)}"))
                     loadingvideo = False
-                        
-            else:
-                    try:
-                        stop_playing_video()
-                    except: pass
-                    try:
-                        if chosen_file:
-                                current_idx = media_data_list.current_playing_idx_num if playing_vid_mode == 2 else None #for MLPC
-                                loadingvideo = True
-                                succed = False
-                                ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
-                                if os.path.exists(chosen_file):
-                                    
-                                    player.play(chosen_file)
-                                    player.volume =int(player_volume_scale.get())
-                                    log_handle(content=str(chosen_file))
-                                    time.sleep(0.1)
-                                    
-                                    if player.duration == None:
-                                        for i in range(31):
-                                            log_handle(content='testing point')
-                                            if force_stop_loading:
-                                                loadingvideo = False
-                                                ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                                force_stop_loading = False
-                                                succed = False
-                                                break
-                                            if player.duration != None:
-                                                succed = True
-                                                break
-                                            log_handle(content=str(i))
-                                            if i > 29:
-                                                if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}','The player encounter some problem while loading, retry?'):
-                                                    loadingvideo = False
-                                                    ui_queue.put(lambda: player_loading_label.configure(text='retrying...'))
-                                                    load_thread_queue.put((chosen_file,direct_url)) #put it back to queue to retry
-                                                    succed = False
-                                                    break
-                                                else:
-                                                    ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                                    succed = False
-                                                    loadingvideo = False
-                                                    break
-                                            log_handle(content='loading')
-                                            time.sleep(0.1)
+                    ui_queue.put(lambda: player_loading_label.configure(text=''))
 
-                                            
-                                    else:succed = True   
-
-                                    if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
-                                    else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {os.path.basename(cf)}')) 
-                                                                    
-
-                                    if succed:
-                                        ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
-                                        log_handle(content=f"playing mode {playing_vid_mode}")
-                                        if playing_vid_mode == 1:
-                                            ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, str(cf)))  
-                                        else:
-                                            ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, os.path.basename(str(cf))))
-                                        ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
-                                        
-
-
-                                        if fullscreen_status == 0:ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
-                                        else:ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}')) 
-                                        try:
-                                            ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
-                                                title = os.path.basename(cf),
-                                                artist = '-local file',
-                                                album = 'JaTubePlayer',
-                                                thumbnail_url = None
-
-                                            ))
-                                        except Exception as e:
-                                            log_handle(content=f"Error updating media info: {e}")    
-
-                                        if enable_discord_presence.get():
-                                            try:
-                                                if discord_presence_show_playing.get():
-                                                    discord_presence.update(song_title="A Local media file :)")
-                                                else:discord_presence.idle()
-                                            except:pass
-                                        
-                                        if current_idx is not None:
-                                            Media_list_page_controller.set_playing_tag(current_idx, 'playing')
-                                        player.volume = int(player_volume_scale.get())
-                                        pos_thread = threading.Thread(daemon = True,target=update_playing_pos_local_and_chrome)
-                                        pos_thread.start()
-                                        ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                        ui_queue.put(lambda: pauseStr.set('||'))
-                                        time.sleep(0.1)
-                                        playing_vid_info_dict = {}
-                                        loadingvideo = False
-                                else:
-                                    ui_queue.put(lambda:messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
-                                    loadingvideo = False
-                                    ui_queue.put(lambda: player_loading_label.configure(text=''))
-                                    if current_idx is not None:
-                                        Media_list_page_controller.remove_playing_tag()
-                    except Exception as e:
-                        ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play local file:  {str(err)}"))
-                        loadingvideo = False
-                        ui_queue.put(lambda: player_loading_label.configure(text=''))
-                        if current_idx is not None:
-                            Media_list_page_controller.remove_playing_tag()
-                            media_data_list.current_playing_idx_num = -1
-                            media_data_list.current_media_page = 0
+                    if current_idx is not None:
+                        Media_list_page_controller.remove_playing_tag()
+                        media_data_list.current_playing_idx_num = -1
+                        media_data_list.current_media_page = 0
 
 
 
-def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_files_path_lists:list=None):
+def load_local_files(mode:int,
+                     local_folder_path:str=None,):
     '''
     mode 0 == single file mode and dnd single file
     mode 1 == folder mode and dnd folder(must have muti files for better single file control balance)
@@ -3747,96 +3794,32 @@ def load_local_files(mode,dnd_single_file_path=None,local_folder_path=None,dnd_f
     dnd_files_path_lists for dnd file list
     // only use kwarg
     '''
-    global playing_vid_mode,local_single_filepath,loadingvideo,selected_song_number,media_data_list
+    global playing_vid_mode,loadingvideo,selected_song_number,media_data_list
     
-    if mode == 0:
-        
-        filetype = [
-            ("All Supported Files", "*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.mpeg *.mpg *.3gp *.webm *.ogv *.ts *.mts *.vob *.mp3 *.wav *.flac *.aac *.ogg *.wma *.m4a *.aiff *.opus *.amr"),
-            ("Video Files", "*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.mpeg *.mpg *.3gp *.webm *.ogv *.ts *.mts *.vob"),
-            ("Audio Files", "*.mp3 *.wav *.flac *.aac *.ogg *.wma *.m4a *.aiff *.opus *.amr"),
-            ]
-        if not dnd_single_file_path:local_single_filepath = filedialog.askopenfilename(filetypes= filetype)
-        else:local_single_filepath = dnd_single_file_path
-        
-        if local_single_filepath:
-            playing_vid_mode = 1
-            selected_song_number = None
-            media_data_list.playlisttitles.clear()
-            media_data_list.playlist_thumbnails.clear()
-            media_data_list.vid_url = []
-            playlisttreebox.delete(*playlisttreebox.get_children())
-            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
 
+    if mode == 0:playing_vid_mode = 1
+    elif mode == 1:playing_vid_mode = 2
+        
+    result = Media_list_page_controller.local_files_init_and_reload(
+        media_data_list=media_data_list,
+        quick_start_folder_path=local_folder_path,
+        mode_for_local_files=mode
+    )
+        
+    if result is None:
+            selected_song_number = None
+            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
             stop_playing_video()
 
             modetextbox.configure(state='normal')
             modetextbox.delete(1.0, tk.END)
             modetextbox.insert(tk.END, f"Local File")
             modetextbox.configure(state='disabled')
+    elif result is False:
+        messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to load local files, or canceled by user.')
+        log_handle(content='Failed to load local files, please check the folder or file path and try again')
+        
             
-            load_thread_queue.put((local_single_filepath,None))
-
-    if mode == 1:
-        
-
-        filetype = (
-            ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mpeg", ".mpg", ".3gp", ".webm", ".ogv",
-            ".ts", ".mts", ".vob", ".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", ".aiff", ".opus", ".amr"
-        )
-            
-        
-
-        if not local_folder_path:folder_path = filedialog.askdirectory()
-        else:folder_path = local_folder_path
-        
-        log_handle(content=str(folder_path))
-        if folder_path:
-            playing_vid_mode = 2
-            selected_song_number = None
-            media_data_list.playlisttitles.clear()
-            media_data_list.playlist_thumbnails.clear()
-            media_data_list.vid_url = []
-            playlisttreebox.delete(*playlisttreebox.get_children())
-            folder_items = [file for file in os.listdir(folder_path) if file.endswith(filetype)]
-
-            modetextbox.configure(state='normal')
-            modetextbox.delete(1.0, tk.END)
-            modetextbox.insert(tk.END, f"Local Folder\n{folder_path}")
-            modetextbox.configure(state='disabled')
-
-            index_for_tree = 1
-            for item in folder_items:
-                media_data_list.vid_url.append(os.path.join(folder_path,item))
-                insert_treeview_quene.put((None,item,'Local files-'))
-                media_data_list.playlisttitles.append(item)
-                index_for_tree += 1
-        
-    if mode == 2 and dnd_files_path_lists:
-            playing_vid_mode = 2
-            selected_song_number = None
-            media_data_list.playlisttitles.clear()
-            media_data_list.playlist_thumbnails.clear()
-            media_data_list.vid_url = []
-            playlisttreebox.delete(*playlisttreebox.get_children())
-
-            modetextbox.configure(state='normal')
-            modetextbox.delete(1.0, tk.END)
-            modetextbox.insert(tk.END, f"Local Folder\n{os.path.dirname(dnd_files_path_lists[0])}")
-            modetextbox.configure(state='disabled')
-
-            index_for_tree = 1
-            for item in dnd_files_path_lists:
-                media_data_list.vid_url.append(item)
-                try:
-                    base = os.path.basename(item)
-                    insert_treeview_quene.put((None,base,'Local files-'))
-                except:
-                    pass
-                media_data_list.playlisttitles.append(item)
-                index_for_tree += 1
-
-
 
 
 def download_and_play(event=None):### button and double click event
@@ -4214,7 +4197,7 @@ def init_quick_startup(iter:int=0):
                     modetextbox.configure(state='disabled')
                     get_youtube_playlists(CONFIG["quickstartup_init"]["playlistmode_playlist_ID"])
                 elif mode == 3:
-                    load_local_files(1,local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
+                    load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
                 elif mode == 4:
                     init_get_recommendation()
             else:
@@ -4222,7 +4205,7 @@ def init_quick_startup(iter:int=0):
 
 
         elif mode == 3:
-            load_local_files(1,CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
+            load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
         elif iter < 10:
             root.after(500,lambda: init_quick_startup(iter+1))
             log_handle(content=f"quickstartup internet test {iter} times")
@@ -4512,8 +4495,8 @@ def _init_load_extra_objs():
 
 
 def init_set_smtc():
-    smtc.next_song_fun = playnextsong
-    smtc.prev_song_fun = playprevsong
+    smtc.next_song_fun = lambda: playprevnext(1)
+    smtc.prev_song_fun = lambda: playprevnext(2)
     smtc.pause_fun = pause
     smtc.iconpath = icondir
 
@@ -4651,8 +4634,8 @@ def check_keyboard():
 
             },command_dict={
         'play_pause': lambda: threading.Thread(target=pause, args=(1,)).start(),
-        'next': lambda: threading.Thread(target=playnextsong).start(), 
-        'previous': lambda: threading.Thread(target=playprevsong).start(),
+        'next': lambda: threading.Thread(target=playprevnext, args=(1,)).start(), 
+        'previous': lambda: threading.Thread(target=playprevnext, args=(2,)).start(),
         'stop': lambda: threading.Thread(target=stop_playing_video).start(),
         'volume_up': lambda: threading.Thread(target=set_volume, args=(player_volume_scale.get()+4,1)).start(),
         'volume_down': lambda: threading.Thread(target=set_volume, args=(player_volume_scale.get()-4,1)).start(),
@@ -5060,13 +5043,13 @@ like_btn = ctk.CTkButton(playlist_btn_frame, text='❤ Like',
 like_btn.place(relx=0.020+(_src_w+_src_gap)*2, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 playselectedfile = ctk.CTkButton(playlist_btn_frame, text='📄 File',
-                                  command=lambda: load_local_files(0), fg_color='#2E2E2E',
+                                  command=lambda: load_local_files(mode=0), fg_color='#2E2E2E',
                                   hover_color='#404040', corner_radius=6, font=('Segoe UI', 11),
                                   border_width=1, border_color='#444444')
 playselectedfile.place(relx=0.020+(_src_w+_src_gap)*3, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 playselectedfolder = ctk.CTkButton(playlist_btn_frame, text='📁 Folder',
-                                    command=lambda: load_local_files(1), fg_color='#2E2E2E',
+                                    command=lambda: load_local_files(mode=1), fg_color='#2E2E2E',
                                     hover_color='#404040', corner_radius=6, font=('Segoe UI', 11),
                                     border_width=1, border_color='#444444')
 playselectedfolder.place(relx=0.020+(_src_w+_src_gap)*4, rely=0.1, relwidth=_src_w, relheight=0.33)
@@ -5165,7 +5148,7 @@ player_mode_random.place(relx=0.72, rely=0.45)
 playback_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=20)
 playback_frame.place(relx=0.150, rely=0.585, relwidth=0.43, relheight=0.375)
 
-prevsong = ctk.CTkButton(playback_frame, text='⏮', command=playprevsong,
+prevsong = ctk.CTkButton(playback_frame, text='⏮', command=lambda: playprevnext(2),
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
                          font=('Segoe UI', 17))
 prevsong.place(relx=0.02, rely=0.08, relwidth=0.15, relheight=0.8)
@@ -5181,7 +5164,7 @@ stopbutton = ctk.CTkButton(playback_frame, text='⏹', command=stop_playing_vide
                            font=('Segoe UI', 17))
 stopbutton.place(relx=0.34, rely=0.08, relwidth=0.15, relheight=0.8)
 
-nextsong = ctk.CTkButton(playback_frame, text='⏭', command=playnextsong,
+nextsong = ctk.CTkButton(playback_frame, text='⏭', command=lambda: playprevnext(1),
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
                          font=('Segoe UI', 17))
 nextsong.place(relx=0.50, rely=0.08, relwidth=0.15, relheight=0.8)
