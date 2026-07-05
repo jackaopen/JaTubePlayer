@@ -24,7 +24,7 @@ from utils.check_internet import check_internet
 from utils.get_media_info import get_info
 from utils.color_picker.ctk_color_picker import AskColor  
 from utils.additional_utils import lenght_convertor
-
+from utils.load_font import load_private_font
   
 from loader.get_info_loader import get_info_loader_
 from loader.media_data_list import media_data_list_template
@@ -66,6 +66,8 @@ else:
     _internal_dir = os.path.join(os.path.dirname(__file__), '_internal')
 
 
+load_private_font(_internal_dir)
+
 
 os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH"]
 import mpv
@@ -77,6 +79,7 @@ root.geometry('1320x680')
 root.iconbitmap(icondir)
 hwnd = win32gui.FindWindow(None, root.title())
 tkinter_scaling = get_window_dpi(hwnd)/1.25 # 1.25 is 100% scaling
+
 
 
 
@@ -178,12 +181,13 @@ def dump(filename,content):
 
 
 
+
 Frame_for_mpv = tk.Frame(root)
 Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.664)
 Frame_for_mpv.bind('<Button-1>',lambda event :pause(1))
 motto_label = ctk.CTkLabel(Frame_for_mpv,
                            text="Uninterrupted,\njust how you like it",
-                           font=('Brush Script MT',50),
+                           font=('Satisfy',50),
                            text_color="#676767",
                            bg_color='transparent',
                            padx=20,
@@ -260,7 +264,6 @@ auto_sub_refresh = tk.BooleanVar()
 auto_like_refresh = tk.BooleanVar()
 setting_run_chrome_extension_server = tk.BooleanVar()
 audio_only = tk.BooleanVar()
-enable_drag_and_drop = tk.BooleanVar()
 open_with_fullscreen = tk.BooleanVar()
 show_cache = tk.BooleanVar()
 youtubeAPI = None
@@ -403,6 +406,71 @@ def _extract_file(query):#for threadpool in get sub channel
         return None
 
 
+class Chrome_ext_server_ui_functions:
+    '''
+    for both ChromeExtServer and dnd_winsys
+    '''
+    @staticmethod
+    def direct_url():
+        global playing_vid_mode,selected_song_number
+
+        playing_vid_mode = 3
+        selected_song_number = None
+
+        media_data_list.clear()
+
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        
+        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
+        ui_queue.put(lambda: modetextbox.configure(state="normal"))
+        ui_queue.put(lambda: modetextbox.delete(0.0, tk.END))
+        ui_queue.put(lambda: modetextbox.insert(tk.END, "Direct URL"))
+        ui_queue.put(lambda: modetextbox.configure(state="disabled"))
+    @staticmethod
+    def show_star_video():
+        get_starred_vid()
+    @staticmethod
+    def get_playing_vid_mode()->int:
+        '''
+        check the playing_vid_mode\n
+        function for ChromeExtensionServer
+        '''
+        return playing_vid_mode
+    @staticmethod
+    def add_to_end():
+        global playing_vid_mode,selected_song_number,star_vid_handle
+   
+
+        if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
+            try:
+                modetitle = modetextbox.get("1.0", "end").strip()
+
+                ui_queue.put(lambda: modetextbox.configure(state="normal"))
+                if "[with added video]" not in modetitle:
+                    ui_queue.put(lambda mt=modetitle: (
+                        modetextbox.delete(1.0, tk.END),
+                        modetextbox.insert(tk.END, f"{mt} [with added video]")
+                    ))
+                ui_queue.put(lambda: modetextbox.configure(state="disabled"))
+
+
+                if playing_vid_mode == 3:
+                    #add to end in direct url mode, we need to switch to youtube mode to add to playlist
+                    playing_vid_mode = 0
+                    selected_song_number = None
+
+                ToastNotification().notify(app_id="JaTubePlayer", 
+                                            title=f'JaTubePlayer {ver}', 
+                                            msg='Added video to playlist\nFetching data...', 
+                                            duration='short', 
+                                            icon=icondir)
+                               
+            except Exception as e:
+                log_handle(content=f"Error adding video to playlist: {e}")
+                messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add video to playlist.\nError: {e}")    
+        else:
+            ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
+
 
 
 
@@ -414,14 +482,12 @@ def _switch_local_server(mode:int)->None|str:
     This function is used to start/stop the local server for chrome extension communication
     This function includes CONFIG and bool var setting_run_chrome_extension_server update
     '''
-    global listen_chromeextension_thread,chrome_extension_flask_thread,setting_run_chrome_extension_server
+    global chrome_extension_flask_thread,setting_run_chrome_extension_server
     if mode == 0:
 
 
         try:
-            listen_chromeextension_thread = threading.Thread(daemon = True,target=init_listen_chromeextension)
             chrome_extension_flask_thread = threading.Thread(daemon = True,target=lambda:chrome_extension_flask.run_flask_app(icondir=icondir))
-            listen_chromeextension_thread.start()
             chrome_extension_flask_thread.start()
             setting_run_chrome_extension_server.set(True)
             try:
@@ -1033,7 +1099,7 @@ def setting_frame():
             save_config()
 
         def switch_flask_server():
-            global listen_chromeextension_thread,chrome_extension_flask_thread
+            global chrome_extension_flask_thread
             if setting_run_chrome_extension_server.get():
                 chrome_extension_server_checkbtn.configure(state='disabled')
                 _switch_local_server(0)
@@ -1103,11 +1169,6 @@ def setting_frame():
 
         def autofullscreen_setting():
             CONFIG['open_with_fullscreen'] = open_with_fullscreen.get()
-            save_config()
-
-        def switch_drag_and_drop():
-            CONFIG['enable_drag_and_drop'] = enable_drag_and_drop.get()
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Change saved!\nRestart the player will apply the change', duration='short', icon=icondir)
             save_config()
 
         def switch_show_cache():
@@ -1665,8 +1726,6 @@ def setting_frame():
                                    fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
         mpvlogbtn = ctk.CTkButton(advanced_frame, text='Show MPV Log', width=160, command=show_mpv_log,
                                    text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        enable_dnd_btn = ctk.CTkCheckBox(advanced_frame, text='Enable Drag and Drop', variable=enable_drag_and_drop,
-                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_drag_and_drop)
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading', width=160, command=set_force_stop_loading,
                                                 text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache,
@@ -1935,7 +1994,6 @@ def setting_frame():
             '''
             
             
-            global prename_setting
             while not setting_closed:
 
                 try:
@@ -2119,7 +2177,6 @@ def setting_frame():
         advanced_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
         blurbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
         mpvlogbtn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
-        enable_dnd_btn.grid(row=2, column=1, padx=8, pady=5, sticky="w")
         force_stop_loading_btn.grid(row=3, column=0, padx=(24, 8), pady=5, sticky="w")
         show_cache_btn.grid(row=3, column=1, padx=8, pady=5, sticky="w")
         blur_gradient_name_label.grid(row=4, column=0, padx=(24, 8), pady=(8, 2), sticky="w")
@@ -3434,18 +3491,20 @@ def load_thread():  ### add every try except to a new log system for next update
     while True:
         while load_thread_queue.empty():
             time.sleep(0.3)  ### wait for loading command
-
+        log_handle(content=f"load thread got sth")
         # start loading
         chosen_file, direct_url = load_thread_queue.get()
 
         current_idx = media_data_list.current_playing_idx_num if media_data_list.current_playing_idx_num != -1 else None
 
         try:
-            Media_list_page_controller.remove_playing_tag()
+            
+            ui_queue.put(lambda: Media_list_page_controller.remove_playing_tag())
+            
         except Exception as e:
             log_handle(content=f"Failed to remove playing tag: {e}")
 
-        log_handle(content=f"load thread got cmd {chosen_file} {direct_url}")
+        log_handle(content=f"load thread got cmd {chosen_file}, {direct_url}")
         force_stop_loading = False  # reset force stop loading bc it is a new load command
 
         while not load_thread_queue.empty():
@@ -3461,7 +3520,7 @@ def load_thread():  ### add every try except to a new log system for next update
         ):
             create_mpv_player()
 
-            Media_list_page_controller.remove_playing_tag()
+            ui_queue.put(lambda: Media_list_page_controller.remove_playing_tag())
 
             if not chosen_file:
                 loadingvideo = True
@@ -3830,7 +3889,13 @@ def download_and_play(event=None):### button and double click event
     for local file/folder, the file path is directly put in the queue, 
     and the load thread will handle the rest of the process.
     '''
-    
+    try:
+        global media_data_list
+        media_data_list = Media_list_page_controller.media_data_list
+    except Exception as e:
+        log_handle(content=f"Error accessing media_data_list: {e}")
+        messagebox.showerror(f'JaTubePlayer {ver}', 'An error occurred while accessing the media data list.')
+
     if playing_vid_mode == 0:
         if check_internet_socket():
             #load from youtube
@@ -3896,6 +3961,9 @@ def onclose():
     except:pass
     try:
         shortcut_manager.cleanup()
+    except:pass
+    try:
+        dnd_handle.close()
     except:pass
     root.destroy()
 
@@ -4295,7 +4363,7 @@ def init_read_dlp():
         
 
 def init_read_config():
-    global cookies_dir,client_secret_path,auto_like_refresh,auto_sub_refresh,auto_check_ver,save_history,maxresolution,listen_chromeextension_thread,enable_drag_and_drop,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open,blur_hexColor
+    global cookies_dir,client_secret_path,auto_like_refresh,auto_sub_refresh,auto_check_ver,save_history,maxresolution,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open,blur_hexColor
     cookies_dir= CONFIG['cookie_path']
     client_secret_path = CONFIG['client_secret_path']
     log_handle(content=f"cookie {cookies_dir}")
@@ -4320,10 +4388,6 @@ def init_read_config():
         else:open_with_fullscreen.set(False)
         log_handle(content="open fin")
         
-        if CONFIG['enable_drag_and_drop']:enable_drag_and_drop.set(True)
-        else:enable_drag_and_drop.set(False)
-        log_handle(content="dnd fin")
-
         if CONFIG['show_cache']:show_cache.set(True)
         else:show_cache.set(False)
         log_handle(content="cache fin")
@@ -4450,6 +4514,25 @@ def create_mpv_player():
 
 
 
+def _init_dnd_on_root_thread():
+    global dnd_handle
+
+    dnd_handle = DropHandler(
+        media_list_page_control=Media_list_page_controller,
+        log_handle=log_handle,
+        ui_queue=ui_queue,
+        selected_song_number_status_changer=dnd_mode_change_status,
+        media_data_list=media_data_list,
+        playing_vid_mode=playing_vid_mode,
+        Chrome_ext_server_ui_functions=Chrome_ext_server_ui_functions,
+        messagebox=messagebox,
+        root=root
+    )
+
+    dnd_handle.init_URL_handler()
+    log_handle(content="Drag and drop handler initialized on root thread")
+
+
 def _init_load_extra_objs():
     global dnd_handle,discord_presence,google_control,Ferner_encrptor_,get_info_loader,star_vid_handle,thumbnail_loader,Media_list_page_controller
     Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
@@ -4481,15 +4564,11 @@ def _init_load_extra_objs():
         tree_view_queue=insert_treeview_quene,
         log_handle=log_handle,
         thumbnail_loader=thumbnail_loader,
-        page_num_label=page_num_label
+        page_num_label=page_num_label,
+        load_thread_queue=load_thread_queue,
         )
     
-    dnd_handle=DropHandler(media_list_page_control=Media_list_page_controller,
-                           log_handle=log_handle,
-                           ui_queue=ui_queue,
-                           selected_song_number_status_changer=dnd_mode_change_status,
-                           media_data_list=media_data_list,
-                           playing_vid_mode=playing_vid_mode)                  
+    root.after(0,_init_dnd_on_root_thread)
 
 
 
@@ -4500,12 +4579,7 @@ def init_set_smtc():
     smtc.pause_fun = pause
     smtc.iconpath = icondir
 
-def init_set_dnd_handle():
-    log_handle(content="init dnd ... ")
-    global dnd_handle
-    log_handle(content=f"dnd {enable_drag_and_drop.get()}")
-    dnd_handle.enable_drop(hwnd, enable_drag_and_drop.get())
-    dnd_handle.root = root
+
 
 def init_set_playertray():
     global tray
@@ -4513,109 +4587,6 @@ def init_set_playertray():
     tray.run()
 
 
-
-def init_listen_chromeextension():
-    global playing_vid_mode,selected_song_number,star_vid_handle
-    while setting_run_chrome_extension_server.get():
-        if chrome_extension_flask.chrome_extension_url:
-            log_handle(content=f"chrome extension url: {chrome_extension_flask.chrome_extension_url}")
-            chrome_extension_url = chrome_extension_flask.chrome_extension_url.split("&")[0]
-            playing_vid_mode = 3
-            load_thread_queue.put((None,chrome_extension_url))
-            selected_song_number = None
-
-            media_data_list.clear()
-            if star_vid_handle.search(chrome_extension_url):
-                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
-            else:
-                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-            
-            ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-            ui_queue.put(lambda: modetextbox.configure(state="normal"))
-            ui_queue.put(lambda: modetextbox.delete(0.0, tk.END))
-            ui_queue.put(lambda: modetextbox.insert(tk.END, "Chrome extension video"))
-            ui_queue.put(lambda: modetextbox.configure(state="disabled"))
-            chrome_extension_flask.chrome_extension_url = None
-
-        elif chrome_extension_flask.chrome_extension_star_video:
-            url = chrome_extension_flask.chrome_extension_star_video.split("&")[0]
-            log_handle(content=f"chrome extension star video url: {url}")
-            if not star_vid_handle.search(url):
-                res = star_vid_handle.add(url)
-                if res:ToastNotification().notify(app_id="JaTubePlayer", 
-                                                   title=f'JaTubePlayer {ver}', 
-                                                   msg='Added starred video to playlist\nFetching data...', 
-                                                   duration='short', 
-                                                   icon=icondir)
-                else:
-                    log_handle(content=f"Failed to add starred video from chrome extension, error in adding: {res}")
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', "Failed to add starred video to playlist.\nError in adding video."))
-                if playing_vid_mode == 4:
-                    get_starred_vid()
-                        
-
-            else:
-                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "This video is already in your starred list."))
-            chrome_extension_flask.chrome_extension_star_video = None
-        
-        
-        elif chrome_extension_flask.chrome_extension_add_to_end:
-            if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
-                url = chrome_extension_flask.chrome_extension_add_to_end.split("&")[0]
-                log_handle(content=f"Adding video to playlist from chrome extension: {url}")
-                try:
-                    modetitle = modetextbox.get("1.0", "end").strip()
-
-                    ui_queue.put(lambda: modetextbox.configure(state="normal"))
-                    if "[with added video]" not in modetitle:
-                        ui_queue.put(lambda mt=modetitle: (
-                            modetextbox.delete(1.0, tk.END),
-                            modetextbox.insert(tk.END, f"{mt} [with added video]")
-                        ))
-                    ui_queue.put(lambda: modetextbox.configure(state="disabled"))
-
-
-                    if playing_vid_mode == 3:
-                        playing_vid_mode = 0
-                        selected_song_number = None
-
-                    ToastNotification().notify(app_id="JaTubePlayer", 
-                                               title=f'JaTubePlayer {ver}', 
-                                               msg='Added video to playlist\nFetching data...', 
-                                               duration='short', 
-                                               icon=icondir)
-                    _,info = get_info(loader=get_info_loader,          
-                                      target_url=url
-                    )
-                    log_handle(content = info['thumbnail'])
-
-                    try:thumb = info['thumbnail']
-                    except:thumb = None
-                    
-                    Media_list_page_controller.add_to_page_end(
-                        video_url=url,
-                        title=info['title'],
-                        channel=info['uploader'],
-                        thumbnail_url=thumb
-                    )
-
-
-                    ToastNotification().notify(app_id="JaTubePlayer",
-                                               title=f'JaTubePlayer {ver}',
-                                               msg='Added video to playlist',
-                                               duration='short',
-                                               icon=icondir)
-                except Exception as e:
-                    log_handle(content=f"Error adding video to playlist: {e}")
-                    messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add video to playlist.\nError: {e}")    
-                finally:
-                    chrome_extension_flask.chrome_extension_add_to_end = None
-            else:
-                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
-        
-        
-        
-        time.sleep(0.5)
 
 def check_keyboard():
     global KeyMemHotkey
@@ -4649,6 +4620,7 @@ def _init_load_smtc_obj():
     global smtc
     smtc = MediaControlOverlay()
     init_set_smtc()
+
 
 def _start_up_import():
     """Import heavy modules sequentially with timing"""
@@ -4731,8 +4703,16 @@ def _extra_startup_imports():
     
         # Flask
     t = time.time()
-    import chrome_extension.chrome_extension_flask as cef
-    chrome_extension_flask = cef.ChromeExtensionServer(log_handle=log_handle)
+    from chrome_extension.chrome_extension_flask import ChromeExtensionServer
+    chrome_extension_flask = ChromeExtensionServer(log_handle=log_handle,
+                                                       media_list_page_controller=Media_list_page_controller,
+                                                       Chrome_ext_server_ui_functions=Chrome_ext_server_ui_functions,
+                                                       star_vid_handle=star_vid_handle,
+                                                       messagebox=messagebox,
+                                                       ui_queue=ui_queue,
+                                                       get_info_loader=get_info_loader)
+                                                       
+
     log_handle(content=f"flask: {time.time()-t:.3f}s")
 
     if CONFIG["run_flask"]:_switch_local_server(0)
@@ -4770,10 +4750,9 @@ def _start_up():
     init_openwith_thread()
     log_handle(content=f'openwith fin')
 
-   
-    init_set_dnd_handle()
-    log_handle(content=f'dnd fin')
+
     
+
     root.after(0, init_quick_startup)
     root.after_idle( _extra_startup_imports)
     log_handle(f"finish_big_init {time.time()-time1}")
@@ -4788,9 +4767,10 @@ if __name__ == '__main__':
     
 
     root.after(0,lambda:threading.Thread(daemon = True,target=_start_up).start())
-    
 
-
+    print("root", root.winfo_id())
+    print("Frame_for_mpv", Frame_for_mpv.winfo_id())
+    print("FindWindow", hwnd)
 
 
 

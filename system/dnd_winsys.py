@@ -1,15 +1,18 @@
 import ctypes
 from ctypes import  wintypes
 import os
-from tkinter import messagebox
 import time
 import queue
 import threading
+
 from video_media_control.media_list_page_control import MediaList_PageControl_
 from loader.media_data_list import media_data_list_template
 
-
-
+import pythoncom
+import win32clipboard
+import win32con
+from win32com.server.policy import DesignatedWrapPolicy
+from notification.ctkmessagebox import ctk_messagebox
 
 FILE_TYPE_EXT = [
                 ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mpeg", ".mpg", ".3gp", ".webm", ".ogv",
@@ -50,8 +53,71 @@ user32.CallWindowProcW.argtypes   = [ctypes.c_void_p, wintypes.HWND, wintypes.UI
 shell32.DragFinish.argtypes = [wintypes.HANDLE]
 shell32.DragAcceptFiles.argtypes = [wintypes.HWND, wintypes.BOOL]
 
-handler = None
+class URL_DropHandler(DesignatedWrapPolicy):
+    '''
+    Refering to lots of microsoft docs
+    which are ass
 
+    please use the CoUninitialize() after destroying this object
+    '''    
+
+    def __init__(self, log_handle):
+        self.log_handle = log_handle
+
+        self.DROPEFFECT_COPY = 1
+        self.DROPEFFECT_NONE = 0
+        self.lindexALL = -1
+
+        self._com_interfaces_ = [pythoncom.IID_IDropTarget]
+        self._public_methods_ = ["DragEnter", "DragOver", "DragLeave", "Drop"]
+
+        self.CF_URL = win32clipboard.RegisterClipboardFormat("UniformResourceLocatorW")
+        self.formats = [
+            (self.CF_URL, "utf-16-le"),
+            (win32con.CF_UNICODETEXT, "utf-16-le"),
+        ]
+        self.url_queue = queue.Queue()
+        self._wrap_(self)
+
+
+
+    def DragEnter(self, pDataObj, grfKeyState, pt, pdwEffect):
+      return self.DROPEFFECT_COPY
+
+    def DragOver(self, grfKeyState, pt, pdwEffect):
+        return self.DROPEFFECT_COPY
+
+    def DragLeave(self):
+        return self.DROPEFFECT_NONE
+
+    def Drop(self, pDataObj, grfKeyState, pt, pdwEffect):
+        url = self.get_url(pDataObj)
+        if url:
+            self.url_queue.put(url)
+            self.log_handle(content=f"URL put in queue: {url}")
+            return self.DROPEFFECT_COPY
+        return self.DROPEFFECT_NONE
+
+    def get_url(self,pDataObj):
+        
+        for format, encode in self.formats:
+            try:
+                self.log_handle(f"Trying format: {format}, encode: {encode}")
+                data = pDataObj.GetData((format,
+                                        None,
+                                        pythoncom.DVASPECT_CONTENT,
+                                        self.lindexALL,
+                                        pythoncom.TYMED_HGLOBAL))
+                url = data.data.decode(encode, errors="ignore").replace("\x00", " ")
+                if url:
+                    self.log_handle(f"URL obtained: {url}")
+                    return url
+            except Exception as e:
+                self.log_handle(f"Failed to get data for format {format}: {e}")
+        return None
+        
+
+        
 class DropHandler(object):
     '''
     include the WINAPI , and the listener    
@@ -63,7 +129,9 @@ class DropHandler(object):
                  selected_song_number_status_changer:object,
                  playing_vid_mode:int,
                  media_data_list:media_data_list_template,
-                 root=None)->None:
+                 Chrome_ext_server_ui_functions:object,
+                 messagebox:ctk_messagebox,
+                 root)->None:
         '''
         MLPC object must be created from JTP
         selected song number, playing_vid_mode : for dnd to refresh
@@ -78,9 +146,43 @@ class DropHandler(object):
         self.selected_song_number_status_changer = selected_song_number_status_changer
         self.playing_vid_mode = playing_vid_mode
         self.media_data_list = media_data_list
+        self.ext_ui_functions = Chrome_ext_server_ui_functions
+
+        self.URL_DropHandler = URL_DropHandler(
+            log_handle=log_handle
+        )
         
-        threading.Thread(target=self._dnd_path_listener, daemon=True).start()
-    
+
+        self.handler = None
+        self.original_handler = None
+        self._init_dnd_handle()
+        self.messagebox = messagebox
+
+        threading.Thread(target=self._dnd_listener, daemon=True).start()
+        self.valid_domains = ["youtube.com","youtu.be","music.youtube.com","twitch.tv","bilibili"]
+
+    def _init_dnd_handle(self):
+        hwnd = self.root.winfo_id()
+        shell32.DragAcceptFiles(hwnd, True)
+        self.handler = WindowProc(self.on_file_drop)
+        self.original_handler = user32.SetWindowLongPtrW(hwnd, -4, self.handler)
+
+    def init_URL_handler(self):
+        pythoncom.OleInitialize()
+        self.target_com = pythoncom.WrapObject(
+            self.URL_DropHandler,
+            pythoncom.IID_IDropTarget,
+            pythoncom.IID_IDropTarget
+        )
+        pythoncom.RegisterDragDrop(self.root.winfo_id(), self.target_com)
+
+
+    def close(self):
+        pythoncom.RevokeDragDrop(self.root.winfo_id())
+        pythoncom.OleUninitialize()
+
+
+
     def handle_file_drop(self,file_paths:list):
         self.dnd_path_queue.put(file_paths)
 
@@ -147,75 +249,97 @@ class DropHandler(object):
             self.handle_file_drop(file_paths=files)
             return 0
         # Other messages: not our job, pass to original
-        return user32.CallWindowProcW(original_handler, hwnd, msg, wparam, lparam)
+        return user32.CallWindowProcW(self.original_handler, hwnd, msg, wparam, lparam)
 
-    def enable_drop(self,hwnd, enable:bool):
-        """
-        LONG_PTR SetWindowLongPtrW(
-        HWND hWnd,         // handle to window
-        int nIndex,        // -4 for WndProc
-        LONG_PTR dwNewLong // new address
-        ); // returns replaced address
 
-        """
-        global handler,original_handler
-        shell32.DragAcceptFiles(hwnd, enable)
-        handler = WindowProc(self.on_file_drop)
-        original_handler = user32.SetWindowLongPtrW(hwnd, -4, handler)# redirect WndProc, with our handler
-
-    def _dnd_path_listener(self):       
+    def _dnd_listener(self):       
 
             '''
             if the dropped file is valid, return the list of file paths
             valid file: return a single folder or multiple files
             
+            also listen to the URL drop, and call the handle_url_drop function in the main thread
             '''
+            self.log_handle(content="DnD listener initialized")
+            
             while True:
-                file_paths = self.dnd_path_queue.get()
-                if file_paths:
-                    self.selected_song_number = None
-                    self.media_data_list.clear()
-                    
+                try:
                     try:
+                        file_paths = self.dnd_path_queue.get_nowait()
+                    except queue.Empty:
+                        file_paths = None
 
+                    try:
+                        dropped_url = self.URL_DropHandler.url_queue.get_nowait() 
+                    except queue.Empty:
+                        dropped_url = None
+
+                
+                    if file_paths:
+                        self.selected_song_number = None
+                        self.media_data_list.clear()
                         
-                        self.log_handle(content=f"Valid files/folder dropped: {file_paths}")
+                        try:
 
-                        if len(file_paths) == 1:
-                            if os.path.isfile(file_paths[0]):
-                                self.log_handle(content=f"Single file dropped: {file_paths[0]}")
-                                
+                            
+                            self.log_handle(content=f"Valid files/folder dropped: {file_paths}")
 
-                                self.media_data_list.vid_url.append(file_paths[0])
-                                self.media_data_list.playlisttitles.append(os.path.basename(file_paths[0]))
-                                self.media_data_list.playlist_channel.append("local file")
-                                self.media_data_list.playlist_thumbnails.append("")
+                            if len(file_paths) == 1:
+                                if os.path.isfile(file_paths[0]):
+                                    self.log_handle(content=f"Single file dropped: {file_paths[0]}")
+                                    
 
-                                self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list)#still put a file into it
-                                self.selected_song_number_status_changer(1)
-                            elif os.path.isdir(file_paths[0]):
-                                self.log_handle(content=f"Folder dropped: {file_paths[0]}")
-                                for dir,_,files in os.walk(file_paths[0]):
-                                    self.log_handle(content=f": {files}")
-                                    for file in files:
-                                        if os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
-                                            
-                                            self.media_data_list.vid_url.append(os.path.join(dir,file))
-                                            self.media_data_list.playlisttitles.append(file)
-                                            self.media_data_list.playlist_channel.append("local file")
-                                            self.media_data_list.playlist_thumbnails.append("")
-                                self.selected_song_number_status_changer(2)
-                                self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list)
-                        elif len(file_paths) > 0:
-                            for file in file_paths:
-                                if os.path.isfile(file) and os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
-                                    self.media_data_list.vid_url.append(file)
-                                    self.media_data_list.playlisttitles.append(os.path.basename(file))
+                                    self.media_data_list.vid_url.append(file_paths[0])
+                                    self.media_data_list.playlisttitles.append(os.path.basename(file_paths[0]))
                                     self.media_data_list.playlist_channel.append("local file")
                                     self.media_data_list.playlist_thumbnails.append("")
+
+                                    self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list,
+                                                                                            dnd_mode=True)#still put a file into it
+                                    self.selected_song_number_status_changer(1)
+                                elif os.path.isdir(file_paths[0]):
+                                    self.log_handle(content=f"Folder dropped: {file_paths[0]}")
+                                    for dir,_,files in os.walk(file_paths[0]):
+                                        self.log_handle(content=f": {files}")
+                                        for file in files:
+                                            if os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
+                                                
+                                                self.media_data_list.vid_url.append(os.path.join(dir,file))
+                                                self.media_data_list.playlisttitles.append(file)
+                                                self.media_data_list.playlist_channel.append("local file")
+                                                self.media_data_list.playlist_thumbnails.append("")
+                                    self.selected_song_number_status_changer(2)
+                                    self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list,
+                                                                                            dnd_mode=True)
+                            elif len(file_paths) > 0:
+                                for file in file_paths:
+                                    if os.path.isfile(file) and os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
+                                        self.media_data_list.vid_url.append(file)
+                                        self.media_data_list.playlisttitles.append(os.path.basename(file))
+                                        self.media_data_list.playlist_channel.append("local file")
+                                        self.media_data_list.playlist_thumbnails.append("")
+                                
+                                self.selected_song_number_status_changer(2)
+                                self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list,
+                                                                                        dnd_mode=True)
+                        finally:
+                            time.sleep(0.5)
+
+                    if dropped_url:
+                        for domain in self.valid_domains:
+                            if domain in dropped_url:
+                                self.log_handle(content=f"Valid URL dropped: {dropped_url}")
+                                self.log_handle(content=f"Invalid URL dropped: {dropped_url}")
+                                self.media_list_page_control.handle_url_drop(dropped_url)
+                                self.log_handle(content=f" see url : {dropped_url}")
+                                while not self.URL_DropHandler.url_queue.empty():
+                                    self.URL_DropHandler.url_queue.get()
+                                self.ext_ui_functions.direct_url()
+                                break
+                        else:
+                            self.ui_queue.put(self.messagebox.showerror(f'JaTubePlayer ',f'Invalid URL dropped!'))
                             
-                            self.selected_song_number_status_changer(2)
-                            self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list)
-                    finally:
-                        time.sleep(0.5)
-                else:time.sleep(1)
+                    time.sleep(0.5)
+                except Exception as err:
+                    self.log_handle(content=f"Error in DnD listener: {err}")
+                

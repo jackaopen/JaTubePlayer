@@ -29,6 +29,7 @@ class media_data_list_template:
         self.playlist_thumbnails.clear()
         self.current_media_page = 0
         self.current_playing_idx_num = -1
+        
     def stopped_playing(self):
         self.current_playing_idx_num = -1
         self.current_media_page = 0

@@ -36,7 +36,6 @@
     "blur": true,
     "run_flask": true,
     "open_with_fullscreen": false,
-    "enable_drag_and_drop": true,
     "enable_discord_presence": true,
     "discord_presence_show_playing": false,
     "show_cache": true,

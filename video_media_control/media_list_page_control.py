@@ -1,7 +1,6 @@
 import enum
 import queue
 import random
-import copy
 from loader.media_data_list import media_data_list_template
 from ui.Treeview_and_thumbnail import ThumbnailLoader
 from .playlist_retriever import playlist_retriever
@@ -44,6 +43,7 @@ class MediaList_PageControl_:
                  log_handle:object,
                  thumbnail_loader:ThumbnailLoader,
                  page_num_label :object,
+                 load_thread_queue:queue.Queue
                  
                  ):
         self.total_page = 0
@@ -67,6 +67,7 @@ class MediaList_PageControl_:
             log_handle=self.log_handle,
             ui_queue=self.ui_queue)
 
+        self.load_thread_queue = load_thread_queue
 
 
     def _insert_to_ui_queue(self):
@@ -173,7 +174,17 @@ class MediaList_PageControl_:
     
 
 
+    def handle_url_drop(self, url:str):
+        self.log_handle(content=f"URL dropped: {url}")
+        self.thumbnail_loader.clear_thumbnails()
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'handle url drop, url={url}')
+        self.load_thread_queue.put((None,url))
+        self.log_handle(errtype='info', component='page_control',
+                        content=f'put url drop to load_thread_queue, url={url}')
+        
 
+        
         
         
     def _other_loading(self):
@@ -188,14 +199,16 @@ class MediaList_PageControl_:
         '''
         insert video wether there is page inited or not,
         at the last current page, miaght exceed 50
-        
-        
         '''
+        if self.total_page == 0:# mdl not inited
+            self.total_page = 1
+            self.current_page = 1
+
         try:
             if self.current_page == self.total_page:
                 insert_idx = len(self.media_data_list.vid_url)
             else:
-                insert_idx = (self.current_page) * 50
+                insert_idx = (self.current_page-1) * 50
 
             title = f"[Added] {title}"
             self.media_data_list.vid_url.insert(insert_idx, video_url)
@@ -203,9 +216,9 @@ class MediaList_PageControl_:
             self.media_data_list.playlist_channel.insert(insert_idx, channel)
             self.media_data_list.playlist_thumbnails.insert(insert_idx, thumbnail_url)
 
-            self.tree_view_queue.put((self.media_data_list.playlist_thumbnails[insert_idx],
-                                        self.media_data_list.playlisttitles[insert_idx],
-                                        self.media_data_list.playlist_channel[insert_idx]))
+            self.tree_view_queue.put((thumbnail_url,
+                                        title,
+                                        channel))
             self.log_handle(errtype='info', component='page_control',
                             content=f'added video to media list, at index {insert_idx}, title={title} channel={channel} url={video_url} thumbnail={thumbnail_url}')
 
