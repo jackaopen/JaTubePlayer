@@ -98,6 +98,7 @@ root.after(20, _process_ui_queue)
 messagebox = ctk_messagebox(root,_internal_path=_internal_dir)
 
 mpv_log = []
+
 def _toggle_minimize():
     if root.state() == 'normal':
         root.lift()
