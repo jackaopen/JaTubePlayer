@@ -84,6 +84,61 @@
             padding: 20px;
             margin: 20px 0;
         }
+
+        .success-check {
+            display: block;
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 14px;
+            color: #00E676;
+            overflow: visible;
+            transform-origin: center;
+            animation: check-pop 2.4s ease-out infinite;
+        }
+
+        .success-check circle {
+            stroke-dasharray: 126;
+            stroke-dashoffset: 126;
+            animation: ring-draw 2.4s ease-out infinite;
+        }
+
+        .success-check path {
+            stroke-dasharray: 34;
+            stroke-dashoffset: 34;
+            animation: check-draw 2.4s ease-out infinite;
+        }
+
+        @keyframes ring-draw {
+            0% { stroke-dashoffset: 126; opacity: 1; }
+            22%, 82% { stroke-dashoffset: 0; opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+
+        @keyframes check-draw {
+            0%, 18% { stroke-dashoffset: 34; opacity: 1; }
+            34%, 82% { stroke-dashoffset: 0; opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+        }
+
+        @keyframes check-pop {
+            0%, 18% { transform: scale(0.92); opacity: 1; }
+            30% { transform: scale(1.08); opacity: 1; }
+            42%, 82% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .success-check,
+            .success-check circle,
+            .success-check path {
+                animation: none;
+            }
+
+            .success-check circle,
+            .success-check path {
+                stroke-dashoffset: 0;
+            }
+        }
         
         .success-text {
             color: #FF6B35;
@@ -124,6 +179,10 @@
         <h1>JaTubePlayer</h1>
         
         <div class="success-box">
+            <svg class="success-check" viewBox="0 0 48 48" aria-hidden="true">
+                <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="3" />
+                <path d="M15 24.5L21.5 31L34 18.5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
             <p class="success-text">
                 Authentication Complete
             </p>
@@ -133,5 +192,6 @@
             You can safely close this window and return to the app
         </p>
     </div>
+    
 </body>
 </html>

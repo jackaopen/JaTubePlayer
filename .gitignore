@@ -31,10 +31,6 @@ pyinstaller asset/*
 temp_data/
 
 # WebView2 cookie test generated files
-account_dev/cookie_test/bin/
-account_dev/cookie_test/obj/
-account_dev/cookie_test/publish/
-account_dev/cookie_test/account/
-account_dev/cookie_test/webview2_profile/
-account_dev/cookie_test/youtube_webview2_runtime/
 
+account_dev/cookie_test/*
+profile/
