@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -43,9 +44,20 @@ public class Helper
         return builder.ToString();
     }
 
-    public static bool HasInfo(string json) =>
-        json.Contains("\"user_name\":\"") && !json.Contains("\"user_name\":\"\"") ||
-        json.Contains("\"user_mail\":\"") && !json.Contains("\"user_mail\":\"\"");
+    public static bool HasInfo(string json)
+    {
+        try
+        {
+            string[] values = JsonSerializer.Deserialize<string[]>(json);
+            return values?.Length == 2 &&
+                !String.IsNullOrWhiteSpace(values[0]) &&
+                !String.IsNullOrWhiteSpace(values[1]);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 
 
 
@@ -136,6 +148,10 @@ public class CookieForm : Form
         Width = mode == "process" ? 560 : 1100;
         Height = mode == "process" ? 360 : 760;
         Controls.Add(view);
+        if (mode == "refresh")
+        {
+            Opacity = 0.0;
+        }
         if(mode=="login"){Shown += async (sender, args) => await EnsureStartedAsync();}
         else if (mode=="refresh"){Shown += async (sender, args) => await refresh();}
 
@@ -288,7 +304,7 @@ public class CookieForm : Form
         view.CoreWebView2.Settings.AreHostObjectsAllowed = false;
         view.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
         view.CoreWebView2.Settings.IsWebMessageEnabled = false;
-
+        
         view.CoreWebView2.NavigationStarting += (sender, args) =>
         {
             Hide();

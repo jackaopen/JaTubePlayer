@@ -72,7 +72,11 @@ class account_handle:
         if result.stderr.strip():
             self.log_handle(result.stderr.strip())
         if result.stdout.strip():
-            return result.stdout.strip().splitlines()[0].split(",")
+            account_info = json.loads(result.stdout.strip().splitlines()[0])
+            if (isinstance(account_info, list) and len(account_info) == 2 and
+                    all(isinstance(value, str) for value in account_info)):
+                return tuple(account_info)
+            raise ValueError("WebView2 returned invalid account information")
         
     def get_cookie(self)->str|None:
         '''
@@ -210,4 +214,3 @@ class account_handle:
         self.clear_login_data()
         self._create_AES_key()
         self._encrypt_cookie(cookie)
-
