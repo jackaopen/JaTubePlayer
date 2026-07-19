@@ -58,4 +58,3 @@ def blur(hwnd,
 
     data.Attrib = WCA_USEDARKMODECOLORS # apply dark 
     SetWindowCompositionAttribute(int(hwnd), ctypes.byref(data))
-

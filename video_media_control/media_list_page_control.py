@@ -3,7 +3,7 @@ import queue
 import random
 from loader.media_data_list import media_data_list_template
 from ui.Treeview_and_thumbnail import ThumbnailLoader
-from .playlist_retriever import playlist_retriever
+from .playlist_retriever_old import playlist_retriever
 from .star_vid import star_vid_handler
 from .local_media_handle import local_media_handle
 

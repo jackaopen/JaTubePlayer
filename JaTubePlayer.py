@@ -1,4 +1,3 @@
-from statistics import mode
 import time
 time1 = time.time()
 import tkinter as tk
@@ -12,7 +11,6 @@ from copy import *
 from datetime import datetime
 import customtkinter as ctk
 import ctypes
-ctk.set_appearance_mode("dark")
 
 from utils.get_scaling import get_window_dpi
 from utils.ctk_get_scaling_patch import _apply_google_auth_patch
@@ -43,6 +41,7 @@ from system.presence import DiscordPresence
 
 from video_media_control.media_list_page_control import MediaList_PageControl_
 
+ctk.set_appearance_mode("dark")
 _apply_google_auth_patch()
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Jackaopen.JaTubePlayer')
 
