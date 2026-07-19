@@ -3,7 +3,7 @@ import queue
 import random
 from loader.media_data_list import media_data_list_template
 from ui.Treeview_and_thumbnail import ThumbnailLoader
-from .playlist_retriever_old import playlist_retriever
+from .playlist_retriever import playlist_retriever_,playlist_type
 from .star_vid import star_vid_handler
 from .local_media_handle import local_media_handle
 
@@ -43,8 +43,8 @@ class MediaList_PageControl_:
                  log_handle:object,
                  thumbnail_loader:ThumbnailLoader,
                  page_num_label :object,
-                 load_thread_queue:queue.Queue
-                 
+                 load_thread_queue:queue.Queue,
+                 playlist_retriever:playlist_retriever_
                  ):
         self.total_page = 0
         self.current_page = 1
@@ -63,9 +63,7 @@ class MediaList_PageControl_:
 
         self.loading_page = False
         
-        self.yt_playlist_retriever = playlist_retriever(
-            log_handle=self.log_handle,
-            ui_queue=self.ui_queue)
+        self.yt_playlist_retriever = playlist_retriever
 
         self.load_thread_queue = load_thread_queue
 
@@ -94,20 +92,25 @@ class MediaList_PageControl_:
 
     def youtube_init_and_reload(self,
                         media_data_list:media_data_list_template,
-                        youtube:object=None,
-                        playlist_id:str=None,
+                        page:playlist_type,
+                        playlist_id:str=None
                         ):
+        '''
+        Follow the page type to init and reload the media_data_list for youtube playlist, liked videos, subscriptions, recommend videos\n
+        > IMPORTANT: PLEASE make sure the cookie and AES key are valid before calling this function, otherwise it will return without loading data\n
+
+        '''
                
         self.current_page = 1
         self.media_data_list = media_data_list
         self.media_type = MediaType.YOUTUBE
-    
         self.media_data_list.clear()
-        self.yt_playlist_retriever.init_playlist_items(
-            youtube=youtube,
-            playlist_id=playlist_id,
-            media_data_list=self.media_data_list,
-        )
+    
+        if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() is False:return 
+        if self.yt_playlist_retriever.innertube_handle.account_handle.get_cookie() is None: return
+        
+        self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
+
         self.total_page = (self.yt_playlist_retriever.total_playlist_count + 49) // 50
 
         self._insert_to_ui_queue()

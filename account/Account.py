@@ -174,11 +174,10 @@ class account_handle:
         with open(self.aes_key_path, "wb") as f:
             f.write(bolb)
         
-    def check_aes_key(self):
+    def check_aes_key(self)->bool:
         '''
         try to read the AES key with DPAPI
-        if failed, raise an exception
-        if success, do nothing
+        
         '''
         if not os.path.exists(self.aes_key_path):
             self.ctk_messagebox.showerror_and_wait(
@@ -242,7 +241,6 @@ class account_handle:
             ciphertext, tag = cipher.encrypt_and_digest(cookie.encode("utf-8"))
             with open(self.cookie_dir, "wb") as f:
                 f.write(cipher.nonce + tag + ciphertext)
-
 
     def rotate_cookie(self):
         '''

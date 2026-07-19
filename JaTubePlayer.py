@@ -293,7 +293,6 @@ fullscreen_status = 0
 dnd_handle = None
 discord_presence = None
 google_control = None
-Ferner_encrptor_ = None
 get_info_loader = None
 media_data_list = media_data_list_template()
 '''
@@ -326,7 +325,6 @@ def load_config():
 load_config()
 
 # ==== async for thumbnail ====
-asyncio_session = None # aiohttp.ClientSession
 async_task = [] # task to add thumbnail
 
 # ==== others ====
@@ -559,50 +557,18 @@ def setting_frame():
         setting_tab.grid(row=0, column=0, padx=0, pady=20, sticky="nsew")
 
         def update_username_textbox(content="No login yet!"):
-            googleaccountname_text.configure(state='normal')
-            googleaccountname_text.delete(0.0,tk.END)
-            googleaccountname_text.insert(tk.END,content)
-            googleaccountname_text.configure(state='disabled')
+            #TODO
 
-        def update_cookie_path_textbox():
-            cookiepath_text.configure(state='normal')
-            cookiepath_text.delete(0.0,tk.END)
-            cookiepath_text.insert(tk.END,(cookies_dir if cookies_dir else 'Not selected'))
-            cookiepath_text.configure(state='disabled')
-
-        def update_client_secrets_path_textbox():        
-            client_secrets_text.configure(state='normal')
-            client_secrets_text.delete(0.0,tk.END)
-            client_secrets_text.insert(tk.END,(client_secret_path if client_secret_path else 'Not selected'))
-            client_secrets_text.configure(state='disabled')
-            
+       
         @check_internet
         def google_login_setting(mode):
-            global credentials
-            log_handle(content='google login setting called')
-            if os.path.exists(os.path.join(current_dir,'user_data','sub.json')):
-                
-                if messagebox.askyesno(f'JaTubePlayer {ver}','The system has detected an existing subscription, do you want to delete it?\n(If you choose No, the subscription will be kept but it may cause some problems if the subscription is not related to the new login account)'):
-                    try:os.remove(os.path.join(current_dir,'user_data','sub.json'))
-                    except:pass
-            if os.path.exists(os.path.join(current_dir,'user_data','liked.json')):
-                if messagebox.askyesno(f'JaTubePlayer {ver}','The system has detected an existing liked videos list, do you want to delete it?\n(If you choose No, the liked videos list will be kept but it may cause some problems if the list is not related to the new login account)'):
-                    try:os.remove(os.path.join(current_dir,'user_data','liked.json'))
-                    except:pass
-            credentials = google_control.get_google_cred_and_save()
-
-            log_handle(content='New login attempt finished')
+            pass
+        #TODO
             
-            get_user_name()
 
         def google_logout_setting():
-            global credentials,youtube
-            google_control.google_logout_clear_data()
-            credentials = None
-            youtube = None
-            update_username_textbox()
-            get_user_name()
             
+        #TODO
             
         @check_internet
         def get_resolution_setting():
@@ -641,13 +607,7 @@ def setting_frame():
                    
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','You cant download local file !'))
                 
-        @check_internet_silent
-        def get_user_name():
-            userinfo = google_control.get_userinfo(credentials)
-            log_handle(content=f'setting frame got userinfo: {userinfo}')
-            if userinfo and userinfo.get('name',None):ui_queue.put(lambda n=userinfo.get('name'): update_username_textbox(f"Logged in as  :  {n}"))
-            else:ui_queue.put(lambda: update_username_textbox())
-            ui_queue.put(lambda: google_status_update())
+
 
         def download_select_mode_setting(mode : int):
             """
@@ -767,154 +727,17 @@ def setting_frame():
                     
 
             
-        @check_internet
-        def update_sub_list_local():
-            if messagebox.askyesno(f'JaTubePlayer {ver}','This might take a while \nProcceed?'):  
-                if client_secret_path != 'None':
-                    if youtubeAPI:
-                        ui_queue.put(lambda: updatesub_btn.configure(text='⏳ loading...'))
-                        ui_queue.put(lambda: updatesub_btn.configure(state='disabled'))
-                        result = update_sub_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                        ui_queue.put(lambda: updatesub_btn.configure(text='update Subscribe channel list'))
-                        ui_queue.put(lambda: updatesub_btn.configure(state='normal'))
-                        if  result  == True:
-                            ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','succeed'))
-                            
-                        else:
-                            
-                            ui_queue.put(lambda r=result: messagebox.showinfo(f'JaTubePlayer {ver}',r))
-                            
-                    else:ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting'))         
-                else:ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting'))
-
-        @check_internet
-        def update_like_list_local():
-            if client_secret_path != 'None':
-                if youtubeAPI:
-                    ui_queue.put(lambda: updatelike_btn.configure(text='⏳ loading...'))
-                    ui_queue.put(lambda: updatelike_btn.configure(state='disabled'))
-                    result = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                    ui_queue.put(lambda: updatelike_btn.configure(text='update Liked video list'))
-                    ui_queue.put(lambda: updatelike_btn.configure(state='normal'))
-                    if  result  == True:
-                        ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','succeed'))
-                        
-
-                    else:
-                        ui_queue.put(lambda r=result: messagebox.showinfo(f'JaTubePlayer {ver}',r))
-                        
-                else:ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting'))         
-            else:ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting'))
 
         @check_internet
         def updateplaylists():
+            
             updateuserplaylists_btn.configure(text='⏳ loading...')
-            get_user_playlists(0)
+                #TODO
             updateuserplaylists_btn.configure(text='update Playlist ')
 
 
         
-        def enter_youtube_api():
-            
-            global youtubeAPI,credentials
-            youtubeAPI = setting_api_entry.get()
-            Ferner_encrptor_.encrypt_api(youtubeAPI)
-            apilabel.configure(text=f'{youtubeAPI[:10]}{"*" * (len(youtubeAPI)-10)}')
-            messagebox.showinfo(f'JaTubePlayer {ver}',f'Your youtube API is now {youtubeAPI}\n ')
-            messagebox.showinfo(f'JaTubePlayer {ver}','API changed, you need to relogin your google account \nGo setting -> google login!')
-            google_control.youtubeAPI = youtubeAPI
-            
-
-
-
-        def read_client_secret_setting():
-            global client_secret_path,credentials
-            
-            filetype = [('jsonfile','*.json')]
-            client_secret_path = filedialog.askopenfilename(filetypes=filetype)
-            if client_secret_path:
-                messagebox.showinfo(f'JaTubePlayer {ver}','client secert changed, you need to relogin your google account\n and change your API!')
-                messagebox.showinfo(f'JaTubePlayer {ver}',f'your client secret is now at  {client_secret_path}')
-                CONFIG['client_secret_path'] = client_secret_path
-                save_config()   
-                update_client_secrets_path_textbox()
-                google_control.client_secret_path = client_secret_path  
-            else:messagebox.showwarning(f'JaTubePlayer {ver}','Cancelled!')
-            
-
-        def delete_client_secrets():
-            global client_secret_path
-            
-            try:
-                if messagebox.askyesno(f'JaTubePlayer {ver}',f'Sure to remove cookie from the player?'):
-                    if client_secret_path:
-                        messagebox.showinfo(f'JaTubePlayer {ver}','succeed!')
-                        client_secret_path = None
-                        google_control.client_secret_path = None
-                        CONFIG['client_secret_path'] = ''
-                        save_config()
-                    else:messagebox.showwarning(f'JaTubePlayer {ver}','client secrets not found!')
-            except :messagebox.showwarning(f'JaTubePlayer {ver}','client secrets not found!')
-            update_client_secrets_path_textbox()
-
-        def read_cookie_setting():
-            global cookies_dir
-            filetype = [('textfile','*.txt')]
-            cookies_dir = filedialog.askopenfilename(filetypes=filetype)
-            if cookies_dir:
-                messagebox.showinfo(f'JaTubePlayer {ver}',f'your cookie is now at  {cookies_dir}\n Changes will apply to the next video playback.')
-                update_cookie_path_textbox()
-                CONFIG['cookie_path'] = cookies_dir
-                save_config()   
-            else:messagebox.showwarning(f'JaTubePlayer {ver}','Cancelled!')
-            
-
-        def delete_cookie():
-            global cookies_dir
-            
-            try:
-                if  cookies_dir:
-                    if messagebox.askyesno(f'JaTubePlayer {ver}',f'Sure to remove cookie from the player?'):
-                        messagebox.showinfo(f'JaTubePlayer {ver}','succeed!')
-                        CONFIG['cookie_path'] = ''
-                        cookies_dir = None
-                        save_config()
-
-                else:messagebox.showwarning(f'JaTubePlayer {ver}','cookie not found!')
-            except :messagebox.showwarning(f'JaTubePlayer {ver}','cookie not found!')
-            
-            update_cookie_path_textbox()
-
-
-
-        def deletesyskey():
-            global credentials,youtubeAPI,youtube
-            if messagebox.askokcancel(f'JaTubePlayer {ver}','Sure to delete sys key? \n You will be logged out from google account and stored data will be removed\nNote this will delete both \n1.Creditial and  key for creditial\n 2. stored API and key for API\n Both key will be randomly generated again when the program restarts\nIf you try to login again, they will be generated'):
-                try:
-                    google_control.google_logout_clear_data()
-                    credentials = None
-                    youtubeAPI = None
-                    youtube = None
-                    Ferner_encrptor_.clear_sys_key()
-                    google_control.youtubeAPI = None
-                    update_username_textbox()
-                    apilabel.configure(text='None')
-                    messagebox.showinfo(f'JaTubePlayer {ver}','Succeed!')
-                except FileNotFoundError:messagebox.showinfo(f'JaTubePlayer {ver}','Key already gone!')
-                except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
-            
-
-        def deleteapi():
-            global youtubeAPI
-            if messagebox.askokcancel(f'JaTubePlayer {ver}','Sure to delete stored API key?'):
-                try: 
-                    apilabel.configure(text='None')
-                    youtubeAPI = None
-                    os.remove(os.path.join(current_dir,'user_data','api.enc'))
-                    messagebox.showinfo(f'JaTubePlayer {ver}','API deleted!')
-                except FileNotFoundError:messagebox.showinfo(f'JaTubePlayer {ver}','API already gone!')
-                except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
-                
+    
 
         def save_his_and_rec_option():
             if save_history.get() :
@@ -1089,14 +912,6 @@ def setting_frame():
                     messagebox.showinfo(f'JatubePlayer {ver}',f'The quick startup init is now\nLocal folder : {path}')
             else: messagebox.showinfo(f'JaTubePlayer {ver}','cancelled!')
 
-
-        def setting_auto_sub_refresh():
-            CONFIG['auto_sub_refresh'] = auto_sub_refresh.get()
-            save_config()
-          
-        def setting_auto_like_refresh():
-            CONFIG['auto_like_refresh'] = auto_like_refresh.get()
-            save_config()
 
         def switch_flask_server():
             global chrome_extension_flask_thread
@@ -1427,15 +1242,7 @@ def setting_frame():
         
         # YouTube Data Section
         youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
-        updatelike_btn = ctk.CTkButton(youtube_data_frame, text='Update Liked Videos', width=160, command=lambda:threading.Thread(daemon=True,target=update_like_list_local).start(),
-                                        text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        auto_like_refresh_checkbtn = ctk.CTkCheckBox(youtube_data_frame, text='Auto-update liked videos', variable=auto_like_refresh, command=setting_auto_like_refresh,
-                                                      fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         
-        updatesub_btn = ctk.CTkButton(youtube_data_frame, text='Update Subscriptions', width=160, command=lambda:threading.Thread(daemon=True,target=update_sub_list_local).start(),
-                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        auto_sub_refresh_checkbtn = ctk.CTkCheckBox(youtube_data_frame, text='Auto-update subscriptions', variable=auto_sub_refresh, command=setting_auto_sub_refresh,
-                                                     fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
         
         updateuserplaylists_btn = ctk.CTkButton(youtube_data_frame, text='Update Playlists', width=160, command=updateplaylists,
                                                  text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
@@ -1486,76 +1293,7 @@ def setting_frame():
         googlelogout_btn.grid(row=2, column=1, padx=4, pady=(6, 12))
         deletesyskey_btn.grid(row=2, column=2, padx=(4, 24), pady=(6, 12))
         
-        # ── API Card ──
-        api_frame = ctk.CTkFrame(auth_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
-        api_frame.grid_columnconfigure(0, weight=0)
-        api_frame.grid_columnconfigure(1, weight=1)
-        api_frame.grid_columnconfigure(2, weight=0)
         
-        api_title = ctk.CTkLabel(api_frame, text='  \u25b8 API Key', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
-        deleteapi_btn = ctk.CTkButton(api_frame, text='Delete Stored API', width=160, command=deleteapi,
-                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
-        setting_api_label = ctk.CTkLabel(api_frame, font=('Arial', 12), text='YouTube API:', text_color='#B0B0B0')
-        setting_api_entry = ctk.CTkEntry(api_frame, font=('Arial', 13), width=160, text_color='#C8C8C8', placeholder_text="Enter API here",
-                                          fg_color='#1a1a1a', border_color='#444444')
-        set_api_btn = ctk.CTkButton(api_frame, text='Set API', width=120, command=enter_youtube_api,
-                                     text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        apilabel = ctk.CTkLabel(api_frame, font=('Arial', 12, 'bold'), text='None', text_color='#7EB8E0')
-
-        api_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
-        setting_api_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="e")
-        setting_api_entry.grid(row=1, column=1, padx=8, pady=5, sticky="ew")
-        apilabel.grid(row=1, column=2, padx=(8, 24), pady=5, sticky="w")
-        set_api_btn.grid(row=2, column=1, padx=8, pady=(4, 12), sticky="w")
-        deleteapi_btn.grid(row=2, column=2, padx=(8, 24), pady=(4, 12), sticky="e")
-        api_frame.grid(row=1, column=0, padx=8, pady=4, sticky="ew")
-
-        # ── Cookie Card ──
-        cookie_frame = ctk.CTkFrame(auth_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
-        cookie_frame.grid_columnconfigure(0, weight=0)
-        cookie_frame.grid_columnconfigure(1, weight=1)
-        cookie_frame.grid_columnconfigure(2, weight=0)
-        
-        cookie_title = ctk.CTkLabel(cookie_frame, text='  \u25b8 Cookie', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
-        setting_cookie_label = ctk.CTkLabel(cookie_frame, font=('Arial', 12), text='Cookie:', text_color='#B0B0B0')
-        insert_cookie_btn = ctk.CTkButton(cookie_frame, text='Select Cookie', width=160, command=read_cookie_setting,
-                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        deletecookie_btn = ctk.CTkButton(cookie_frame, text='Remove Cookie', width=160, command=delete_cookie,
-                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
-        cookiepath_text = ctk.CTkTextbox(cookie_frame, font=('Arial', 12), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
-        cookiepath_text.configure(state='disabled')
-
-        cookie_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
-        setting_cookie_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="e")
-        cookiepath_text.grid(row=1, column=1, columnspan=2, padx=(8, 24), pady=5, sticky="ew")
-        insert_cookie_btn.grid(row=2, column=1, padx=8, pady=(4, 12), sticky="ew")
-        deletecookie_btn.grid(row=2, column=2, padx=(8, 24), pady=(4, 12), sticky="w")
-        cookie_frame.grid(row=2, column=0, padx=8, pady=4, sticky="ew")
-
-        # ── Client Secrets Card ──
-        client_secrets_frame = ctk.CTkFrame(auth_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
-        client_secrets_frame.grid_columnconfigure(0, weight=0)
-        client_secrets_frame.grid_columnconfigure(1, weight=1)
-        client_secrets_frame.grid_columnconfigure(2, weight=0)
-    
-        client_secrets_title = ctk.CTkLabel(client_secrets_frame, text='  \u25b8 Client Secrets', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
-        setting_client_secret_label = ctk.CTkLabel(client_secrets_frame, font=('Arial', 12), text='Client Secrets:', text_color='#B0B0B0')
-        insert_client_secrets_btn = ctk.CTkButton(client_secrets_frame, text='Select Client Secret', width=160, command=read_client_secret_setting,
-                                                    text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        deleteclient_secrets_btn = ctk.CTkButton(client_secrets_frame, text='Remove Client Secret', width=160, command=delete_client_secrets,
-                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
-        client_secrets_text = ctk.CTkTextbox(client_secrets_frame, font=('Arial', 12), height=1, text_color='#C8C8C8', fg_color='#1a1a1a',
-                                              wrap="none", activate_scrollbars=False, corner_radius=6)
-        client_secrets_text.configure(state='disabled')
-
-        client_secrets_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
-        setting_client_secret_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="e")
-        client_secrets_text.grid(row=1, column=1, columnspan=2, padx=(8, 24), pady=5, sticky="ew")
-        insert_client_secrets_btn.grid(row=2, column=1, padx=8, pady=(4, 12), sticky="ew")
-        deleteclient_secrets_btn.grid(row=2, column=2, padx=(8, 24), pady=(4, 12), sticky="w")
-        client_secrets_frame.grid(row=3, column=0, padx=8, pady=(4, 8), sticky="ew")
-
-
         # ══════════ Download — Card-style sections ══════════
         download_info_frame = ctk.CTkFrame(download_tab, fg_color='#2B2B2B', corner_radius=8)
         download_info_frame.grid_columnconfigure(0, weight=1)
@@ -2071,20 +1809,12 @@ def setting_frame():
         ui_queue.put(lambda:download_path_textbox.insert(tk.END,download_path.get()))
         ui_queue.put(lambda:download_path_textbox.configure(state='disabled'))
         
-    
-        if youtubeAPI:root.after(0,apilabel.configure(text=f'{youtubeAPI[:10]}{"*" * (len(youtubeAPI)-10)}'))
-        update_cookie_path_textbox()
-        update_client_secrets_path_textbox()
 
 
 
         # ══════════ Layout: Personal Playlist Tab ══════════
         youtube_data_frame.grid(row=0, column=0, columnspan=2, padx=16, pady=(10, 4), sticky="ew")
         youtube_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        updatelike_btn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        auto_like_refresh_checkbtn.grid(row=1, column=1, padx=8, pady=5, sticky="w")
-        updatesub_btn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
-        auto_sub_refresh_checkbtn.grid(row=2, column=1, padx=8, pady=5, sticky="w")
         updateuserplaylists_btn.grid(row=3, column=0, columnspan=2, padx=(24, 8), pady=(5, 12), sticky="w")
         
         history_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
@@ -2429,19 +2159,7 @@ def enterplaylist(event=None):
     else it will set and enter the playlist selected and update the mode textbox , playlistID variable and get the youtube playlist videos
    
     '''
-    log_handle(content=str(userplaylistcombobox.get()))
-    if userplaylistcombobox.get() == '':
-        try:get_user_playlists(0)
-        except:
-            messagebox.showerror(f'JaTubePlayer {ver}','login or select a playlist first!')
-    else:
-        index = userplaylistcombobox.cget("values").index(userplaylistcombobox.get())
-        playlistID.set(user_playlists_id[index])
-        modetextbox.configure(state='normal')
-        modetextbox.delete(1.0,tk.END)
-        modetextbox.insert(tk.END,f"Playlist\n{user_playlists_name[index]}")
-        modetextbox.configure(state='disabled')
-        get_youtube_playlists()
+    #TODO
 
 
 
@@ -2463,422 +2181,20 @@ def page_control(mode):
 
 
 
-def get_sub_channel_thread(page_control_mode:int):
-        '''
-        page_control_mode == 0:init and auto update sub list if required, 
-        page_control_mode == 1: next page, page_control_mode == 2: prev page
-
-        for page_control_mode ==1 and 2, check if inited , and load via sub_channel() function which load the json
-        '''
-        global loadingplaylist,user_playlists_name,youtube,user_playlists_id,selected_song_number,youtubeAPI,page_num,media_data_list
-        loadingplaylist = True
-        usestoreddata = False
-        stop = False## for auto sub update and check if list is empty or not
-        if page_control_mode !=0 and page_num == 0:# check if inited first
-            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please init the like page first'))
-        else:  
-            if page_control_mode == 0:
-                usestoreddata = messagebox.askyesno(f'JaTubePlayer {ver}','login with stored data?')
-                if not usestoreddata:
-                    stop = True
-                    ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','please go to "setting > Personal playlist" to login the desired account\n then go to "setting > Personal playlist" to update the list\n then try again!'))
-
-            if usestoreddata and page_control_mode == 0 or page_control_mode != 0:#init or page change
-                if auto_sub_refresh.get() and page_control_mode == 0:#auto update sub list, if required, only when init
-                    ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                    ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                    ui_queue.put(lambda: modetextbox.insert(tk.END, f"Subscribed\n⏳ updating..."))
-                    ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Auto updating subscription list...', duration='short', icon=icondir)
-                    res = update_sub_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                    if res != True:
-                        failres = messagebox.askokcancel(f'JaTubePlayer {ver}','failed to update the subscription list!')
-                        if not failres:stop = True
-
-                #start to load sub list
-                selected_song_number = None
-                channel = sub_channel(current_dir)
-                if channel != False and channel != 'NONE':
-                    channel_temp = channel
-                elif channel == 'NONE':
-                    ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','There seems to be no stored data\n please go to "setting > update subscription list" to update the list\n then try again!'))
-                    stop = True
-                else:
-                    stop = True
-                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
-            try:
-                if not stop:
-                    if page_control_mode == 0:
-                        page_num = 1
-                    elif page_control_mode == 1:
-                        if page_num == len(channel)//50+1:page_num = 1
-                        else:page_num += 1
-                    elif page_control_mode == 2:
-                        if page_num == 1: page_num = len(channel)//50+1
-                        else:page_num -= 1
-
-                    ui_queue.put(lambda pn=page_num, ct=channel_temp: page_num_label.configure(text=f'page {pn}/{len(ct)//50+1}'))
-                    
-                    if channel_temp != False and channel_temp != 'NONE':
-                        channel_ids = []
-                        for i in range((page_num-1)*50,page_num*50):
-                            try:channel_ids.append(channel_temp[i])
-                            except Exception as e :log_handle(content=str(e))
-
-
-
-
-                        ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                        ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                        ui_queue.put(lambda: modetextbox.insert(tk.END, f"Subscribed\n⏳ loading..."))
-                        ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-
-                        media_data_list.clear()
-                        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-                        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-                        ydl_opts = {
-                                'quiet': True,
-                                'extract_flat': True,
-                                'skip_download': True,
-                                'playlistend': 1,  # Only get the latest video
-                                'ignoreerrors': True,
-                                'no_warnings': True,
-                            }
-                        
-                        if cookies_dir:
-                            ydl_opts['cookiefile'] = cookies_dir 
-                            
-                        index_for_tree = 1
-                        channel_ids = [x.replace("UC", "UU", 1) for x in channel_ids]## UC for cahnnel ID, UU for uploaded video playlist ID
-                        
-                        with ThreadPoolExecutor() as executor:
-                            futures = [executor.submit(_extract_file,f"https://www.youtube.com/playlist?list={url}") for url in channel_ids]
-                            for future in futures:
-                                
-                                info = future.result()                        
-                                
-                                if info != None:
-                                    response = info['entries'][0]
-                                    media_data_list.vid_url.append(response['url'])## get vid info url
-                                    media_data_list.playlisttitles.append(response["title"])
-                                    media_data_list.playlist_channel.append(info['uploader'])
-                                    media_data_list.playlist_thumbnails.append(response['thumbnails'][0]['url'])
-                                    try:
-                                        insert_treeview_quene.put((response['thumbnails'][0]['url'],
-                                                                f'🛑LIVE {response["title"]}' if response['live_status'] == 'is_live' else response['title'],
-                                                                info['uploader']))
-                                    except:insert_treeview_quene.put((response['thumbnails'][0]['url'],
-                                                                response["title"],
-                                                                info['uploader']))
-                                    index_for_tree +=1
-
-                        # Update status box once (instead of every loop)
-                        ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                        ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                        ui_queue.put(lambda: modetextbox.insert(tk.END, f"Subscribed"))
-                        ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                        
-
-            except Exception as e :log_handle(content=str(e))
-            loadingplaylist = False
-
-@check_internet
-def get_sub_channel(page_control_mode:int,parent=root):
-    global playing_vid_mode,credentials
-    if client_secret_path :
-        log_handle(content=str(client_secret_path))
-        if os.path.exists(client_secret_path):
-            if youtubeAPI != None:
-                if  not credentials or not credentials.valid:
-                    if messagebox.askokcancel(title=f"JaTubePlayer {ver}", message="This function requires login. Do you want to log in?"):
-                        credentials = google_control.get_cred()
-                        google_status_update()
-                    else:return
-                if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
-                    playing_vid_mode = 0
-                    thread = threading.Thread(daemon = True,target=lambda:get_sub_channel_thread(page_control_mode))
-                    thread.start()
-        
-            else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting')
-        else:messagebox.showerror(f'JaTubePlayer {ver}','The client secrets does not exist or is invalid.\nPlease set up the youtube client secrets in setting')
-    else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube client secrets in setting')
-
-
-
-def get_liked_vid_thread(page_control_mode:int):
-    global youtubeAPI,credentials,page_num,liked_vid_url,selected_song_number,loadingplaylist,youtube,media_data_list
-    if page_control_mode !=0 and page_num == 0:
-        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please init the like page first'))
-    else:
-        selected_song_number = None
-        loadingplaylist = True
-        try:
-            if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
-            media_data_list.clear()
-            ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-            stop = False#for updating the like list , both auto and user cancel auto load
-            
-            if page_control_mode == 0:#mode 0 init, mode 1 next page, mode 2 previous page
-                log_handle(content=str(auto_like_refresh.get()))
-                if auto_like_refresh.get():
-                    ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Liked', msg='Auto updating liked videos, please wait...', duration='short', icon=icondir)
-
-                    ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                    ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                    ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked\n⏳ updating..."))
-                    ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                    res = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                    if res != True:
-                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','failed to update the subscription list!\ntry to Login in google and update the list manually?'))
-                        stop = True 
-                            
-                elif not messagebox.askyesno(f'JaTubePlayer {ver}','login with stored data?'):
-                    stop = True
-                    ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','please go to "setting > Personal playlist" to login the desired account\n then go to "setting > Personal playlist" to update the list\n then try again!'))
-
-                if not stop:
-
-                    url = liked_channel(current_dir)
-                    if url != False and url != 'NONE':
-                        liked_vid_url = url
-                    elif url == 'NONE':
-                        if messagebox.askokcancel(f'JaTubePlayer {ver}','There seems to be no stored data, load the data now?'):
-                            result = update_like_list(youtubeAPI,credentials,client_secret_path,current_dir)
-                            if result:
-                                ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','succeed'))
-                                loadingplaylist = False
-                                get_liked_vid(0)
-                            else:
-                                stop = True
-                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
-                    else:
-                        stop = True
-                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','opps something went wrong'))
-
-
-
-            
-            if not stop:
-                if page_control_mode == 0:page_num = 1
-                elif page_control_mode == 1 and page_num != 0:
-                    if page_num != len(liked_vid_url)//50+1:
-                        page_num += 1
-                    else: page_num = 1
-                elif page_control_mode == 2 and page_num != 0:
-                    if page_num != 1:
-                        page_num -= 1
-                    else: page_num = len(liked_vid_url)//50+1
-
-                ui_queue.put(lambda pn=page_num, lvu=liked_vid_url: page_num_label.configure(text=f'page {pn}/{len(lvu)//50+1}'))
-
-                if page_num != 0:
-                    for i in range(50*(page_num-1),50*page_num):#######use len of vid url
-                        try:
-                            item = liked_vid_url[i]
-                            media_data_list.vid_url.append(item)
-                        except IndexError:break
-                        
-                        try:
-                            ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                            ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                            ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked\n⏳ loading... "))
-                            ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-                                                    
-                            title_response = youtube.videos().list(
-                                part='snippet',
-                                id=item.split('watch?v=')[1]
-                                ).execute()
-                            if title_response != None:
-                                try:
-                                    vid_info = title_response['items'][0]['snippet']
-                                    if vid_info:
-                                        try:
-                                            title = f'🛑LIVE {vid_info["title"]}' if vid_info['live_status'] == 'is_live' else vid_info['title']
-                                        except:title = vid_info["title"]
-                                        media_data_list.playlisttitles.append(title)
-                                        media_data_list.playlist_thumbnails.append(vid_info['thumbnails']['high']['url'])
-                                        media_data_list.playlist_channel.append(vid_info['channelTitle'])
-                                        insert_treeview_quene.put((vid_info['thumbnails']['high']['url'],title,vid_info['channelTitle']))
-                                        ui_queue.put(lambda: root.update())
-                                    else:
-                                        ui_queue.put(lambda: ToastNotification().notify(app_id="JaTubePlayer", 
-                                                                                        title=f'JaTubePlayer {ver}',
-                                                                                        msg='Skipped a unavailable video', 
-                                                                                        duration='short', 
-                                                                                        icon=icondir))
-                                except:pass
-                            else:pass
-                        except Exception as e : ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
-
-                    # Check if there are any videos returned
-            
-                # Update status box once (instead of every loop)
-                ui_queue.put(lambda: modetextbox.configure(state='normal'))
-                ui_queue.put(lambda: modetextbox.delete(1.0, tk.END))
-                ui_queue.put(lambda: modetextbox.insert(tk.END, f"Liked"))
-                ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-            else:loadingplaylist = False
-        except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
-        loadingplaylist = False
-
-@check_internet
-def get_liked_vid(page_control_mode:int ):
-    global playing_vid_mode,credentials
-    if client_secret_path :
-        if os.path.exists(client_secret_path):
-            if youtubeAPI != None:
-                if  not credentials or not credentials.valid:
-                    if messagebox.askokcancel(title=f"JaTubePlayer {ver}", message="This function requires login. Do you want to log in?"):
-                        credentials = google_control.get_cred()
-                        google_status_update()
-                    else:return
-                if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
-                    playing_vid_mode = 0
-                    thread = threading.Thread(daemon = True,target=lambda:get_liked_vid_thread(page_control_mode))
-                    thread.start()
-        
-            else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting')
-        else:messagebox.showerror(f'JaTubePlayer {ver}','The client secrets does not exist or is invalid.\nPlease set up the youtube client secrets in setting')
-    else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube client secrets in setting')
 
 
 
 
 
 
-
-
-
-@check_internet
-def get_user_playlists_thread(mode):#0 = normal fun, 1 = init fun
-    '''
-    To get wat playlist do user have
-    mode 0 = normal fun, 1 = init fun
-    '''
-    global user_playlists_name,youtube,user_playlists_id,init_playlists_id,credentials
-    user_playlists_name = []
-    user_playlists_id = []
-
-    ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
-    ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
-    try:
-        if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
-    except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
-    try:
-        global playlists
-        playlists = youtube.playlists().list(part='snippet', mine=True,maxResults=500).execute()
-    except:
-        try:
-            if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)
-            playlists = youtube.playlists().list(part='snippet', mine=True,maxResults=500).execute()
-        except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
-
-    try:
-        for playlist in playlists['items']:
-            user_playlists_id.append(f"{playlist['id']}")
-            user_playlists_name.append(f"{playlist['snippet']['title']}")
-        if mode == 0:
-            ui_queue.put(lambda: userplaylistcombobox.configure(values=user_playlists_name))
-            ui_queue.put(lambda: userplaylistcombobox._open_dropdown_menu())
-        elif mode == 1:
-            try:
-                ui_queue.put(lambda: init_playlist_combobox.configure(values=user_playlists_name))
-                ui_queue.put(lambda: init_playlist_combobox.event_generate('<Button-1>'))
-                init_playlists_id = user_playlists_id
-            except:pass
-
-    except Exception as e:log_handle(content=str(e))
-    finally:
-        ui_queue.put(lambda: playlistlabel.configure(text="📁"))
-        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
-    
 @check_internet
 def get_user_playlists(mode):
-    '''
-    mode 0 = normal fun, 1 = init fun
-    
-    '''
-    global credentials
-    if client_secret_path :
-        if os.path.exists(client_secret_path):
-            if youtubeAPI != None:
-                if  not credentials or not credentials.valid:
-                    if messagebox.askokcancel(title=f"JaTubePlayer {ver}", message="This function requires login. Do you want to log in?"):
-                        credentials = google_control.get_cred()
-                        google_status_update()
-                    else:return
-                thread = threading.Thread(daemon = True,target=lambda:get_user_playlists_thread(mode))
-                thread.start()
-        
-            else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting')
-        else:messagebox.showerror(f'JaTubePlayer {ver}','The client secrets does not exist or is invalid.\nPlease set up the youtube client secrets in setting')
-    else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube client secrets in setting')
+    #TODO
 
-
-@check_internet
-def get_youtube_playlist_thread(playlistid_input = None): 
-    '''
-    playlistid_input is used for quick init function, it will directly use the playlist id from the input instead of the global playlistID variable, which is set when user select a playlist from the combobox
-    
-    '''
-    ###### get specifc info from the playlist that user choose
-    global loadingplaylist,selected_song_number,playlistID,media_data_list
-    loadingplaylist = True
-    try:
-        selected_song_number = None
-        media_data_list.clear()
-
-        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-        if youtube == None:
-            google_control.get_cred()
-            ui_queue.put(lambda: google_status_update())
-            get_user_playlists(0)
-
-
-        elif playlistID.get() or playlistid_input:
-            ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
-            ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
-            Media_list_page_controller.youtube_init_and_reload(
-                media_data_list=media_data_list,
-                youtube=youtube,
-                playlist_id=playlistID.get() if not playlistid_input else playlistid_input
-            )
-    except Exception as e:ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))    
-    finally:
-        ui_queue.put(lambda: playlistlabel.configure(text='📁'))
-        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
-    loadingplaylist = False
 
 @check_internet
 def get_youtube_playlists(playlistID = None):
-    '''
-    If no playlistID is provided, it will use the global playlistID variable, which is set when user select a playlist from the combobox
-
-    If playlistID is provided, it will use that playlistID to get the playlist videos, which is used for quick init function
-    '''
-    global playing_vid_mode,youtube,credentials
-    if playlistID:
-        if not youtube:youtube = build('youtube','V3',developerKey=youtubeAPI,static_discovery = False,credentials=credentials)#### make youtube init for quick startup bc it wont go through get user playlist so yt wont be created
-    if client_secret_path :
-        if os.path.exists(client_secret_path):
-            if youtubeAPI != None:
-                if  not credentials or not credentials.valid:
-                    if messagebox.askokcancel(title=f"JaTubePlayer {ver}", message="This function requires login. Do you want to log in?"):
-                        credentials = google_control.get_cred()
-                        google_status_update()
-                    else:return
-                if loadingplaylist == False or loadingplaylist == True and messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
-                    log_handle(content="start to get playlist videos")
-                    playing_vid_mode = 0
-                    thread = threading.Thread(daemon = True,target=lambda:get_youtube_playlist_thread(playlistID))
-                    thread.start()
-        
-            else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube api key in setting')
-        else:messagebox.showerror(f'JaTubePlayer {ver}','The client secrets does not exist or is invalid.\nPlease set up the youtube client secrets in setting')
-    else:messagebox.showerror(f'JaTubePlayer {ver}','This function requires login.\nPlease set up the youtube client secrets in setting')
-
+    #TODO
 
 
 
@@ -4348,9 +3664,6 @@ def init_get_recommendation():
         loadingplaylist = False
 
 
-def init_read_api():
-    global youtubeAPI
-    youtubeAPI = Ferner_encrptor_.decrypte_api()
 
 
 def init_read_dlp():
@@ -4534,11 +3847,9 @@ def _init_dnd_on_root_thread():
 
 
 def _init_load_extra_objs():
-    global dnd_handle,discord_presence,google_control,Ferner_encrptor_,get_info_loader,star_vid_handle,thumbnail_loader,Media_list_page_controller
-    Ferner_encrptor_ = Ferner_encrptor(user_data_dir=os.path.join(current_dir,'user_data'),ctk_messagebox=messagebox)
-    
+    global dnd_handle,discord_presence,google_control,get_info_loader,star_vid_handle,thumbnail_loader,Media_list_page_controller
+    global account_handler,innertube_handler,playlist_retriever
     discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
-    google_control = google_auth_control(ver=ver,youtubeAPI=Ferner_encrptor_.decrypte_api(),current_dir=current_dir,log_handle=log_handle,ctk_messagebox=messagebox)
     get_info_loader = get_info_loader_(yt_dlp = lambda:yt_dlp,
                                       maxresolution = lambda: maxresolution.get(),
                                       deno_exe = lambda: deno_exe,
@@ -4558,7 +3869,22 @@ def _init_load_extra_objs():
                                        tkinter_scaling=lambda: tkinter_scaling,
                                        log_handle=log_handle,
                                        root=root)
+
     
+    account_handler = account_handle(current_dir=current_dir,
+                                    ctk_messagebox=messagebox,
+                                    log_handle=log_handle)
+    
+
+    innertube_handler = innertube_handle(account_handle=account_handler,
+                                         log_handle=log_handle)
+    
+    playlist_retriever = playlist_retriever_(innertube_handle=innertube_handler,
+                                             log_handle=log_handle)
+
+
+
+
     Media_list_page_controller = MediaList_PageControl_(
         ui_queue=ui_queue,
         tree_view_queue=insert_treeview_quene,
@@ -4567,6 +3893,9 @@ def _init_load_extra_objs():
         page_num_label=page_num_label,
         load_thread_queue=load_thread_queue,
         )
+    
+    
+
     
     root.after(0,_init_dnd_on_root_thread)
 
@@ -4624,30 +3953,22 @@ def _init_load_smtc_obj():
 
 def _start_up_import():
     """Import heavy modules sequentially with timing"""
-    global build, Credentials,google_auth_control,Ferner_encrptor,star_vid_handler
+    global star_vid_handler,account_handle,innertube_handle,playlist_retriever_,playlist_type
     global get_latest_player_version,get_latest_dlp_version
     import time
-    
+        
+    t = time.time()
+    from account.Account import account_handle
+    log_handle(content=f"account: {time.time()-t:.3f}s")
 
     t = time.time()
-    log_handle(content=f"aiohttp: {time.time()-t:.3f}s")
-    
-    # Google API
+    from utils.innertube_handle import innertube_handle
+    log_handle(content=f"innertube: {time.time()-t:.3f}s")
+
     t = time.time()
-    from googleapiclient.discovery import build
-    from google.oauth2.credentials import Credentials
-    log_handle(content=f"google_api: {time.time()-t:.3f}s")
-    
-    # Auth
-    t = time.time()
-    from account.google_login import google_auth_control
-    log_handle(content=f"auth: {time.time()-t:.3f}s")
-    
-    # Fernet
-    t = time.time()
-    from account.fernet_pubnew_class import Ferner_encrptor
-    log_handle(content=f"fernet: {time.time()-t:.3f}s")
-    
+    from video_media_control.playlist_retriever import playlist_retriever_,playlist_type
+    log_handle(content=f"playlist_retriever: {time.time()-t:.3f}s")
+
     # Version check functions (needed by settings before delayed import)
     t = time.time()
     from utils.get_latest_version import get_latest_dlp_version, get_latest_player_version
@@ -4655,7 +3976,7 @@ def _start_up_import():
     
     t = time.time()
     from video_media_control.star_vid import star_vid_handler
-    log_handle(content=f"version_funcs: {time.time()-t:.3f}s")
+    log_handle(content=f"star_vid_handler: {time.time()-t:.3f}s")
 
     log_handle(content=f"Total import time: {time.time()-time1:.3f}s")
 
@@ -4667,13 +3988,12 @@ def _start_up_import():
 
 
 def _extra_startup_imports():
-    global update_sub_list, update_like_list, liked_channel, sub_channel,download_and_extract_dlp
+    global download_and_extract_dlp
     global MediaControlOverlay,chrome_extension_flask,requests
     global shortcut_manager
 
     t = time.time()
-    from video_media_control.sub_and_like_public import update_sub_list, update_like_list, liked_channel, sub_channel
-    log_handle(content=f"sub_and_like: {time.time()-t:.3f}s")
+    
     
     # YT-DLP Update
     t = time.time()
@@ -4733,8 +4053,7 @@ def _start_up():
     _init_load_extra_objs()
     log_handle(content=f'extra obj fin')
     
-    init_read_api()
-    log_handle(content=f'api fin')
+
     
     log_handle(content=f'local host fin')
     
@@ -4910,40 +4229,7 @@ def discord_status_close():
 @check_internet_silent
 def google_status_update():
     def _google_status_update():
-        try:
-            ui_queue.put(lambda: google_status_text.configure(state='normal'))
-            ui_queue.put(lambda: google_status_text.delete(1.0, tk.END))
-            if credentials:
-                acc_info = google_control.get_userinfo(credentials)
-
-                if acc_info and 'picture' in acc_info:
-                    pic_url = acc_info['picture']
-                    response = requests.get(pic_url)
-                    profile_pic = Image.open(io.BytesIO(response.content))
-                    profile_pic = profile_pic.resize((34,34), Image.LANCZOS)
-                    ctk_image = ctk.CTkImage(profile_pic, size=(34, 34))
-                    ui_queue.put(lambda img=ctk_image: google_status_profile_pic_label.configure(
-                        image=img, 
-                        text=''
-                    ))
-                    # Update container border to green for logged in(
-                    ui_queue.put(lambda n=acc_info.get('name','Unknown'): google_status_text.insert(tk.END, f"{n}"))
-                    ui_queue.put(lambda: google_status_text.configure(text_color='#C79842'))
-                else:
-                    ui_queue.put(lambda: google_status_profile_pic_label.configure(text='', text_color='#555555'))
-                    ui_queue.put(lambda: google_status_text.insert(tk.END, 'No info'))
-                    ui_queue.put(lambda: google_status_text.configure(text_color='#AAAAAA'))
-            else:
-                ui_queue.put(lambda: google_status_profile_pic_label.configure(text='✕', text_color='#555555', font=('Segoe UI', 16, 'bold'),image=None))
-                ui_queue.put(lambda: google_status_text.insert(tk.END, 'Not logged in'))
-                ui_queue.put(lambda: google_status_text.configure(text_color='#AAAAAA'))
-        except Exception as e:
-            log_handle(f"Google status update error: {e}")
-            ui_queue.put(lambda: google_status_profile_pic_label.configure(text='⚠', text_color='#FFB347'))
-            ui_queue.put(lambda: google_status_text.insert(tk.END, 'Error'))
-            ui_queue.put(lambda: google_status_text.configure(text_color='#FFB347'))
-        finally:ui_queue.put(lambda: google_status_text.configure(state='disabled'))
-
+        #TODO
     
     threading.Thread(target=_google_status_update, daemon=True).start()
 

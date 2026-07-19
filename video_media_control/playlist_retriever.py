@@ -1,6 +1,6 @@
 
 import json
-from innertube_handle import innertube_handle
+from utils.innertube_handle import innertube_handle
 from account.Account import account_handle
 from loader.media_data_list import media_data_list_template
 from utils.parser import innertube_parser
@@ -16,7 +16,7 @@ class playlist_type(enum.Enum):
     PLAYLIST = "playlist"
 
 
-class playlist_retriever:
+class playlist_retriever_:
     def __init__(self, 
                  innertube_handle: innertube_handle,
                  log_handle: object):
