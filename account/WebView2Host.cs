@@ -104,7 +104,6 @@ public class Helper
 public class CookieForm : Form
 {
     const string YoutubeUrl = "https://www.youtube.com/";
-    const string YouPageUrl = "https://www.youtube.com/feed/you";
     
     const string LogoutUrl = "https://accounts.google.com/Logout";
     const string SignInUrl = "https://accounts.google.com/v3/signin/identifier" +
@@ -148,7 +147,8 @@ public class CookieForm : Form
         
         this.mode = mode;
 
-        Text = mode == "process" ? "Processing" : "YouTube WebView2 Cookie Login";
+        Text = mode == "process" ? "Processing" : "JaTubePlayer Account Login";
+        Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         Width = mode == "process" ? 560 : 1100;
         Height = mode == "process" ? 360 : 760;
         Controls.Add(view);
@@ -160,7 +160,7 @@ public class CookieForm : Form
         else if (mode=="refresh"){Shown += async (sender, args) => await refresh();}
 
         
-        if (mode != "process") {
+        if (mode == "login") {
             waitingForm = new CookieForm(rootDir, "process");
             waitingForm.FormClosed += (sender, args) =>
             {
@@ -212,7 +212,7 @@ public class CookieForm : Form
                 args.Cancel = true;
                 return;
             }
-            // mode = login or refresh
+            
 
             // Log only safe URLs. Query strings can contain login tokens.
             Helper.Log("navigation starting: " + Helper.LeftPartialToPath(args.Uri));
@@ -230,7 +230,15 @@ public class CookieForm : Form
                 Hide();
             }
 
-            if (Helper.Allowed(args.Uri)) return;
+            bool allowedRegionalSetSid =
+                mode == "login" &&
+                args.IsRedirected &&
+                Uri.TryCreate(args.Uri, UriKind.Absolute, out Uri setSidUri) &&
+                setSidUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+                setSidUri.Host.StartsWith("accounts.google.", StringComparison.OrdinalIgnoreCase) &&
+                setSidUri.AbsolutePath.Equals("/accounts/SetSID", StringComparison.OrdinalIgnoreCase);
+
+            if (Helper.Allowed(args.Uri) || allowedRegionalSetSid) return;
 
             args.Cancel = true;
             Helper.Log("blocked redirect: " + Helper.LeftPartialToPath(args.Uri));
@@ -326,7 +334,7 @@ public class CookieForm : Form
             else Helper.Log("blocked new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
         };
 
-        view.CoreWebView2.NavigationCompleted += async (sender, args) =>
+        view.CoreWebView2.DOMContentLoaded += async (sender, args) =>
         {
             string url = view.CoreWebView2.Source;
             Helper.Log("navigation completed: " + Helper.LeftPartialToPath(url));
@@ -355,10 +363,10 @@ public class CookieForm : Form
         try
         {
             // Wait until WebView2 has a YouTube login cookie.
-            for (int WaitingSec = 0; WaitingSec <30 && !await HasLoginCookie();WaitingSec++)
+            for (int WaitingSec = 0; WaitingSec < 300 && !await HasLoginCookie();WaitingSec++)
             {
                 Helper.Log("youtube reached, cookie not valid yet");
-                await Task.Delay(1000);
+                await Task.Delay(100);
             }
             if (!await HasLoginCookie())
             {
@@ -371,25 +379,9 @@ public class CookieForm : Form
                 
             }
 
-            if (!Helper.LeftPartialToPath(view.CoreWebView2.Source).Equals(YouPageUrl, StringComparison.OrdinalIgnoreCase))
-            {
-                Helper.Log("navigating to You page");
-                view.CoreWebView2.Navigate(YouPageUrl);
-                return;
-            }
+            
 
-            // Print only account info. Do not print raw cookies.
-            string json = await ReadAccountInfo();
-            if (!Helper.HasInfo(json))
-            {
-                Helper.Log("No valid account info, skip");
-            }
-            else
-            {
-                Helper.Log("account info json: " + json);
-                Console.Out.WriteLine(json);
-                Console.Out.Flush();
-            }
+            
             var cookies = await view.CoreWebView2.CookieManager.GetCookiesAsync(YoutubeUrl);
             
             EncryptCookies(cookies);
@@ -399,8 +391,11 @@ public class CookieForm : Form
             
             
             showingSuccess = true;
-            Helper.Log("loading success page");
-            await waitingForm.NavigateAsync(SuccessPagePath);
+            
+            if (mode != "refresh"){
+                Helper.Log("loading success page");
+                await waitingForm.NavigateAsync(SuccessPagePath);
+            }
 
 
         }
@@ -474,35 +469,6 @@ public class CookieForm : Form
     }
 
 
-    async Task<string> ReadAccountInfo()
-    {
-        var assembly = typeof(Program).Assembly;
-        using Stream stream = 
-            assembly.GetManifestResourceStream("JaTubePlayer.AccountInfo.js");
-        if (stream == null){
-            Helper.Log("Embedded account_info.js was not found.");
-            return"";
-            }
-        
-        using var reader = new StreamReader(stream,
-                                            encoding : Encoding.UTF8,
-                                            detectEncodingFromByteOrderMarks : true
-        );
-        
-        string accountscript = reader.ReadToEnd();
-        var json = "";
-        for (int i = 0; i < 40; i++)
-        {
-            json = await view.CoreWebView2.ExecuteScriptAsync(accountscript);
-            if (String.IsNullOrWhiteSpace(json) || json == "null") json = "{}";
-            if (Helper.HasInfo(json)) return json;
-
-            if (i == 0 || i == 39) Helper.Log("account info debug: " + json);
-            await Task.Delay(250);
-        }
-
-        return json;
-    }
 
     
 }

@@ -222,6 +222,7 @@ class innertube_handle:
     
     def get_innertube_response(self, 
                               payload:dict,
+                              get_account:bool=False
                               )->dict|None:
         '''
         send innertube request and return response json, or None if failed
@@ -231,8 +232,15 @@ class innertube_handle:
         '''
 
         # preInit_buildPayload reads the current API key from the YouTube page.
-        inntertube_URL = f"https://www.youtube.com/youtubei/v1/browse?key={self.innertube_api_key}&prettyPrint=false"
-        
+        if not get_account:
+            inntertube_URL = f"https://www.youtube.com/youtubei/v1/browse?key={self.innertube_api_key}&prettyPrint=false"
+        else:
+            inntertube_URL = (
+                            "https://www.youtube.com/youtubei/v1/account/account_menu"
+                            f"?key={self.innertube_api_key}"
+                            "&prettyPrint=false"
+                        )
+
         response = self.request_session.post(
             inntertube_URL,
             headers=self.api_headers,
@@ -245,4 +253,4 @@ class innertube_handle:
         
         print(response.text)
         return response.json()
-    
+

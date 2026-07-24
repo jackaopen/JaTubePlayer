@@ -58,14 +58,14 @@ class ThumbnailLoader:
                     imgdata = await response.read()
                     img = Image.open(io.BytesIO(imgdata))
                     img = img.resize(
-                        (int(140 * self.tkinter_scaling / 1.25), int(105 * self.tkinter_scaling / 1.25)),
+                        (int(140 * self.tkinter_scaling / 1.25), int(85 * self.tkinter_scaling / 1.25)),
                         Image.LANCZOS
                     )
                     img1 = img.crop((
                         0,
-                        int(14 * self.tkinter_scaling / 1.25),
+                        int(5 * self.tkinter_scaling / 1.25),
                         int(140 * self.tkinter_scaling / 1.25),
-                        int(90 * self.tkinter_scaling / 1.25)
+                        int(85 * self.tkinter_scaling / 1.25)
                     ))
                     thumbnailpic = ImageTk.PhotoImage(img1)
                     self.temp.append(thumbnailpic)

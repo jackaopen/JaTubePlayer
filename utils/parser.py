@@ -189,6 +189,10 @@ class innertube_parser:
         
     def _walk_to_entry(self, node: dict) -> list:
         """Get the first list of page entries under tabRenderer.content."""
+        playlist = self._account_info_walk(node, "playlistVideoListRenderer")
+        if playlist:
+            return playlist.get("contents", [])
+
         for renderer_name in ("richGridRenderer", "sectionListRenderer"):
             if renderer_name in node:
                 return node[renderer_name].get("contents", [])
@@ -271,6 +275,38 @@ class innertube_parser:
         """
         return self.continuation_token
 
+    def _account_info_walk(
+        self,
+        node: dict|list,
+        renderer: str = "activeAccountHeaderRenderer",
+    ) -> dict | None:
+        if isinstance(node, dict):
+            header = node.get(renderer)
+            if isinstance(header, dict):
+                return header
+            
+            for value in node.values():
+                if result:= self._account_info_walk(value, renderer):
+                    return result
+        
+        elif isinstance(node, list):
+            for value in node:
+                if result:= self._account_info_walk(value, renderer):
+                    return result
+        return None
+                                        
+    def parse_account_info(self, json_data: dict) -> dict | None:
+        header = self._account_info_walk(json_data)
+        if not header:
+            return None
+
+        thumbnail = header.get("accountPhoto", {}).get("thumbnails", [])
+        return {
+            "name": self._text(header.get("accountName", {})),
+            "thumb": self._thumb(thumbnail),
+        }
+
+    
     def parse(self, 
               json_data: dict,
               contiunation_page:bool = False) -> list:

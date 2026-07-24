@@ -68,10 +68,17 @@ class playlist_retriever_:
 
                 for media in self.innertube_parser.parse(response, contiunation_page):
                     if media and count < self.maxresults:
-                        self.media_data_list.playlisttitles.append(media["title"])
-                        self.media_data_list.vid_url.append(media["url"])
-                        self.media_data_list.playlist_thumbnails.append(media["thumb"])
-                        self.media_data_list.playlist_channel.append(media["channel"])
+                        if (
+                            media["url"] not in [
+                                "https://www.youtube.com/playlist?list=WL",
+                                "https://www.youtube.com/playlist?list=LL",
+                            ]
+                            and page == playlist_type.PLAYLISTS 
+                        ) or (page != playlist_type.PLAYLISTS):
+                            self.media_data_list.playlisttitles.append(media["title"])
+                            self.media_data_list.vid_url.append(media["url"])
+                            self.media_data_list.playlist_thumbnails.append(media["thumb"])
+                            self.media_data_list.playlist_channel.append(media["channel"])
                         count += 1
 
                 continuation_token = self.innertube_parser.get_continuation_token()
@@ -86,35 +93,3 @@ class playlist_retriever_:
 
 
 
-if __name__ == "__main__":
-    import os
-    import sys
-
-    class _ConsoleMessageBox:
-        """Small stand-in for the GUI message box used by account_handle."""
-
-        def showerror_and_wait(self, title, message):
-            print(f"{title} ERROR: {message}", file=sys.stderr)
-
-        def showwarning(self, title, message):
-            print(f"{title} WARNING: {message}", file=sys.stderr)
-
-    def console_log(message, level="info"):
-        print(f"[{level}] {message}")
-
-    app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    account = account_handle(app_root, _ConsoleMessageBox(), console_log)
-    innertube = innertube_handle(account, console_log)
-    retriever = playlist_retriever(innertube, console_log)
-    # Keep the demo short. Increase this to exercise more continuation pages.
-    home = retriever.get_playlist_content(playlist_type.SUBSCRIPTIONS
-                                          ,playlist_id="PLg-S_KMDBWGfSi3uIGXbuh1Pd_9rNbsZw"
-                                          )
-
-    print(f"Retrieved {len(home.vid_url)} Home items")
-    for index, (title, url, channel) in enumerate(
-        zip(home.playlisttitles, home.vid_url, home.playlist_channel),
-        start=1,
-    ):
-        print(f"{index:>2}. {title} | {channel or 'Unknown channel'}")
-        print(f"    {url}")

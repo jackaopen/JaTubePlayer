@@ -1,15 +1,19 @@
 import time
+
 time1 = time.time()
+import asyncio
+import aiohttp
 import tkinter as tk
 from tkinter import ttk,filedialog
 from tkinter import *
 import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,win32gui
-from PIL import Image 
+from PIL import Image
 from random import shuffle
-from concurrent.futures import ThreadPoolExecutor
 from copy import *
 from datetime import datetime
+from typing import Literal
 import customtkinter as ctk
+from customtkinter import CTkImage
 import ctypes
 
 from utils.get_scaling import get_window_dpi
@@ -208,11 +212,11 @@ Playing video mode:
   3 = Chrome
   4 = Starred video (mixed mode — local or online, determined by URL schema)
 """
-playing_vid_info_dict = ''
 selected_song_number = None
 yt_dlp = None
 youtube = None
 user_playlists_name = []
+user_playlists_selected_name = ''
 load_thread_queue = queue.Queue()
 '''
 This accept a tuple (chosen_file,direct_url)
@@ -419,7 +423,6 @@ class Chrome_ext_server_ui_functions:
 
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
         
-        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
         ui_queue.put(lambda: modetextbox.configure(state="normal"))
         ui_queue.put(lambda: modetextbox.delete(0.0, tk.END))
         ui_queue.put(lambda: modetextbox.insert(tk.END, "Direct URL"))
@@ -470,6 +473,56 @@ class Chrome_ext_server_ui_functions:
             ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
 
 
+class AccountInfo:
+    def __init__(self):
+        self.account_name = ''
+        self.account_avator_url = '' 
+
+    async def _get_avator_pic(self)->CTkImage|None:
+        '''55
+        use aiohttp to get the avator pic and return a CTkImage object
+        '''
+        if self.account_avator_url != '':
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.account_avator_url) as response:
+                    imgdata = await response.read()
+                    img = Image.open(io.BytesIO(imgdata))
+                    img = img.resize(
+                        (int(35 * tkinter_scaling / 1.25), int(35 * tkinter_scaling / 1.25)),
+                        Image.LANCZOS
+                )
+                
+                return CTkImage(light_image=img, size=img.size)
+        else:
+            return None
+
+
+    def set_account_avator(self)->None:
+        '''
+        use self.account_avator_url to get the avator pic and set it to google_status_profile_pic_label
+        '''
+        from utils.parser import innertube_parser
+        payload = innertube_handler.preInit_buildPayload("home",
+                                                         use_matching_page=True)                                              
+        account_response = innertube_handler.get_innertube_response(payload=payload, 
+                                                 get_account=True)
+        parsed_account_info = innertube_parser().parse_account_info(account_response)
+        self.account_name, self.account_avator_url = parsed_account_info.get("name"), parsed_account_info.get("thumb")
+
+        if self.account_name != '' and self.account_avator_url != '':
+            try:
+                avator_pic = asyncio.run(self._get_avator_pic())
+
+                google_status_profile_pic_label.configure(image=avator_pic)
+                google_status_text.configure(state='normal')
+                google_status_text.delete(0.0, tk.END)
+                google_status_text.insert(tk.END, self.account_name)
+                google_status_text.configure(state='disabled')
+
+                
+            except Exception as e:
+                log_handle(content=f"Failed to get account avator: {e}")
+                self.account_avator_url = ''
 
 
         
@@ -532,7 +585,7 @@ def video_info_frame_main(mode:int):
 
 
 def setting_frame():
-    global setting_api_entry,maxresolutioncombobox,setting,setting_closed,init_playlist_combobox,subtitlecombobox
+    global maxresolutioncombobox,setting,setting_closed,init_playlist_combobox,subtitlecombobox
     try:
         if setting and setting.winfo_exists():
             setting.deiconify()
@@ -558,17 +611,16 @@ def setting_frame():
 
         def update_username_textbox(content="No login yet!"):
             #TODO
+            pass
 
        
         @check_internet
-        def google_login_setting(mode):
-            pass
-        #TODO
-            
-
+        def google_login_setting():
+            account_handler.login_refresh(0)
         def google_logout_setting():
-            
-        #TODO
+            account_handler.clear_login_data(cookie_only=True)
+        def deletesyskey():
+            account_handler.clear_login_data(cookie_only=False)
             
         @check_internet
         def get_resolution_setting():
@@ -737,7 +789,6 @@ def setting_frame():
 
 
         
-    
 
         def save_his_and_rec_option():
             if save_history.get() :
@@ -1279,7 +1330,7 @@ def setting_frame():
 
         google_title = ctk.CTkLabel(google_frame, text='  \u25b8 Google Account  \u00b7  API & Client Secret required', font=('Arial', 14, 'bold'), text_color='#FFB347', anchor='w')
         googlelogin_btn = ctk.CTkButton(google_frame, text='Login Google', width=200,
-                                         command=lambda:threading.Thread(daemon=True,target=lambda:google_login_setting(0)).start(),
+                                         command=lambda:threading.Thread(daemon=True,target=google_login_setting).start(),
                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
         googlelogout_btn = ctk.CTkButton(google_frame, text='Logout Google', width=200, command=google_logout_setting,
                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
@@ -1797,7 +1848,6 @@ def setting_frame():
 
         threading.Thread(daemon=True,target=lambda:root.after(200,init_quickstart_data)).start()
         threading.Thread(daemon=True,target=get_version_setting_thread).start()
-        threading.Thread(daemon=True,target=get_user_name).start()
         threading.Thread(daemon=True,target=get_hotkey_setting_thread).start()
         threading.Thread(daemon=True,target=setting_frame_listener).start()
 
@@ -2151,15 +2201,7 @@ def progressbar_hook(d):
     except:downloadhooktext.set(f'Downloading ... ')
 
 
-@check_internet
-def enterplaylist(event=None):
-    '''
-    The bth event
-    if there is no playlist selected, it will get the user playlists first
-    else it will set and enter the playlist selected and update the mode textbox , playlistID variable and get the youtube playlist videos
-   
-    '''
-    #TODO
+
 
 
 
@@ -2188,13 +2230,113 @@ def page_control(mode):
 
 
 @check_internet
-def get_user_playlists(mode):
-    #TODO
+def get_user_playlists():
+    '''
+    will get the user playlists and update the userplaylistcombobox with the playlist names
+    '''
+    global cookie,user_playlists_name,user_playlists_selected_name
+    if not account_handler.check_aes_key():
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Invalid AES key, please clear account data and restart the app'))
+        return
+    cookie = account_handler.get_cookie()
+    if cookie is None:
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please set your login first'))
+        return
 
+    def _get_user_playlists_thread():
+        global user_playlists_name,user_playlists_selected_name
+        Media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list, page=playlist_type.PLAYLISTS)
+        for playlist_dict in Media_list_page_controller.user_playlist_dict_list:
+            user_playlists_name.append(playlist_dict['name'])
+    
+    if (user_playlists_selected_name := userplaylistcombobox.get()) == '':
+
+        ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
+        user_playlists_name.clear()
+
+        thread = threading.Thread(target=_get_user_playlists_thread)
+        thread.start()
+        thread.join()
+
+        ui_queue.put(lambda: userplaylistcombobox.configure(values=user_playlists_name))
+        ui_queue.put(lambda: userplaylistcombobox.set(''))
+        ui_queue.put(lambda: userplaylistcombobox._open_dropdown_menu())
+
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
+        ui_queue.put(lambda: playlistlabel.configure(text='📁'))
+
+    else:
+        sel_idx = user_playlists_name.index(user_playlists_selected_name)
+        sel_url = Media_list_page_controller.user_playlist_dict_list[sel_idx]['url']
+        user_playlists_selected_id = sel_url.split('list=')[1]
+        get_youtube_playlists(user_playlists_selected_id,sel_idx)
+
+        
 
 @check_internet
-def get_youtube_playlists(playlistID = None):
-    #TODO
+def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
+                          sel_idx: int = 0):
+    '''
+    will get playlist video with the platlistID, or "sub" for user subscriptions, or "like" for user liked videos
+    '''
+    global cookie
+    if not account_handler.check_aes_key():
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Invalid AES key, please clear account data and restart the app'))
+        return
+    cookie = account_handler.get_cookie()
+    if cookie is None:
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please set your login first'))
+        return
+
+
+    global insert_treeview_quene,selected_song_number,playing_vid_mode,loadingplaylist,media_data_list,playlist_type
+    selected_song_number = None
+    playing_vid_mode = 0
+    loadingplaylist = True
+    log_handle(content=f"start to get playlist videos with playlistID: {playlistID}")
+
+    if playlistID == 'sub':
+        playlistname = 'Subscriptions'
+    elif playlistID == 'like':
+        playlistname = 'Liked Videos'
+    elif playlistID == 'home':
+        playlistname = 'Home'
+    else:
+        playlistname = Media_list_page_controller.user_playlist_dict_list[sel_idx]['name']
+
+
+    ui_queue.put(lambda: modetextbox.configure(state='normal'))
+    ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
+    ui_queue.put(lambda: modetextbox.insert(tk.END,f"Playlist\n{playlistname}"))
+    ui_queue.put(lambda: modetextbox.configure(state='disabled'))
+    ui_queue.put(lambda: page_num_label.configure(text=''))
+    try:
+        if playlistID == 'sub':
+            Media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list,
+                                                            page=playlist_type.SUBSCRIPTIONS)
+            media_data_list = Media_list_page_controller.media_data_list
+        elif playlistID == 'like':
+            Media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list,
+                                                            page=playlist_type.LIKED)
+            media_data_list = Media_list_page_controller.media_data_list
+        elif playlistID == 'home':
+            Media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list,
+                                                            page=playlist_type.HOME)
+            media_data_list = Media_list_page_controller.media_data_list
+        else:
+
+            Media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list,
+                                                            page=playlist_type.PLAYLIST,
+                                                            playlist_id=playlistID)
+            media_data_list = Media_list_page_controller.media_data_list
+    except Exception as e:
+        log_handle(content=f"Error while getting playlist videos: {e}")
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}',f'Error while getting playlist videos: {e}'))
+    finally:
+        loadingplaylist = False
+
+
 
 
 
@@ -2293,7 +2435,6 @@ def get_starred_vid(event=None):
         ui_queue.put(lambda: modetextbox.insert(tk.END,f"Starred Videos"))
         ui_queue.put(lambda: modetextbox.configure(state='disabled'))
         ui_queue.put(lambda: page_num_label.configure(text=''))
-        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
         
         loadingplaylist = False
@@ -2347,7 +2488,6 @@ def switch_starred_vid(event=None):
                 media_data_list.playlisttitles.pop(selected_song_number)
                 media_data_list.playlist_thumbnails.pop(selected_song_number)
                 media_data_list.playlist_channel.pop(selected_song_number)
-                ui_queue.put(lambda i=selected_song_number: playlisttreebox.delete(playlisttreebox.get_children()[i]))
             except Exception as e:
                 log_handle(content=str(e))
                 
@@ -3583,7 +3723,7 @@ def init_quick_startup(iter:int=0):
                 elif mode == 3:
                     load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
                 elif mode == 4:
-                    init_get_recommendation()
+                    get_youtube_playlists("home")
             else:
                 pass
 
@@ -3622,46 +3762,12 @@ def init_openwith_thread():
 
 
 
-def read_and_check_creditial():
-    global credentials
-    credentials = google_control.load_token_from_env()#better way to load token,since we cant force user to login at first time
 
 
 
 
 
 
-
-@check_internet
-def init_get_recommendation():
-    global cookies_dir,loadingplaylist,playing_vid_mode,media_data_list
-    if not loadingplaylist or loadingplaylist and messagebox.askokcancel(f'JaTubePlayer {ver}','Player is already loading, sure to load again?'):
-        loadingplaylist = True
-        playing_vid_mode = 0
-        ui_queue.put(lambda: playlisttreebox.delete(*playlisttreebox.get_children()))
-        time.sleep(1)
-        while not yt_dlp:
-            time.sleep(1)
-            log_handle(content='wating for dlp...')
-        ui_queue.put(lambda: modetextbox.configure(state='normal'))
-        ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
-        ui_queue.put(lambda: modetextbox.insert(tk.END,"Recommendation\n⏳Loading..."))
-        ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-        titles, urls, channels, thumbs = get_related_video(yt_dlp.YoutubeDL,current_dir,cookies_dir)
-        media_data_list.playlisttitles = titles
-        media_data_list.vid_url = urls
-        media_data_list.playlist_channel = channels
-        media_data_list.playlist_thumbnails = thumbs
-        zipped = list(zip(media_data_list.playlisttitles,media_data_list.vid_url,media_data_list.playlist_channel,media_data_list.playlist_thumbnails))
-        shuffle(zipped)
-        media_data_list.playlisttitles,media_data_list.vid_url,media_data_list.playlist_channel,media_data_list.playlist_thumbnails = map(list, zip(*zipped))
-        for i in range(len(media_data_list.playlisttitles)):
-            insert_treeview_quene.put((media_data_list.playlist_thumbnails[i],media_data_list.playlisttitles[i],media_data_list.playlist_channel[i]))
-        ui_queue.put(lambda: modetextbox.configure(state='normal'))
-        ui_queue.put(lambda: modetextbox.delete(1.0,tk.END))
-        ui_queue.put(lambda: modetextbox.insert(tk.END,"Recommendation"))
-        ui_queue.put(lambda: modetextbox.configure(state='disabled'))
-        loadingplaylist = False
 
 
 
@@ -3848,7 +3954,12 @@ def _init_dnd_on_root_thread():
 
 def _init_load_extra_objs():
     global dnd_handle,discord_presence,google_control,get_info_loader,star_vid_handle,thumbnail_loader,Media_list_page_controller
-    global account_handler,innertube_handler,playlist_retriever
+    global innertube_handler,playlist_retriever
+    global cookie,account_handler,account_info_handler
+
+    from account.Account import account_handle
+    account_info_handler = AccountInfo()
+
     discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
     get_info_loader = get_info_loader_(yt_dlp = lambda:yt_dlp,
                                       maxresolution = lambda: maxresolution.get(),
@@ -3871,11 +3982,12 @@ def _init_load_extra_objs():
                                        root=root)
 
     
-    account_handler = account_handle(current_dir=current_dir,
-                                    ctk_messagebox=messagebox,
-                                    log_handle=log_handle)
     
-
+    account_handler = account_handle(current_dir=current_dir,
+                                            ctk_messagebox=messagebox,
+                                            log_handle=log_handle,
+                                            account_info_handler=account_info_handler)
+            
     innertube_handler = innertube_handle(account_handle=account_handler,
                                          log_handle=log_handle)
     
@@ -3892,7 +4004,9 @@ def _init_load_extra_objs():
         thumbnail_loader=thumbnail_loader,
         page_num_label=page_num_label,
         load_thread_queue=load_thread_queue,
+        playlist_retriever=playlist_retriever
         )
+    
     
     
 
@@ -3953,12 +4067,12 @@ def _init_load_smtc_obj():
 
 def _start_up_import():
     """Import heavy modules sequentially with timing"""
-    global star_vid_handler,account_handle,innertube_handle,playlist_retriever_,playlist_type
+    global star_vid_handler,innertube_handle,playlist_retriever_,playlist_type
     global get_latest_player_version,get_latest_dlp_version
     import time
         
     t = time.time()
-    from account.Account import account_handle
+    
     log_handle(content=f"account: {time.time()-t:.3f}s")
 
     t = time.time()
@@ -3979,6 +4093,23 @@ def _start_up_import():
     log_handle(content=f"star_vid_handler: {time.time()-t:.3f}s")
 
     log_handle(content=f"Total import time: {time.time()-time1:.3f}s")
+
+
+
+def _init_process_account():
+    global cookie
+
+    
+    if os.path.exists(account_handler.cookie_dir):
+        ui_queue.put(lambda: ToastNotification().notify(app_id="JaTubePlayer",
+                                                        title=f'JaTubePlayer {ver}',
+                                                        msg='Refreshing login status, please wait...',
+                                                        duration='short',
+                                                        icon=icondir))
+        
+        account_info_handler.set_account_avator()
+        account_handler.rotate_cookie()
+        cookie = account_handler.get_cookie()
 
 
 
@@ -4036,7 +4167,6 @@ def _extra_startup_imports():
     log_handle(content=f"flask: {time.time()-t:.3f}s")
 
     if CONFIG["run_flask"]:_switch_local_server(0)
-    root.after(100, google_status_update)
 
     
 
@@ -4052,13 +4182,13 @@ def _start_up():
 
     _init_load_extra_objs()
     log_handle(content=f'extra obj fin')
-    
 
+    threading.Thread(target=_init_process_account,daemon=True).start()
+    log_handle(content=f'account fin') 
     
     log_handle(content=f'local host fin')
     
-    read_and_check_creditial()
-    log_handle(content=f'creditial fin')
+
 
     init_read_config()
     log_handle(content=f'config fin')
@@ -4084,7 +4214,6 @@ if __name__ == '__main__':
     root.after(850,lambda:threading.Thread(daemon = True,target=init_set_playertray).start())
     root.after(400,lambda:threading.Thread(daemon = True,target=full_screen_contorl_hover_thread).start())
     
-
     root.after(0,lambda:threading.Thread(daemon = True,target=_start_up).start())
 
     print("root", root.winfo_id())
@@ -4152,12 +4281,12 @@ userplaylistcombobox = ctk.CTkComboBox(header_frame, font=('Segoe UI', 13),
 userplaylistcombobox.place(relx=0.455, rely=0.17, relwidth=0.130, relheight=0.66)
 
 enter_playlist_btn = ctk.CTkButton(header_frame, text='▶ Enter', 
-                                   command=enterplaylist, fg_color='#FF6B35', hover_color='#FF8555',
+                                   command=get_user_playlists, fg_color='#FF6B35', hover_color='#FF8555',
                                    corner_radius=8, font=('Segoe UI', 12, 'bold'))
 enter_playlist_btn.place(relx=0.591, rely=0.17, relwidth=0.062, relheight=0.66)
 
 searchentry.bind("<Return>", youtube_search)
-userplaylistcombobox.bind("<Return>", enterplaylist)
+userplaylistcombobox.bind("<Return>", get_user_playlists)
 
 
 
@@ -4196,7 +4325,7 @@ separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
 # Google Profile Container - styled circular frame for profile picture
 
 
-google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='X', font=('Segoe UI', 14),
+google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 14),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
 google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center", relheigh = 0.85)
@@ -4226,12 +4355,7 @@ def discord_status_close():
         discord_status_text.configure(text_color='#777777')
     except:pass
 
-@check_internet_silent
-def google_status_update():
-    def _google_status_update():
-        #TODO
-    
-    threading.Thread(target=_google_status_update, daemon=True).start()
+
 
 
 
@@ -4288,7 +4412,7 @@ playselectedsong.place(relx=0.212, rely=0.54, relwidth=0.19, relheight=0.33)
 _src_w = 0.187
 _src_gap = 0.008
 recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='✨Recommed',
-                                    command=lambda: threading.Thread(daemon=True, target=init_get_recommendation).start(),
+                                    command=lambda: threading.Thread(daemon=True, target=lambda: get_youtube_playlists("home")).start(),
                                     fg_color='#2E2E2E', hover_color='#404040', corner_radius=6,
                                     font=('Segoe UI', 11), border_width=1, border_color='#444444')
 recommendation_btn.place(relx=0.020, rely=0.1, relwidth=_src_w, relheight=0.33)
@@ -4299,12 +4423,12 @@ load_star_btn = ctk.CTkButton(playlist_btn_frame, text='★ Star',
 load_star_btn.place(relx=0.020, rely=0.54, relwidth=_src_w, relheight=0.33)
 
 sub_btn = ctk.CTkButton(playlist_btn_frame, text='📺Subcription',
-                        command=lambda: get_sub_channel(0), fg_color='#2E2E2E', hover_color='#404040',
+                        command=lambda: get_youtube_playlists("sub"), fg_color='#2E2E2E', hover_color='#404040',
                         corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
 sub_btn.place(relx=0.020+(_src_w+_src_gap)*1, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 like_btn = ctk.CTkButton(playlist_btn_frame, text='❤ Like',
-                         command=lambda: get_liked_vid(0), fg_color='#2E2E2E', hover_color='#404040',
+                         command=lambda: get_youtube_playlists("like"), fg_color='#2E2E2E', hover_color='#404040',
                          corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
 like_btn.place(relx=0.020+(_src_w+_src_gap)*2, rely=0.1, relwidth=_src_w, relheight=0.33)
 

@@ -59,11 +59,19 @@ class MediaList_PageControl_:
         self.tree_view_queue = tree_view_queue
         self.log_handle = log_handle
         self.thumbnail_loader = thumbnail_loader
+        self.yt_playlist_retriever = playlist_retriever
+        
         self.page_num_label = page_num_label # for controling UI
 
         self.loading_page = False
+
+        self.user_playlist_dict = {"name":'',
+                                    "url":''}
+        self.user_playlist_dict_list = []
+
+
         
-        self.yt_playlist_retriever = playlist_retriever
+        
 
         self.load_thread_queue = load_thread_queue
 
@@ -98,7 +106,8 @@ class MediaList_PageControl_:
         '''
         Follow the page type to init and reload the media_data_list for youtube playlist, liked videos, subscriptions, recommend videos\n
         > IMPORTANT: PLEASE make sure the cookie and AES key are valid before calling this function, otherwise it will return without loading data\n
-
+        if page is playlist_type.PLAYLIST, the playlist_id must be provided, and the user_playlist_dict_list will be filled with the playlist content\n
+        if page is not playlist_type.PLAYLIST, the media_data_list will be filled with
         '''
                
         self.current_page = 1
@@ -109,11 +118,20 @@ class MediaList_PageControl_:
         if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() is False:return 
         if self.yt_playlist_retriever.innertube_handle.account_handle.get_cookie() is None: return
         
-        self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
+        if page != playlist_type.PLAYLISTS:
+            self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
+            self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+            self._insert_to_ui_queue()
 
-        self.total_page = (self.yt_playlist_retriever.total_playlist_count + 49) // 50
+        else:
+            self.user_playlist_dict_list.clear()
+            temp_mdl = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
+            for name,url in zip(temp_mdl.playlisttitles,temp_mdl.vid_url):
+                self.user_playlist_dict = {"name":name,
+                                           "url":url}
+                self.user_playlist_dict_list.append(self.user_playlist_dict)
 
-        self._insert_to_ui_queue()
+        
         self.log_handle(errtype='info', component='page_control',
                         content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
 

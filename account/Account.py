@@ -17,17 +17,18 @@ class account_handle:
     def __init__(self,
                  current_dir: str,
                  ctk_messagebox: ctk_messagebox,
-                 log_handle:object):
+                 log_handle:object,
+                 account_info_handler:object):
         
         self.current_dir = current_dir
         self.ctk_messagebox = ctk_messagebox
         self.log_handle = log_handle
+        self.account_info_handler = account_info_handler
 
-        self.account_dev_dir = os.path.join(self.current_dir, "account_dev")
         self.account_dir = os.path.join(self.current_dir, "account")
         self.user_data_dir = os.path.join(self.current_dir, "user_data")
-        self.project_path = os.path.join(self.account_dev_dir, "WebView2Host.csproj")
-        self.host_exe_path = os.path.join(self.account_dev_dir, "WebView2Host.exe")
+        self.project_path = os.path.join(self.account_dir, "WebView2Host.csproj")
+        self.host_exe_path = os.path.join(self.account_dir, "WebView2Host.exe")
 
         self.aes_key_path = os.path.join(self.user_data_dir, "AES_key.enc")
         self.cookie_dir = os.path.join(self.user_data_dir, "cookie_key.enc")
@@ -56,16 +57,15 @@ class account_handle:
             self.log_handle("Log reader thread is already running, skipping start.")
     
     def login_refresh(self,
-                      option:int)->None|tuple[str,str]:
+                      option:int)->bool:
         '''
         login, retrun 
         option: 0 = login, 1 = refresh
         '''
         try:
-            raw_account_info = None
             if option not in [0, 1]:
                 self.log_handle(f"Invalid option: {option}. Must be 0 (login) or 1 (refresh).", "error")
-                return None
+                return False
             
             if not os.path.exists(self.host_exe_path):
                 self.log_handle("WebView2 host not found")
@@ -73,7 +73,7 @@ class account_handle:
                     title="JaTubePlayer",
                     message=f" WebView2 host : {self.host_exe_path} not found!\n "
                 )
-                return None
+                return False   
             command = "login" if option == 0 else "refresh"
 
 
@@ -86,24 +86,15 @@ class account_handle:
             )
             self._start_process_log_reader(WV_host_result)
             
-            raw_account_info = WV_host_result.stdout.read().strip()
 
             WV_host_result.wait()
             self.process_log_reader_thread.join()  
+            self.account_info_handler.set_account_avator()
 
 
-            if raw_account_info:
-                    account_info = json.loads(raw_account_info.splitlines()[0])
-                    if (isinstance(account_info, list) and len(account_info) == 2 and
-                            all(isinstance(value, str) for value in account_info)):
-                        return tuple(account_info)
-                    self.log_handle(f"Unexpected output from WebView2 host: {raw_account_info}", "error")        
-            else:
-                self.log_handle("No output from WebView2 host")
-                return None
         except Exception as e:
-            self.log_handle(f"Failed to parse output from WebView2 host: {raw_account_info}. Error: {e}", "error")
-            return None
+            self.log_handle(f"Failed to parse output from WebView2 host: . Error: {e}", "error")
+            return False
         
     def get_cookie(self)->str|None:
         '''

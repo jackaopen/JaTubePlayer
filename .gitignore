@@ -32,7 +32,8 @@ temp_data/
 
 # WebView2 cookie test generated files
 *.exe
-account_dev/cookie_test/*
+account/bin/*
+account_dev/*
 account/obj/*
 profile/
 WebView2Host.exeafte
