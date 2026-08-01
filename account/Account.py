@@ -9,7 +9,7 @@ import win32crypt
 import pywintypes
 import threading
 
-
+from notification.wintoast_notify import ToastNotification
 
 
 
@@ -57,7 +57,8 @@ class account_handle:
             self.log_handle("Log reader thread is already running, skipping start.")
     
     def login_refresh(self,
-                      option:int)->bool:
+                      option:int,
+                      should_update_avator:bool=True)->bool:
         '''
         login, retrun 
         option: 0 = login, 1 = refresh
@@ -76,6 +77,11 @@ class account_handle:
                 return False   
             command = "login" if option == 0 else "refresh"
 
+            if command == "refresh" and os.path.exists(self.cookie_dir):
+                ToastNotification().notify(
+                    title="JaTubePlayer",
+                    msg="Refreshing login session...\nPlease wait.",
+                )                
 
             WV_host_result = subprocess.Popen(
                 [str(self.host_exe_path), str(self.current_dir), command],
@@ -89,7 +95,8 @@ class account_handle:
 
             WV_host_result.wait()
             self.process_log_reader_thread.join()  
-            self.account_info_handler.set_account_avator()
+            if should_update_avator and command == "refresh" or command == "login":
+                self.account_info_handler.set_account_avator()
 
 
         except Exception as e:
@@ -140,6 +147,7 @@ class account_handle:
         remove the cookie file and AES key file
         if cookie_only is True, only remove the cookie file
         '''
+        
         if os.path.exists(self.cookie_dir):
             os.remove(self.cookie_dir)
         if os.path.exists(self.aes_key_path) and not cookie_only:

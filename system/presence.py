@@ -17,6 +17,7 @@ class DiscordPresence():
 
         self.discord_status_run = discord_status_run
         self.discord_status_close = discord_status_close
+        self.discord_idle_presence_wording = "[Idling & Chillin' like a potato 🥔]"
 
 
         self.cmdqueue = queue.Queue()
@@ -85,7 +86,7 @@ class DiscordPresence():
                             self.is_enabled = True
                     except:pass 
                     try:
-                        self.update(song_title="",state="[Idling & Chillin' like a potato 🥔]")
+                        self.update(song_title="",state=self.discord_idle_presence_wording)
                         self.discord_status_run()
                     except:
                         self.discord_status_close()

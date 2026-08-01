@@ -23,7 +23,6 @@ class playlist_retriever_:
         
         self.innertube_handle = innertube_handle
         self.log_handle = log_handle
-        self.media_data_list = media_data_list_template()
         self.maxresults = 100
         self.innertube_parser = innertube_parser()
 
@@ -33,7 +32,7 @@ class playlist_retriever_:
         '''
         page: playlist_type Enum, specify which page to retrieve content from
         '''
-        self.media_data_list.clear()
+        media_data_list = media_data_list_template()
         count = 0
         continuation_token = None
         contiunation_page = False
@@ -50,12 +49,12 @@ class playlist_retriever_:
 
         
         try:
+            payload = self.innertube_handle.preInit_buildPayload(use_matching_page=True,
+                                                                    playlist_id=playlist_id,
+                                                                    page=page.value
+                                                                    )
+            
             while count < self.maxresults:
-                payload = self.innertube_handle.preInit_buildPayload(use_matching_page=True,
-                                                        continuation=continuation_token,
-                                                        playlist_id=playlist_id,
-                                                        page=page.value
-                                                        )
 
                 if payload is None:
                     self.log_handle(f"Failed to build payload for page '{page}'", "error")
@@ -75,10 +74,10 @@ class playlist_retriever_:
                             ]
                             and page == playlist_type.PLAYLISTS 
                         ) or (page != playlist_type.PLAYLISTS):
-                            self.media_data_list.playlisttitles.append(media["title"])
-                            self.media_data_list.vid_url.append(media["url"])
-                            self.media_data_list.playlist_thumbnails.append(media["thumb"])
-                            self.media_data_list.playlist_channel.append(media["channel"])
+                            media_data_list.playlisttitles.append(media["title"])
+                            media_data_list.vid_url.append(media["url"])
+                            media_data_list.playlist_thumbnails.append(media["thumb"])
+                            media_data_list.playlist_channel.append(media["channel"])
                         count += 1
 
                 continuation_token = self.innertube_parser.get_continuation_token()
@@ -86,7 +85,11 @@ class playlist_retriever_:
                 if not continuation_token:
                     self.log_handle(f"No more continuation token found for page '{page}'", "info")
                     break
-            return self.media_data_list
+                else:
+                    payload["continuation"] = continuation_token
+                    payload.pop("browseId", None) # Clear browseId when using continuation token
+
+            return media_data_list
         except Exception as e:
             self.log_handle(f"An error occurred while retrieving playlist content for page '{page}': {e}", "error")
             return None

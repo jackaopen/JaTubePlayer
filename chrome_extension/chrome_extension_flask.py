@@ -29,7 +29,7 @@ class ChromeExtensionServer:
         self.messagebox = messagebox
         self.ui_queue = ui_queue
         self.get_info_loader = get_info_loader
-
+        self.server_port = 5000  # Default port for the Flask server
         self.chrome_flaskapp = Flask(__name__)
         
         CORS(self.chrome_flaskapp, resources={r"/receive_url": {"origins": "chrome-extension://*"}})
@@ -59,10 +59,13 @@ class ChromeExtensionServer:
                 self.log_handle(f"Received URL from Chrome extension: {url} with action: {action}")
                 auth = request.headers.get("X-auth")
 
+                if auth != "Jatubeplayerextensionbyjackaopen":
+                    return "forbidden", 403
+                
                 if action == 'dir':
                     self.direct_url(url)
 
-
+                
 
                 elif action == 'star':
                     self.log_handle(content=f"chrome extension star video url: {url}")
@@ -117,15 +120,7 @@ class ChromeExtensionServer:
                             self.ui_queue.put(lambda: self.messagebox.showerror(f'JaTubePlayer ', f"Failed to add video to playlist.\nError: {e}"))
                     else:
                         self.ui_queue.put(lambda: self.messagebox.showinfo(f'JaTubePlayer ', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
-
-
-
-
-
-                if auth == "Jatubeplayerextensionbyjackaopen":
-                    return "ok", 200
-                else:
-                    return "forbidden", 403
+                return "ok", 200
             except Exception as e:
                 self.log_handle('Error receiving URL from Chrome extension: ' + str(e))
                 return "failed", 403
@@ -146,74 +141,15 @@ class ChromeExtensionServer:
             self.log_handle('shutdown() called but server is not running.')
 
     def run_flask_app(self, icondir: str = None):
-        self.server = make_server("127.0.0.1", 5000, self.chrome_flaskapp, threaded=True)
+        self.server = make_server("127.0.0.1", self.server_port, self.chrome_flaskapp, threaded=True)
         self.server.timeout = 1
         self.server.protocol_version = "HTTP/1.0"  # disables keep-alive
         ToastNotification().notify(
             title="JaTubePlayer",
-            msg="JaTubePlayer Chrome Extension Server Started\nRunning at http://127.0.0.1:5000",
+            msg="JaTubePlayer Chrome Extension Server Started\nRunning at http://127.0.0.1:" + str(self.server_port),
             duration='short',
             icon=icondir
         )
         self.log_handle(f"Chrome extension server started at {self.server}")
         self.server.serve_forever(poll_interval=0.5)
 
-
-
-'''
-if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
-            url = chrome_extension_flask.chrome_extension_add_to_end.split("&")[0]
-            log_handle(content=f"Adding video to playlist from chrome extension: {url}")
-            try:
-                modetitle = modetextbox.get("1.0", "end").strip()
-
-                ui_queue.put(lambda: modetextbox.configure(state="normal"))
-                if "[with added video]" not in modetitle:
-                    ui_queue.put(lambda mt=modetitle: (
-                        modetextbox.delete(1.0, tk.END),
-                        modetextbox.insert(tk.END, f"{mt} [with added video]")
-                    ))
-                ui_queue.put(lambda: modetextbox.configure(state="disabled"))
-
-
-                if playing_vid_mode == 3:
-                    playing_vid_mode = 0
-                    selected_song_number = None
-
-                ToastNotification().notify(app_id="JaTubePlayer", 
-                                            title=f'JaTubePlayer ', 
-                                            msg='Added video to playlist\nFetching data...', 
-                                            duration='short', 
-                                            icon=icondir)
-                _,info = get_info(loader=get_info_loader,          
-                                    target_url=url
-                )
-                log_handle(content = info['thumbnail'])
-
-                try:thumb = info['thumbnail']
-                except:thumb = None
-                
-                Media_list_page_controller.add_to_page_end(
-                    video_url=url,
-                    title=info['title'],
-                    channel=info['uploader'],
-                    thumbnail_url=thumb
-                )
-
-
-                ToastNotification().notify(app_id="JaTubePlayer",
-                                            title=f'JaTubePlayer ',
-                                            msg='Added video to playlist',
-                                            duration='short',
-                                            icon=icondir)
-            except Exception as e:
-                log_handle(content=f"Error adding video to playlist: {e}")
-                messagebox.showerror(f'JaTubePlayer ', f"Failed to add video to playlist.\nError: {e}")    
-            finally:
-                chrome_extension_flask.chrome_extension_add_to_end = None
-        else:
-            ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer ', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
-
-
-
-'''

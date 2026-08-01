@@ -17,7 +17,7 @@ file_deletion_queue = queue.Queue()
 
 def download_to_local(res:str,
                       mode:int,
-                      cookies_dir:str,
+                      cookie:str,
                       yt_dlp:object,
                       target_vid_url:str,
                       title:str,
@@ -133,8 +133,8 @@ def download_to_local(res:str,
                             'js-runtimes':f'deno:{deno_path}'    
     
                             }  
-                if cookies_dir:
-                    down_tdl_opt['cookiefile'] = cookies_dir 
+                if cookie:
+                    down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
                 with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
 
                 main_label.configure(state='normal')
@@ -163,8 +163,8 @@ def download_to_local(res:str,
                                 'logger': ytdlp_log_handle,
                                 'js-runtimes':f'deno:{deno_path}'
                                 }
-                    if cookies_dir:
-                        down_tdl_opt['cookiefile'] = cookies_dir 
+                    if cookie:
+                        down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
                     with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
 
                     
@@ -180,8 +180,8 @@ def download_to_local(res:str,
 
                                 }
                     
-                    if cookies_dir:
-                        down_tdl_opt['cookiefile'] = cookies_dir 
+                    if cookie:
+                        down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
                     with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
                     down_tdl_opt = {
                                 'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
@@ -191,8 +191,8 @@ def download_to_local(res:str,
                                 'logger': ytdlp_log_handle,
                                 'js-runtimes':f'deno:{deno_path}'
                                 }    
-                    if cookies_dir:
-                        down_tdl_opt['cookiefile'] = cookies_dir   
+                    if cookie:
+                        down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
                     if cancel_download.is_set():return
                     with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
                     vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
@@ -362,7 +362,7 @@ if __name__ == "__main__":
     download_to_local(
         res="1080",
         mode=1,  # Video + Audio
-        cookies_dir="",
+        cookie="",
         yt_dlp=yt_dlp,
         target_vid_url=test_url,
         playing_vid_mode=0,  # YouTube video mode

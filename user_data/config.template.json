@@ -26,11 +26,9 @@
         "cache_pause_wait": 3,
         "audio_wait_open":1
     },
-    "client_secret_path": "",
-    "cookie_path": "",
+    "ytdlp_use_cookie": false,
     "vercheck": false,
     "max_resolution": 1080,
-    "record_history": true,
     "auto_sub_refresh": true,
     "auto_like_refresh": true,
     "blur": true,

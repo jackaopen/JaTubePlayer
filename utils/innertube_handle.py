@@ -156,7 +156,6 @@ class innertube_handle:
     def preInit_buildPayload(self,
                         page:str,
                        use_matching_page:bool=False,
-                       continuation:str=None,
                        playlist_id:str=None,
                        refresh_retry:bool=False
 
@@ -184,14 +183,15 @@ class innertube_handle:
         response.raise_for_status()
         cfg = self._ytcfg(response.text)
         if cfg.get("LOGGED_IN") is False:
-            self.log_handle("refreshing cookie...")
-            self.account_handle.login_refresh(1)
-            if refresh_retry is False:
+            if not refresh_retry :
+                self.log_handle("refreshing cookie...")
+                self.account_handle.login_refresh(1,
+                                                should_update_avator=False)
+
                 return self.preInit_buildPayload(use_matching_page=use_matching_page, 
-                                             continuation=continuation, 
-                                             playlist_id=playlist_id, 
-                                             page=page,
-                                             refresh_retry=True)
+                                                playlist_id=playlist_id, 
+                                                page=page,
+                                                refresh_retry=True)
             else:
                 self.log_handle("Failed to refresh cookie, please check your account status.", "error")
                 return None
@@ -206,10 +206,8 @@ class innertube_handle:
             "gl": client.get("gl", cfg.get("GL", "US")),
         }}}
 
-        if continuation:
-            payload["continuation"] = continuation
-        else:
-            payload["browseId"] = browse_id
+
+        payload["browseId"] = browse_id
             
 
         self.cfg, self.version =  cfg, version
@@ -251,6 +249,5 @@ class innertube_handle:
             self.log_handle(f"Failed to retrieve innertube content for page '{payload.get('browseId', '_')}': {response.status_code} - {response.text}", "error")
             return None
         
-        print(response.text)
         return response.json()
 

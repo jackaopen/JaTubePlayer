@@ -37,3 +37,4 @@ account_dev/*
 account/obj/*
 profile/
 WebView2Host.exeafte
+tmp/*

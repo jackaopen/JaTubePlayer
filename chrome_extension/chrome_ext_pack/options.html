@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JaTubePlayer Extension Settings</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --background: #17181c;
+      --surface: #202126;
+      --surface-hover: #26282e;
+      --border: #34363d;
+      --text: #f1f1f3;
+      --muted: #9699a2;
+      --accent: #7c72e8;
+      --accent-hover: #8b82ef;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-width: 360px;
+      margin: 0;
+    }
+
+    body {
+      padding: 18px;
+      color: var(--text);
+      background: var(--background);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      overflow: hidden;
+    }
+
+    .logo img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .header-copy strong,
+    .header-copy span {
+      display: block;
+    }
+
+    .header-copy strong {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .header-copy span {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    main {
+      padding-top: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .description {
+      margin: 7px 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #15161a;
+    }
+
+    .input-group:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(124, 114, 232, 0.18);
+    }
+
+    .prefix {
+      padding-left: 11px;
+      color: #747781;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    input {
+      width: 100%;
+      min-width: 70px;
+      border: 0;
+      outline: 0;
+      padding: 11px 9px 11px 2px;
+      color: var(--text);
+      background: transparent;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 14px;
+    }
+
+    input[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      margin: 0;
+      -webkit-appearance: none;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 0 19px;
+      color: white;
+      background: var(--accent);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid #aaa3ff;
+      outline-offset: 2px;
+    }
+
+    #status {
+      margin: 10px 0 0;
+      padding: 8px 10px;
+      border: 1px solid currentColor;
+      border-radius: 7px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    #status:empty {
+      display: none;
+    }
+
+    .note {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-top: 16px;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .note svg {
+      flex: 0 0 auto;
+      width: 15px;
+      height: 15px;
+      margin-top: 1px;
+      color: #aaa3ff;
+    }
+
+    footer {
+      margin-top: 15px;
+      color: #686b74;
+      font-size: 11px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo">
+      <img src="jtp_icon.png" alt="">
+    </div>
+    <div class="header-copy">
+      <strong>JaTubePlayer</strong>
+      <span>Extension settings</span>
+    </div>
+  </header>
+
+  <main>
+    <h1>Connection</h1>
+    <p class="description">Set the port used by JaTubePlayer's local server.</p>
+
+    <form id="port-form">
+      <label for="port">Server port</label>
+      <div class="controls">
+        <div class="input-group">
+          <span class="prefix">localhost:</span>
+          <input
+            id="port"
+            name="port"
+            type="number"
+            min="1024"
+            max="65535"
+            inputmode="numeric"
+            autocomplete="on"
+            aria-describedby="status"
+            required
+          >
+        </div>
+        <button type="submit">Save</button>
+      </div>
+    </form>
+
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <div class="note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 11v5M12 8h.01"/>
+      </svg>
+      <span>The extension port must match the Chrome extension server port in JaTubePlayer.</span>
+    </div>
+  </main>
+
+  <footer>Stored locally in Chrome</footer>
+
+  <script src="options.js"></script>
+</body>
+</html>

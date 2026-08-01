@@ -1,5 +1,6 @@
-import os
+import time
 from loader.get_info_loader import get_info_loader_
+from utils.check_internet import *
 def _create_edl_url(video_url, audio_url, duration=None):
     """
     Creates an mpv EDL URL with correct duration syntax.
@@ -28,7 +29,7 @@ def _create_edl_url(video_url, audio_url, duration=None):
 
     return "edl://" + ";".join(parts)
 
-
+@check_internet
 def get_info(
              target_url:str,
              loader:get_info_loader_,
@@ -42,7 +43,9 @@ def get_info(
     maxres = loader.maxresolution
     deno_path = loader.deno_exe
     log_handler = loader.ytdlp_log_handle
-    cookie_path = loader.cookies_dir
+    cookie = loader.cookie
+    if cookie:
+        log_handler.info(f"Using cookie file ")
 
     fmt = (
     f"(bv*[height<={maxres}][protocol=https]+ba[protocol=https][ext=m4a])"
@@ -68,10 +71,6 @@ def get_info(
 
     }
     
-    if cookie_path:
-        ydl_opts['cookiefile'] =  cookie_path
-    log_handler.info(f'get_info called with {target_url}\n yt_dlp version: {yt_dlp.version}\n maxres: {maxres}\n cookie_path: {cookie_path}\n deno: {deno_path}')
-
     final_url = None
     vid_url = None
     audio_only_url = None
@@ -79,10 +78,28 @@ def get_info(
     if "youtube" in target_url:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                if cookie:
+                    scoped_cookie = "; ".join(
+                        f"{part.strip()}; Domain=.youtube.com; Path=/; Secure"
+                        for part in cookie.split(";") if "=" in part
+                    )
+                    ydl._load_cookies(scoped_cookie, autoscope=False)
                 info = ydl.extract_info(target_url)
+                
                 if not info:
                     log_handler.error(f'Failed to extract info for {target_url}')
                     return None, None
+
+
+                
+                available_time = max((fmt.get("available_at",0)
+                                     for fmt in info.get('requested_formats', [])),default=0)
+                wait_time = available_time - time.time()
+                if wait_time > 0:
+                    log_handler.info(f"Waiting for {wait_time:.2f} s till avail")
+                    time.sleep(wait_time)
+                
+
                 if info['live_status'] != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
                     if len(fmt) == 2:
@@ -90,8 +107,7 @@ def get_info(
                         audio_only_url = fmt[1]['url']
                         log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}, fmt {fmt[1].get('container','N/A')}")
                         final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
-
-                
+                        
                     else:
                         final_url = info['url']
                 else:
@@ -160,4 +176,64 @@ def get_info(
         except Exception as e:
             log_handler.error(f'get_info error: {e}')
             return None, None
+
+
+
+@check_internet
+def get_resoltion(target_url:str,
+                loader:get_info_loader_,
+                )->tuple[str,dict]:
+    
+    yt_dlp = loader.yt_dlp
+    deno_path = loader.deno_exe
+    log_handler = loader.ytdlp_log_handle
+    cookie = loader.cookie
+    try:
+        opt = {'quiet': True,
+               'skip_download':True,
+               "extract_flat": True,
+               'ignore_no_formats_error': True,
+               'logger': log_handler,
+               'js-runtimes':f'deno:{deno_path}' 
+               } 
+        with yt_dlp.YoutubeDL(opt) as ydl:
+            if cookie:
+                scoped_cookie = "; ".join(
+                    f"{part.strip()}; Domain=.youtube.com; Path=/; Secure"
+                    for part in cookie.split(";") if "=" in part
+                )
+                ydl._load_cookies(scoped_cookie, autoscope=False)
+            info = ydl.extract_info(target_url, download=False)
+            
+        res = []
+        for format_info in info['formats']:
+            # Check for video formats only
+            if format_info.get('vcodec', 'none') != 'none':
+                height = format_info.get('height')
+                if height and isinstance(height, int):
+                    res.append(str(height))
+                elif format_info.get('format_note'):
+                    # Parse resolution from format_note
+                    try:
+                        note = format_info.get('format_note', '')
+                        if 'p' in note:
+                            res_str = note.split('p')[0]
+                            if res_str.isdigit():
+                                res.append(str(res_str))
+                    except (ValueError, IndexError):
+                        continue
         
+        # Remove duplicates and sort
+        res = sorted(list(set(res)))
+        
+        # Return default if no resolutions found
+        if not res:
+            log_handler.info("No valid resolutions found, returning defaults")
+            return ["480", "720", "1080", "1440", "2160"]
+        
+        return res
+    except Exception as e:
+        log_handler.info(f"Error in get_resoltion: {e}")
+        # Return default resolutions on any error
+        return ["480", "720", "1080", "1440", "2160"]
+
