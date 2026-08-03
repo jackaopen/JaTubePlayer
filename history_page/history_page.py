@@ -43,7 +43,7 @@ class history_page:
                        current_playing_url:str, 
                        media_data:media_data_list_template,
                        media_type:int,
-                       playlistname:str):
+                       playlistname:str)->bool:
         
         for _ in range(self.current_index):
             self.history_list.pop()
@@ -71,6 +71,8 @@ class history_page:
                     f"{self._format_history_entry(history_dict_template)}"
                 ),
             )
+            return True
+        return False
 
     def read_history_backward(self)->dict|None:
         if self.current_index < len(self.history_list):

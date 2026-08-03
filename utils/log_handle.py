@@ -18,6 +18,9 @@ YTDLP_ERROR_MESSAGES = (
         (("no video formats found",), "No video formats were found"),
         (("unavailable",), "Video unavailable"),
         (("cookies are no longer valid",), "Your account cookies may be invalid or expired"),
+        (("premieres","premieres in",), "This is a premiere video, and it hasn't started yet"),
+        (("age-restricted",), "This video is age-restricted"),
+        (("geo-restricted",), "This video is geo-restricted"),
     )
 
 class log_handler_:

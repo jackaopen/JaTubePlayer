@@ -114,12 +114,23 @@ class MediaList_PageControl_:
         
 
     def _record_history(self,
-                        playlistname:str=None):
-        self.history_page_handler.record_history(current_playing_url=self._get_cur_playing_url(), 
+                        playlistname:str=None)->bool:
+        current_playing_url = ''
+        try:
+            current_playing_url = self._get_cur_playing_url()
+        except Exception as e:
+            self.log_handle(errtype='error', component='page_control/HPH',content=f'Failed to get current playing url: {e}')
+            
+        result = self.history_page_handler.record_history(current_playing_url=current_playing_url, 
                                                 media_data=self.media_data_list,
                                                 media_type=self.media_type,
                                                 playlistname=playlistname or self._get_cur_playlist_title())
-        self.log_handle(errtype='info', component='page_control/HPH',content=f'record hisory PLAYLIST{playlistname or self._get_cur_playlist_title()} ')
+        if result:
+            self.log_handle(errtype='info', component='page_control/HPH',content=f'record hisory PLAYLIST{playlistname or self._get_cur_playlist_title()} ')
+            return True
+        else:
+            self.log_handle(errtype='warning', component='page_control/HPH',content=f'Failed to record history PLAYLIST{playlistname or self._get_cur_playlist_title()} ')
+            return False
 
 
     def youtube_init_and_reload(self,
@@ -174,16 +185,12 @@ class MediaList_PageControl_:
 
     def star_video_init_and_reload(self,
                                     star_vid_handler_:star_vid_handler,
-                                    media_data_list:media_data_list_template,
                                     ):
         self._record_history()
         self.current_page = 1
-        self.media_data_list = media_data_list
         self.media_type = MediaType.STARRED_VIDEO
         
-        
-        media_data_list.set(star_vid_handler_.list_all())
-        self.media_data_list.set(media_data_list)
+        self.media_data_list = copy.deepcopy(star_vid_handler_.list_all())
         self.media_data_list.current_media_page = 1  
         self.media_data_list.current_playing_idx_num = -1
         

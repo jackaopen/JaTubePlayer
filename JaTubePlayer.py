@@ -420,17 +420,17 @@ class AccountInfo:
         use self.account_avator_url to get the avator pic and set it to google_status_profile_pic_label
         '''
         from utils.parser import innertube_parser
-        payload = innertube_handler.preInit_buildPayload("home",
-                                                         use_matching_page=True)                                              
-        account_response = innertube_handler.get_innertube_response(payload=payload, 
-                                                 get_account=True)
+        payload = account_innertube_handler.preInit_buildPayload("home",
+                                                                 use_matching_page=True)                                              
+        account_response = account_innertube_handler.get_innertube_response(payload=payload, 
+                                                                           get_account=True)
         parsed_account_info = innertube_parser().parse_account_info(account_response)
         self.account_name, self.account_avator_url = parsed_account_info.get("name"), parsed_account_info.get("thumb")
 
         if self.account_name != '' and self.account_avator_url != '':
             try:
                 avator_pic = asyncio.run(self._get_avator_pic())
-                google_status_profile_pic_label.configure(image=avator_pic)
+                ui_queue.put(lambda: google_status_profile_pic_label.configure(image=avator_pic))
                 insert_textbox(google_status_text, self.account_name)
             except Exception as e:
                 log_handle(content=f"Failed to get account avator: {e}")
@@ -440,7 +440,7 @@ class AccountInfo:
     def clear_account_info(self):
         self.account_name = ''
         self.account_avator_url = ''
-        google_status_profile_pic_label.configure(image=None)
+        ui_queue.put(lambda: google_status_profile_pic_label.configure(image=None))
         insert_textbox(google_status_text, "No login yet!")
                 
 def insert_textbox(widget:ctk.CTkTextbox,
@@ -2204,8 +2204,9 @@ def history_control(mode:int):
             
             if mode == 2:
                 if history_page_handler.current_index == 0:
-                    media_list_page_controller._record_history()
-                    history_page_handler.current_index = 1
+                    record_result = media_list_page_controller._record_history()
+                    if record_result:
+                        history_page_handler.current_index = 1
                 history_template_dict = history_page_handler.read_history_backward()
             else:
                 history_template_dict = history_page_handler.read_history_forward()
@@ -2235,6 +2236,9 @@ def history_control(mode:int):
                     else:
                         load_thread_queue.put((None,playing_url))
                 insert_textbox(playlist_name_textbox, history_template_dict.get("playlistname",""))
+                if playing_url in media_data_list.vid_url:
+                    global selected_song_number
+                    selected_song_number = media_data_list.vid_url.index(playing_url)
         except Exception as e:
             log_handle(f"Error in _history_thread: {e}")
         finally:
@@ -2409,8 +2413,7 @@ def get_starred_vid(event=None):
         loadingplaylist = False
                 
         media_list_page_controller.star_video_init_and_reload(
-            star_vid_handle,
-            media_data_list)
+            star_vid_handle)
         media_data_list = media_list_page_controller.media_data_list
             
 
@@ -3843,7 +3846,7 @@ def _init_dnd_on_root_thread():
 def _init_load_extra_objs():
     global dnd_handle,discord_presence,google_control,get_info_loader,star_vid_handle,thumbnail_loader,media_list_page_controller
     global innertube_handler,playlist_retriever
-    global account_handler,account_info_handler,history_page_handler
+    global account_handler,account_info_handler,history_page_handler,account_innertube_handler
     global CONFIG
 
 
@@ -3887,6 +3890,8 @@ def _init_load_extra_objs():
             
     innertube_handler = innertube_handle(account_handle=account_handler,
                                          log_handle=log_handle)
+    account_innertube_handler = innertube_handle(account_handle=account_handler,
+                                                 log_handle=log_handle)
     
     playlist_retriever = playlist_retriever_(innertube_handle=innertube_handler,
                                              log_handle=log_handle)
