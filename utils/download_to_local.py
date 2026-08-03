@@ -233,12 +233,12 @@ def download_to_local(res:str,
                 icon = icondir)
         except yt_dlp.utils.DownloadCancelled:
             ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download cancelled : {better_name}', duration='short', icon=icondir)
-        except Exception as e:
-            print(e)
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{e}', duration='short', icon=icondir)
         except yt_dlp.utils.DownloadError as de:
             print(de)
             ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{de}', duration='short', icon=icondir)
+        except Exception as e:
+            print(e)
+            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{e}', duration='short', icon=icondir)
 
         time.sleep(1)
         try:is_downloading.set(False)
@@ -333,50 +333,3 @@ def download_to_local(res:str,
 
     downloadthread.start()           
 
-
-if __name__ == "__main__":
-    import yt_dlp
-    import yt_dlp.version
-    import ffmpeg
-    import logging
-    class ytdlp_log_handler():
-        def debug(self, msg):print(msg)
-        def info(self, msg):print(msg)
-        def warning(self, msg):print(msg)
-        def error(self, msg):print(msg)
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-    
-    # Create main window
-    test_root = ctk.CTk()
-    test_root.withdraw()  # Hide main window for test
-    
-    # Test parameters
-    test_url = "https://www.youtube.com/watch?v=Xc9Y7Dw3ffw8"
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    print(yt_dlp.version.__version__)
-
-    
-    # Test with video download (mode=1)
-    download_to_local(
-        res="1080",
-        mode=1,  # Video + Audio
-        cookie="",
-        yt_dlp=yt_dlp,
-        target_vid_url=test_url,
-        playing_vid_mode=0,  # YouTube video mode
-        target_playlisttitle="Test Download",
-        current_dir=current_dir,
-        icondir="",
-        title="Test Video",
-        ver="Test",
-        chrome_extension_url="",
-        root=test_root,
-        ffmpeg=ffmpeg,
-        ytdlp_log_handle=ytdlp_log_handler(),
-        is_downloading=BooleanVar(value=False)
-    )
-    
-    test_root.mainloop()
-    

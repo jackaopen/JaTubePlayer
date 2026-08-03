@@ -168,14 +168,15 @@ class innertube_handle:
         will refresh cookie if not logged in, and retry once
         '''
         cookie = self.account_handle.get_cookie()
+        if not cookie:
+            self.log_handle("No cookie found, please login first." )
+            return None
         
         if use_matching_page:
             browse_id, referer = self._build_refer_and_browse_id(page, playlist_id)
-        
         else:
             referer = f"{self.ORIGIN}/"
 
-        
         response = self.request_session.get(referer, 
                                             headers=self._get_header(0, cookie, referer), 
                                             timeout=20)
@@ -185,13 +186,16 @@ class innertube_handle:
         if cfg.get("LOGGED_IN") is False:
             if not refresh_retry :
                 self.log_handle("refreshing cookie...")
-                self.account_handle.login_refresh(1,
-                                                should_update_avator=False)
+                if self.account_handle.login_refresh(1,
+                                                should_update_avator=False):
 
-                return self.preInit_buildPayload(use_matching_page=use_matching_page, 
-                                                playlist_id=playlist_id, 
-                                                page=page,
-                                                refresh_retry=True)
+                    return self.preInit_buildPayload(use_matching_page=use_matching_page, 
+                                                    playlist_id=playlist_id, 
+                                                    page=page,
+                                                    refresh_retry=True)
+                else:
+                    self.log_handle("Failed to refresh cookie, please check your account status.", "error")
+                    return None
             else:
                 self.log_handle("Failed to refresh cookie, please check your account status.", "error")
                 return None
@@ -250,4 +254,14 @@ class innertube_handle:
             return None
         
         return response.json()
-
+    def clear_header(self)->None:
+        '''
+        clear the innertube header and payload\n
+        mainly on logout
+        '''
+        self.cfg = None
+        self.version = None
+        self.referer = None
+        self.browse_id = None
+        self.innertube_api_key = None
+        self.api_headers = None

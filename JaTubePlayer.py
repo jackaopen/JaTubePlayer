@@ -421,7 +421,11 @@ class AccountInfo:
         '''
         from utils.parser import innertube_parser
         payload = account_innertube_handler.preInit_buildPayload("home",
-                                                                 use_matching_page=True)                                              
+                                                                 use_matching_page=True)         
+        if not payload:
+            messagebox.showerror(f'JaTubePlayer {ver}', "Failed to build payload for account info. Please check the log for more details.")
+            log_handle("Failed to build payload for account info", "error")
+            return                                     
         account_response = account_innertube_handler.get_innertube_response(payload=payload, 
                                                                            get_account=True)
         parsed_account_info = innertube_parser().parse_account_info(account_response)
@@ -540,14 +544,25 @@ def setting_frame():
        
         @check_internet
         def google_login_setting():
-            account_handler.login_refresh(0)
+            if not account_handler.login_refresh(0):
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to login, please check the log for more details'))
+                return
         def google_logout_setting():
-            account_handler.clear_login_data(cookie_only=True)
+            if not account_handler.clear_login_data(cookie_only=True):
+                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
+                return
             account_info_handler.clear_account_info()
+            innertube_handler.clear_header()
+            account_innertube_handler.clear_header()
+
         def deletesyskey():
             if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including cookies and AES key\nAre you sure?'):
-                account_handler.clear_login_data(cookie_only=False)
+                if not account_handler.clear_login_data(cookie_only=False):
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
+                    return
                 account_info_handler.clear_account_info()
+                innertube_handler.clear_header()
+                account_innertube_handler.clear_header()
             
         @check_internet
         def get_resolution_setting():
@@ -870,7 +885,7 @@ def setting_frame():
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Invalid AES key, please clear account data and restart the app'))
                 return
                 
-            if account_handler.get_cookie() is None:
+            if account_handler.check_cookie_exist() == False:
                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please set your login first'))
                 return
             ui_queue.put(lambda: init_get_playlist_btn.configure(state='disabled'))
@@ -2264,7 +2279,7 @@ def get_user_playlists():
         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Invalid AES key, please clear account data and restart the app'))
         return
     
-    if account_handler.get_cookie() is None:
+    if account_handler.check_cookie_exist() == False:
         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please set your login first'))
         return
 
@@ -2307,7 +2322,7 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
     if not account_handler.check_aes_key():
         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Invalid AES key, please clear account data and restart the app'))
         return
-    if account_handler.get_cookie() is None:
+    if account_handler.check_cookie_exist() == False:
         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please set your login first'))
         return
 
@@ -4016,7 +4031,6 @@ def _init_process_account():
                                                         icon=icondir))
         
         account_info_handler.set_account_avator()
-        account_handler.rotate_cookie()
 
 
 

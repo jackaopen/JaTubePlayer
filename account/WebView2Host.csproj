@@ -7,7 +7,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>..\_internal\jtp.ico</ApplicationIcon>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
 
@@ -31,11 +31,5 @@
     <ItemGroup>
       <Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
     </ItemGroup>
-    
-  <ItemGroup>
-    <EmbeddedResource
-      Include="..\_internal\account_info.js"
-      LogicalName="JaTubePlayer.AccountInfo.js" />
-  </ItemGroup>
   </Target>
 </Project>

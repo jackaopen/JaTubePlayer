@@ -162,8 +162,8 @@ class MediaList_PageControl_:
             self._prev_playlist_name = self._get_cur_playlist_title()
             self.log_handle(errtype='info', component='page_control',content=f'record prev playlist name={self._prev_playlist_name}')
     
-        if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() is False:return 
-        if self.yt_playlist_retriever.innertube_handle.account_handle.get_cookie() is None: return
+        if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() == False:return 
+        if self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False: return
         
         if page != playlist_type.PLAYLISTS:
             self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)

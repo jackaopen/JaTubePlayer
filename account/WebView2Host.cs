@@ -114,8 +114,7 @@ public class CookieForm : Form
     string SuccessPagePath = "";
     string WaitingPagePath = "";
     string ErrorPagePath = "";
-    readonly string scriptPath;
-    readonly string EncryptedCookieKeyPath = ""; // pending: Python will decide this path later.
+    readonly string EncryptedCookieKeyPath = ""; 
     readonly string mode;
     readonly string keyPath = "";
     readonly WebView2 view = new WebView2 { Dock = DockStyle.Fill };
@@ -134,10 +133,7 @@ public class CookieForm : Form
     public CookieForm(string rootDir, string mode)
     {
         
-        
-
         profileDir = Path.Combine(rootDir, "account", "profile");
-        scriptPath = Path.Combine(rootDir, "_internal", "account_info.js");
         keyPath = Path.Combine(rootDir, "user_data", "AES_key.enc");
 
         EncryptedCookieKeyPath = Path.Combine(rootDir, "user_data", "cookie_key.enc");
@@ -152,6 +148,7 @@ public class CookieForm : Form
         Width = mode == "process" ? 560 : 1100;
         Height = mode == "process" ? 360 : 760;
         Controls.Add(view);
+        Environment.ExitCode = 1;
         if (mode == "refresh")
         {
             Opacity = 0.0;
@@ -277,7 +274,6 @@ public class CookieForm : Form
             if (Helper.YoutubeHost(url))
             {
                 Helper.Log("hiding window");
-                
                 await CheckCookies();
             }
         };
@@ -288,7 +284,6 @@ public class CookieForm : Form
         };
         view.CoreWebView2.Navigate(mode == "refresh" ? YoutubeUrl : LogoutUrl);
     }
-
 
 
     public async Task NavigateAsync(string path)
@@ -342,7 +337,9 @@ public class CookieForm : Form
             if (Helper.YoutubeHost(url))
             {
                 await CheckCookies();
-                if (done)Close();
+                if (done){
+                    Close();
+                    }
             }
         };
 
@@ -374,7 +371,9 @@ public class CookieForm : Form
                 if (mode!="refresh"){   
                     await waitingForm.NavigateAsync(ErrorPagePath);}
                 else{
-                    Close();}
+                    Show();
+                    await NavigateAsync(ErrorPagePath);
+                    }
                 return;
                 
             }
@@ -384,17 +383,34 @@ public class CookieForm : Form
             
             var cookies = await view.CoreWebView2.CookieManager.GetCookiesAsync(YoutubeUrl);
             
-            EncryptCookies(cookies);
+            bool encrypt_result = EncryptCookies(cookies);
             cookies.Clear();
+            
+            if (encrypt_result)
+            {
+                done = true;
+                showingSuccess = true;
+                Environment.ExitCode = 0;
+            
+                if (mode != "refresh"){
+                    Helper.Log("loading success page");
+                    await waitingForm.NavigateAsync(SuccessPagePath);
+                }
+            }
+            else
+            {
+                Helper.Log("loading err page");
+                if (mode == "refresh")
+                {
+                    
+                    Show();
+                    await NavigateAsync(ErrorPagePath);
 
-            done = true;
-            
-            
-            showingSuccess = true;
-            
-            if (mode != "refresh"){
-                Helper.Log("loading success page");
-                await waitingForm.NavigateAsync(SuccessPagePath);
+                }
+                else
+                {
+                    await waitingForm.NavigateAsync(ErrorPagePath);
+                }
             }
 
 
@@ -426,12 +442,17 @@ public class CookieForm : Form
     
 
 
-    void EncryptCookies(IReadOnlyList<CoreWebView2Cookie> cookies)
+    bool EncryptCookies(IReadOnlyList<CoreWebView2Cookie> cookies)
     {   
-        Directory.CreateDirectory(Path.GetDirectoryName(EncryptedCookieKeyPath));
+        byte[]? AesKey = null;
+        byte[]? cookieinbyte = null;
+        byte[]? Encrypted = null;
+        byte[]? EncryptedByte = null;
+        try{
+            Directory.CreateDirectory(Path.GetDirectoryName(EncryptedCookieKeyPath));
 
-        byte[] encryptedKey = File.ReadAllBytes(keyPath);
-        byte[] AesKey = ProtectedData.Unprotect(
+            byte[] encryptedKey = File.ReadAllBytes(keyPath);
+            AesKey = ProtectedData.Unprotect(
               encryptedKey,
               optionalEntropy: null,
               scope: DataProtectionScope.CurrentUser
@@ -442,28 +463,43 @@ public class CookieForm : Form
         }
 
         string cookieHeader = Helper.BuildCookieHeader(cookies);
-        byte[] cookieinbyte = Encoding.UTF8.GetBytes(cookieHeader);
+        cookieinbyte = Encoding.UTF8.GetBytes(cookieHeader);
 
 
         byte[] nonce = RandomNumberGenerator.GetBytes(12);
-        byte[] Encrypted = new byte[cookieinbyte.Length];
+        Encrypted = new byte[cookieinbyte.Length];
         byte[] tag = new byte[16];
 
         using AesGcm aes = new AesGcm(AesKey, 16);
         aes.Encrypt(nonce, cookieinbyte, Encrypted, tag);
 
-        byte[] EncryptedByte = new byte[nonce.Length + tag.Length + Encrypted.Length];
+        EncryptedByte = new byte[nonce.Length + tag.Length + Encrypted.Length];
 
         Buffer.BlockCopy(nonce, 0, EncryptedByte, 0, nonce.Length);
         Buffer.BlockCopy(tag, 0, EncryptedByte, nonce.Length, tag.Length);
         Buffer.BlockCopy(Encrypted, 0, EncryptedByte, nonce.Length + tag.Length, Encrypted.Length);
 
         File.WriteAllBytes(EncryptedCookieKeyPath, EncryptedByte);
+        return true;
+        }
+        catch(Exception err){
+            Helper.Log(err.ToString());
+            return false;
+        }
+        finally
+        {
+            if (AesKey is not null)
+                CryptographicOperations.ZeroMemory(AesKey);
 
-        CryptographicOperations.ZeroMemory(AesKey);
-        CryptographicOperations.ZeroMemory(cookieinbyte);
-        CryptographicOperations.ZeroMemory(Encrypted);
-        CryptographicOperations.ZeroMemory(EncryptedByte);
+            if (cookieinbyte is not null)
+                CryptographicOperations.ZeroMemory(cookieinbyte);
+
+            if (Encrypted is not null)
+                CryptographicOperations.ZeroMemory(Encrypted);
+
+            if (EncryptedByte is not null)
+                CryptographicOperations.ZeroMemory(EncryptedByte);
+        }
             
         
     }

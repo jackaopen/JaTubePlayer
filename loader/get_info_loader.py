@@ -17,7 +17,8 @@ class get_info_loader_:
                  deno_exe:object,
                  ytdlp_log_handle:object,
                  cookie:Callable[[], str],
-                 config_dir:str):
+                 config_dir:str,
+                 ):
         
         self._yt_dlp = yt_dlp
         self._maxresolution = maxresolution

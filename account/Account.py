@@ -33,9 +33,10 @@ class account_handle:
         self.aes_key_path = os.path.join(self.user_data_dir, "AES_key.enc")
         self.cookie_dir = os.path.join(self.user_data_dir, "cookie_key.enc")
 
-
+        self._encfile_lock = threading.Lock()
         self.check_and_create_aes_key()
         self.process_log_reader_thread = None
+        
     
     def _process_log_reader(self, process:subprocess.Popen):
         '''
@@ -62,7 +63,15 @@ class account_handle:
         '''
         login, retrun 
         option: 0 = login, 1 = refresh
+        should_update_avator: if True, update the account avator after refresh, for login, it will always update the avator
         '''
+        if not self._encfile_lock.acquire(blocking=False):
+            self.ctk_messagebox.showerror_and_wait(
+                title="JaTubePlayer",
+                message="Another login/refresh operation is in progress. Please wait."
+            )
+            return False
+            
         try:
             if option not in [0, 1]:
                 self.log_handle(f"Invalid option: {option}. Must be 0 (login) or 1 (refresh).", "error")
@@ -93,65 +102,119 @@ class account_handle:
             self._start_process_log_reader(WV_host_result)
             
 
-            WV_host_result.wait()
+            exit_code = WV_host_result.wait()
             self.process_log_reader_thread.join()  
+            if exit_code != 0:
+                self.log_handle(f"WebView2 host exited with code {exit_code}","error")
+                self.ctk_messagebox.showerror_and_wait(
+                    title="JaTubePlayer",
+                    message=f"WebView2 host exited with code {exit_code}\nPlease check the log for more details."
+                )
+                return False
+            
             if should_update_avator and command == "refresh" or command == "login":
                 self.account_info_handler.set_account_avator()
-
+            return True
 
         except Exception as e:
-            self.log_handle(f"Failed to parse output from WebView2 host: . Error: {e}", "error")
+            self.ctk_messagebox.showerror_and_wait(
+                title="JaTubePlayer",
+                message=f"Failed to {command} login: {e}"
+            )
+            self.log_handle(f"Failed to {command} login: {e}", "error")
             return False
+        finally:
+            self._encfile_lock.release()
+        
         
     def get_cookie(self)->str|None:
         '''
         get the cookie from the cookie file
         return the cookie string
         '''
+        
+        if not self.check_cookie_exist():
+            return None
+        if not self._encfile_lock.acquire(blocking=False):
+            self.ctk_messagebox.showerror_and_wait(
+                title="JaTubePlayer",
+                message="Another login/refresh operation is in progress. Please wait."
+            )
+            return None
+        try:
 
+            with open(self.aes_key_path, "rb") as f:
+                bolb = f.read()
+                
+                aeskey = win32crypt.CryptUnprotectData(bolb)[1]
+
+                with open(self.cookie_dir, "rb") as f:
+                    bolb = f.read()
+                    nonce = bolb[:12]
+                    tag = bolb[12:28]
+                    ciphertext = bolb[28:]
+                cipher = AES.new(aeskey, AES.MODE_GCM, nonce=nonce)
+
+                # Decrypt the ciphertext and verify its authenticity using the tag
+                cookie = cipher.decrypt_and_verify(ciphertext, tag)
+                return cookie.decode("utf-8")
+        except Exception as e:
+            self.ctk_messagebox.showerror_and_wait(
+                title="JaTubePlayer",
+                message=(f"Failed to retrieve cookie: {e}"
+                         "\nPlease try to login again.")
+            )
+            self.log_handle(f"Failed to retrieve cookie: {e}", "error")
+            return None
+        finally:
+            self._encfile_lock.release()
+
+    def check_cookie_exist(self)->bool:
+        '''
+        check if the cookie file exists
+        '''
         if not os.path.exists(self.aes_key_path):
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"AES key file : {self.aes_key_path} not found!\n "
             )
-            return None
-        
+            return False
+                
         if not os.path.exists(self.cookie_dir):
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"Cookie file : {self.cookie_dir} not found!\n "
             )
-            return None
-        
-
-        with open(self.aes_key_path, "rb") as f:
-            bolb = f.read()
-            
-            aeskey = win32crypt.CryptUnprotectData(bolb)[1]
-
-            with open(self.cookie_dir, "rb") as f:
-                bolb = f.read()
-                nonce = bolb[:12]
-                tag = bolb[12:28]
-                ciphertext = bolb[28:]
-            cipher = AES.new(aeskey, AES.MODE_GCM, nonce=nonce)
-
-            # Decrypt the ciphertext and verify its authenticity using the tag
-            cookie = cipher.decrypt_and_verify(ciphertext, tag)
-            return cookie.decode("utf-8")
-        
+            return False
+        return True
 
     def clear_login_data(self,
-                         cookie_only:bool=False):
+                         cookie_only:bool=False)->bool:
         '''
         remove the cookie file and AES key file
         if cookie_only is True, only remove the cookie file
         '''
-        
-        if os.path.exists(self.cookie_dir):
-            os.remove(self.cookie_dir)
-        if os.path.exists(self.aes_key_path) and not cookie_only:
-            os.remove(self.aes_key_path)
+        if not self._encfile_lock.acquire(blocking=False):
+            self.ctk_messagebox.showerror_and_wait(
+                title="JaTubePlayer",
+                message="Another login/refresh operation is in progress. Please wait."
+            )
+            return False
+        try:
+            if os.path.exists(self.cookie_dir):
+                os.remove(self.cookie_dir)
+            if os.path.exists(self.aes_key_path) and not cookie_only:
+                os.remove(self.aes_key_path)
+            return True
+        except Exception as e:
+            self.ctk_messagebox.showerror_and_wait(
+                title="JaTubePlayer",
+                message=f"Failed to clear login data: {e}"
+            )
+            self.log_handle(f"Failed to clear login data: {e}", "error")
+            return False
+        finally:
+            self._encfile_lock.release()
 
 
     def _create_AES_key(self):
@@ -215,39 +278,13 @@ class account_handle:
                 self.ctk_messagebox.showerror_and_wait(
                     title="JaTubePlayer",
                     message="The AES key is invalid. A new one will be created.\nAlso, the login state will be cleared, please login again afterward!")
-                self.clear_login_data()
+                if not self.clear_login_data():
+                    self.ctk_messagebox.showerror_and_wait(
+                        title="JaTubePlayer",
+                        message="Failed to clear login data. Please check the log for more details.")
+                    return
                 self._create_AES_key()
         else:
             self.ctk_messagebox.showwarning(title="JaTubePlayer",
                 message="The AES key seems to be missing, recreate one will also delete the stored cookie , please login again afterward!")
             self._create_AES_key()
-
-    def _encrypt_cookie(self, cookie:str):
-        '''
-        encrypt the cookie with AES GCM and store it in the user_data directory.
-        '''
-        if not os.path.exists(self.aes_key_path):
-            self.ctk_messagebox.showerror_and_wait(
-                title="JaTubePlayer",
-                message=f"AES key file : {self.aes_key_path} not found!\n "
-            )
-            return None
-        
-        with open(self.aes_key_path, "rb") as f:
-            bolb = f.read()
-            aeskey = win32crypt.CryptUnprotectData(bolb)[1]
-            cipher = AES.new(aeskey, AES.MODE_GCM,nonce=get_random_bytes(12))
-            ciphertext, tag = cipher.encrypt_and_digest(cookie.encode("utf-8"))
-            with open(self.cookie_dir, "wb") as f:
-                f.write(cipher.nonce + tag + ciphertext)
-
-    def rotate_cookie(self):
-        '''
-        remove the cookie file and re-login
-        '''
-        cookie = self.get_cookie()
-        if not cookie:return
-
-        self.clear_login_data()
-        self._create_AES_key()
-        self._encrypt_cookie(cookie)
