@@ -26,6 +26,12 @@
         "cache_pause_wait": 3,
         "audio_wait_open":1
     },
+    "max_result_count": {
+        "Recommendations": 300,
+        "sub": 300,
+        "search": 200,
+        "like": 5000
+    },
     "ytdlp_use_cookie": false,
     "vercheck": false,
     "max_resolution": 1080,

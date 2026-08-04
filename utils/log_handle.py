@@ -21,6 +21,7 @@ YTDLP_ERROR_MESSAGES = (
         (("premieres","premieres in",), "This is a premiere video, and it hasn't started yet"),
         (("age-restricted",), "This video is age-restricted"),
         (("geo-restricted",), "This video is geo-restricted"),
+        (("unable to download",), "Unable to download video\ncheck the log for more details"),
     )
 
 class log_handler_:

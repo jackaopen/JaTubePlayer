@@ -1,38 +1,24 @@
-from winotify import Notification, audio , Notifier,Registry
-import time
-
+from win11toast import notify as show_toast
 class ToastNotification:
-    def __init__(self):pass
-    def notify(self,
-               
-               title: str,
-               msg: str,
-               app_id: str="JaTubePlayer",
-               duration: str = 'short',
-               icon: str = ""):
-        '''
-        icon cant be None, it must be a string, if you don't want to use an icon, just set it to an empty string.
-        '''
+    def notify(
+        self,
+        title: str,
+        msg: str,
+        app_id: str = "Jackaopen.JaTubePlayer",
+        duration: str = "short",
+        icon: str = "",
+    ):
         try:
-            self.toast = Notification(
-                app_id="JaTubePlayer",
-                title=title,
-                msg=msg,
+            show_toast(
+                title,
+                msg,
+                app_id=app_id,
                 duration=duration,
-                icon=icon
+                icon={
+                    "src": icon,
+                    "placement": "appLogoOverride",
+                } if icon else None,
+                audio="ms-winsoundevent:Notification.Reminder",
             )
-            self.toast.set_audio(audio.Reminder, loop=False)
-            self.toast.show()
         except Exception as e:
             print(f"Error showing notification: {e}")
-
-
-if __name__ == "__main__":
-    @Notifier(Registry(app_id="k")).register_callback()
-    def hi():
-        print("Action button clicked!")
-    
-    ToastNotification().notify_with_actions( title='JaTubePlayer', msg='...', launch=hi)
-
-
-    

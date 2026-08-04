@@ -23,8 +23,11 @@ class playlist_retriever_:
         
         self.innertube_handle = innertube_handle
         self.log_handle = log_handle
-        self.maxresults = 100
         self.innertube_parser = innertube_parser()
+
+        self.maxresults_recommendation = "100"
+        self.maxresults_sub = "100"
+        self.maxresults_like = "100"
 
     def get_playlist_content(self, 
                              page: playlist_type, 
@@ -41,10 +44,15 @@ class playlist_retriever_:
             self.log_handle(f"Page '{page}' is not supported", "error")
             return None
         else:
-            if page in [playlist_type.HOME, playlist_type.SUBSCRIPTIONS, playlist_type.HISTORY]: 
-                self.maxresults = 100
-            else: 
-                self.maxresults = 5000
+            match page:
+                case playlist_type.HOME:
+                    maxresults = self.maxresults_recommendation
+                case playlist_type.SUBSCRIPTIONS:
+                    maxresults = self.maxresults_sub
+                case playlist_type.LIKED:
+                    maxresults = self.maxresults_like
+                case _:
+                    maxresults = "5000"
 
 
         
@@ -54,7 +62,7 @@ class playlist_retriever_:
                                                                     page=page.value
                                                                     )
             
-            while count < self.maxresults:
+            while count < int(maxresults):
 
                 if payload is None:
                     self.log_handle(f"Failed to build payload for page '{page}'", "error")
@@ -66,7 +74,7 @@ class playlist_retriever_:
                     break
 
                 for media in self.innertube_parser.parse(response, contiunation_page):
-                    if media and count < self.maxresults:
+                    if media and count < int(maxresults):
                         if (
                             media["url"] not in [
                                 "https://www.youtube.com/playlist?list=WL",
@@ -90,8 +98,8 @@ class playlist_retriever_:
                     payload.pop("browseId", None) # Clear browseId when using continuation token
 
             return media_data_list
-        except Exception as e:
-            self.log_handle(f"An error occurred while retrieving playlist content for page '{page}': {e}", "error")
+        except Exception as err:
+            self.log_handle(f"An error occurred while retrieving playlist content for page '{page}': {err}", "error")
             return None
 
 

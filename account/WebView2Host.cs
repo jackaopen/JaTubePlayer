@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -20,82 +18,6 @@ static class Program
         Application.Run(new CookieForm(args[0], args[1]));
     }
     
-}
-
-
-
-public class Helper
-{
-    public static string BuildCookieHeader(IReadOnlyList<CoreWebView2Cookie> cookies)
-    {
-        StringBuilder builder = new StringBuilder();
-
-        foreach (CoreWebView2Cookie cookie in cookies)
-        {
-            if (builder.Length > 0)
-            {
-                builder.Append("; ");
-            }
-
-            builder.Append(cookie.Name);
-            builder.Append('=');
-            builder.Append(cookie.Value);
-        }
-
-        return builder.ToString();
-    }
-
-    public static bool HasInfo(string json)
-    {
-        try
-        {
-            string[] values = JsonSerializer.Deserialize<string[]>(json);
-            return values?.Length == 2 &&
-                !String.IsNullOrWhiteSpace(values[0]) &&
-                !String.IsNullOrWhiteSpace(values[1]);
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-
-
-    public static bool Allowed(string url) => YoutubeHost(url) || AccountHost(url) || SuccessPage(url);
-
-
-    public static bool YoutubeHost(string url)
-    {
-        string host = Host(url);
-        return host == "youtube.com" || host == "www.youtube.com" ;
-    }
-
-    public static bool AccountHost(string url)
-    {
-        string host = Host(url);
-        return host == "accounts.google.com" || host == "accounts.youtube.com";
-    }
-
-    public static bool SuccessPage(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
-        uri.IsFile &&
-        (uri.LocalPath.EndsWith("google_login_suc_red_page.html", StringComparison.OrdinalIgnoreCase)||
-        uri.LocalPath.EndsWith("google_login_waiting_page.html", StringComparison.OrdinalIgnoreCase)||
-        uri.LocalPath.EndsWith("google_login_err_screen.html",StringComparison.OrdinalIgnoreCase));
-
-
-    static string Host(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri uri) ? uri.Host.ToLowerInvariant() : "";
-
-    public static string LeftPartialToPath(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri uri) ? uri.GetLeftPart(UriPartial.Path) : "";
-
-    public static void Log(string message)
-    {
-        Console.Error.WriteLine("[wv2] " + message);
-        Console.Error.Flush();
-    }
 }
 
 
@@ -155,6 +77,7 @@ public class CookieForm : Form
         }
         if(mode=="login"){Shown += async (sender, args) => await EnsureStartedAsync();}
         else if (mode=="refresh"){Shown += async (sender, args) => await refresh();}
+        
 
         
         if (mode == "login") {
@@ -282,15 +205,22 @@ public class CookieForm : Form
             Helper.Log("window close requested");
             Close();
         };
-        view.CoreWebView2.Navigate(mode == "refresh" ? YoutubeUrl : LogoutUrl);
+        
+        switch (mode)
+        {
+            case "login":
+                view.CoreWebView2.Navigate(LogoutUrl);
+                break;
+            
+            case "refresh":
+                view.CoreWebView2.Navigate(YoutubeUrl);
+                break;
+
+        }
     }
 
 
-    public async Task NavigateAsync(string path)
-    {
-        await EnsureStartedAsync();
-        view.CoreWebView2.Navigate(new Uri(path).AbsoluteUri);
-    }
+    
 
     async Task refresh()
 
@@ -346,11 +276,11 @@ public class CookieForm : Form
         view.CoreWebView2.Navigate(YoutubeUrl);
     }
 
-
-
-
-
-
+    public async Task NavigateAsync(string path)
+    {
+        await EnsureStartedAsync();
+        view.CoreWebView2.Navigate(new Uri(path).AbsoluteUri);
+    }
 
     async Task CheckCookies()
     {

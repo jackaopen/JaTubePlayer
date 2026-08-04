@@ -1,16 +1,26 @@
 import time
+_TimeStartImport = time.time()
 
-time1 = time.time()
 import asyncio
 import aiohttp
 import tkinter as tk
 from tkinter import ttk,filedialog
 from tkinter import *
-import os,re,ffmpeg,io,json,sys,sv_ttk,threading,webbrowser,sys,time,math,random,queue,win32gui
+import os
+import ffmpeg
+import io
+import json
+import sys
+import sv_ttk
+import threading
+import webbrowser
+import sys
+import time
+import math
+import queue
+import win32gui
 from PIL import Image
-from random import shuffle
 from copy import *
-from datetime import datetime
 from typing import Literal
 import customtkinter as ctk
 from customtkinter import CTkImage
@@ -176,6 +186,10 @@ subtitle_urllist = []
 subtitle_selection_idx = tk.IntVar()
 subtitle_selection_idx.set(0)
 
+max_search_result_count = tk.StringVar()
+max_recommendation_result_count = tk.StringVar()
+max_sub_result_count = tk.StringVar()
+max_like_result_count = tk.StringVar()
 
 
 # ==== UI 控制變數 ====
@@ -186,6 +200,7 @@ fullscreenwithconsole = tk.BooleanVar()
 maxresolution = tk.IntVar()
 selected_song_title = tk.StringVar()
 downloadhooktext = tk.StringVar()
+
 info = None
 with Image.open(icondir) as title_icon_source:
     title_icon_image = title_icon_source.copy()
@@ -1274,6 +1289,61 @@ def setting_frame():
             CONFIG['ytdlp_use_cookie'] = ytdlp_use_cookie.get()
             save_config()
 
+        def save_max_result_count_setting(event=None):
+            previous_values = CONFIG.get("max_result_count", {})
+            err = False
+
+            try:
+                recommendation_value = int(recommendation_result_count_entry.get().strip())
+                subscription_value = int(subscription_result_count_entry.get().strip())
+                search_value = int(search_result_count_entry.get().strip())
+                liked_video_value = int(liked_video_result_count_entry.get().strip())
+            except (ValueError, tk.TclError):
+                messagebox.showerror(f'JaTubePlayer {ver}', 'Max result counts must be whole numbers')
+                log_handle(content="Invalid max result count input type, reverting to previous values")
+                err = True
+            else:
+                if recommendation_value not in range(10, 301):
+                    messagebox.showerror(f'JaTubePlayer {ver}','Recommendations result count must be between 10 and 300')
+                    err = True
+                elif subscription_value not in range(10, 301):
+                    messagebox.showerror(f'JaTubePlayer {ver}','Subscriptions result count must be between 10 and 300')
+                    err = True
+                elif search_value not in range(10, 151):
+                    messagebox.showerror(f'JaTubePlayer {ver}','Search result count must be between 10 and 150')
+                    err = True
+                elif liked_video_value not in range(10, 5001):
+                    messagebox.showerror(f'JaTubePlayer {ver}','Liked videos result count must be between 10 and 5000')
+                    err = True
+
+            if err:
+                new_values = previous_values
+                max_recommendation_result_count.set(previous_values.get("Recommendations", 100))
+                max_sub_result_count.set(previous_values.get("sub", 100))
+                max_search_result_count.set(previous_values.get("search", 100))
+                max_like_result_count.set(previous_values.get("like", 5000))
+                log_handle(content="Invalid max result count input, reverting to previous values")
+            else:
+                max_recommendation_result_count.set(recommendation_value)
+                max_sub_result_count.set(subscription_value)
+                max_search_result_count.set(search_value)
+                max_like_result_count.set(liked_video_value)
+                new_values = {
+                    "Recommendations": recommendation_value,
+                    "sub": subscription_value,
+                    "search": search_value,
+                    "like": liked_video_value,
+                }
+
+            CONFIG["max_result_count"] = new_values
+            save_config()
+
+            playlist_retriever.maxresults_like = new_values["like"]
+            playlist_retriever.maxresults_sub = new_values["sub"]
+            playlist_retriever.maxresults_recommendation = new_values["Recommendations"]
+            media_list_page_controller.max_search_result_count = new_values["search"]
+
+
 
         player_tab = setting_tab.add("Advanced Player setting")
         account_playlist_tab = setting_tab.add("Account & Playlist")
@@ -1290,6 +1360,17 @@ def setting_frame():
         '''
         account_playlist_tab.grid_columnconfigure(0, weight=1)
         account_playlist_tab.grid_columnconfigure(1, weight=1)
+        account_playlist_tab.grid_rowconfigure(0, weight=1)
+
+        account_playlist_scroll_frame = ctk.CTkScrollableFrame(
+            account_playlist_tab,
+            width=680,
+            height=400,
+            fg_color='#242424',
+        )
+        account_playlist_scroll_frame.grid(row=0, column=0, columnspan=2, sticky='nsew')
+        account_playlist_scroll_frame.grid_columnconfigure(0, weight=1)
+        account_playlist_scroll_frame.grid_columnconfigure(1, weight=1)
 
         player_tab.grid_columnconfigure(0, weight=1)
         player_tab.grid_columnconfigure(1, weight=1)
@@ -1311,58 +1392,128 @@ def setting_frame():
 
 
         # ══════════ Account & Playlist — Card-style sections ══════════
-        youtube_data_frame = ctk.CTkFrame(account_playlist_tab, fg_color='#2B2B2B', corner_radius=8)
+        youtube_data_frame = ctk.CTkFrame(account_playlist_scroll_frame, fg_color='#2B2B2B', corner_radius=8)
         youtube_data_frame.grid_columnconfigure(0, weight=1)
         youtube_data_frame.grid_columnconfigure(1, weight=1)
         
-        google_account_frame = ctk.CTkFrame(account_playlist_tab, fg_color='#2B2B2B', corner_radius=8)
+        google_account_frame = ctk.CTkFrame(account_playlist_scroll_frame, fg_color='#2B2B2B', corner_radius=8)
         google_account_frame.grid_columnconfigure(0, weight=1)
         google_account_frame.grid_columnconfigure(1, weight=1)
         google_account_frame.grid_columnconfigure(2, weight=1)
         
         # YouTube Data Section
         youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
-        
-        
         updateuserplaylists_btn = ctk.CTkButton(youtube_data_frame, text='Update Playlists', width=160, command=updateplaylists,
                                                  text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+
+        result_count_separator = ctk.CTkFrame(youtube_data_frame, height=1, fg_color='#4A4A4A')
+        result_count_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 Maximum Results', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
+        result_count_note = ctk.CTkLabel(
+            youtube_data_frame,
+            text='NOTE: Recommendations/subscriptions: 10–300  •  Search: 10-150 •  Liked videos: 10–5,000.\n'
+                 'press [Enter] to apply.',
+            height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+            corner_radius=6, anchor='w', justify='left', wraplength=610)
+
+        result_count_controls_frame = ctk.CTkFrame(youtube_data_frame, fg_color='transparent')
+
+        #register lambda to tcl/tk interpreter
+        result_count_integer_validation = (
+            root.register(lambda value: value == '' or (value.isascii() and value.isdigit())),
+            '%P',
+        )
+        recommendation_result_count_label = ctk.CTkLabel(
+            result_count_controls_frame, text='Recommendations', font=('Arial', 12), text_color='#B0B0B0')
         
+        recommendation_result_count_entry = ctk.CTkEntry(
+            result_count_controls_frame, width=130, height=28,
+            textvariable=max_recommendation_result_count, justify='center',
+            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            validate='key', validatecommand=result_count_integer_validation)
+
+        subscription_result_count_label = ctk.CTkLabel(
+            result_count_controls_frame, text='Subscriptions', font=('Arial', 12), text_color='#B0B0B0')
+        subscription_result_count_entry = ctk.CTkEntry(
+            result_count_controls_frame, width=130, height=28,
+            textvariable=max_sub_result_count, justify='center',
+            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            validate='key', validatecommand=result_count_integer_validation)
+
+        search_result_count_label = ctk.CTkLabel(
+            result_count_controls_frame, text='Search', font=('Arial', 12), text_color='#B0B0B0')
+        search_result_count_entry = ctk.CTkEntry(
+            result_count_controls_frame, width=130, height=28,
+            textvariable=max_search_result_count, justify='center',
+            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            validate='key', validatecommand=result_count_integer_validation)
+
+        liked_video_result_count_label = ctk.CTkLabel(
+            result_count_controls_frame, text='Liked videos', font=('Arial', 12), text_color='#B0B0B0')
+        liked_video_result_count_entry = ctk.CTkEntry(
+            result_count_controls_frame, width=130, height=28,
+            textvariable=max_like_result_count, justify='center',
+            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            validate='key', validatecommand=result_count_integer_validation)
+
+        recommendation_result_count_entry.bind('<FocusOut>', save_max_result_count_setting)
+        subscription_result_count_entry.bind('<FocusOut>', save_max_result_count_setting)
+        search_result_count_entry.bind('<FocusOut>', save_max_result_count_setting)
+        liked_video_result_count_entry.bind('<FocusOut>', save_max_result_count_setting)
+        recommendation_result_count_entry.bind('<Return>', lambda event: setting.focus_set())
+        subscription_result_count_entry.bind('<Return>', lambda event: setting.focus_set())
+        search_result_count_entry.bind('<Return>', lambda event: setting.focus_set())
+        liked_video_result_count_entry.bind('<Return>', lambda event: setting.focus_set())
+
+        recommendation_result_count_label.grid(row=0, column=0, padx=5, pady=(2, 2))
+        subscription_result_count_label.grid(row=0, column=1, padx=5, pady=(2, 2))
+        search_result_count_label.grid(row=0, column=2, padx=5, pady=(2, 2))
+        liked_video_result_count_label.grid(row=0, column=3, padx=5, pady=(2, 2))
+
+        recommendation_result_count_entry.grid(row=1, column=0, padx=5, pady=(0, 10))
+        subscription_result_count_entry.grid(row=1, column=1, padx=5, pady=(0, 10))
+        search_result_count_entry.grid(row=1, column=2, padx=5, pady=(0, 10))
+        liked_video_result_count_entry.grid(row=1, column=3, padx=5, pady=(0, 10))
 
         # Playlist Item Removal Section
-        playlist_remove_frame = ctk.CTkFrame(account_playlist_tab, fg_color='#2B2B2B', corner_radius=8)
+        playlist_remove_frame = ctk.CTkFrame(account_playlist_scroll_frame, fg_color='#2B2B2B', corner_radius=8)
         playlist_remove_frame.grid_columnconfigure(0, weight=1)
         playlist_remove_frame.grid_columnconfigure(1, weight=1)
 
         playlist_remove_title = ctk.CTkLabel(playlist_remove_frame, text='  \u25b8 Remove from Playlist', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
         playlist_remove_btn = ctk.CTkButton(playlist_remove_frame, text='Remove Selected', width=160,
                                              command=remove_selected_from_playlist_setting,
-                                             text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+                                             text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         playlist_remove_note = ctk.CTkLabel(playlist_remove_frame,
-                                             text='Note: Removing an item only clears it from the current playlist view\nand does not affect the original source (YouTube, local folder, etc.).',
-                                             font=('Arial', 13), text_color="#9A9999", anchor='w', justify='left')
+                                             text='NOTE: Removing an item only clears it from the current playlist view.\n'
+                                                  'It does not affect the original source (YouTube, local folder, etc.).',
+                                             height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+                                             corner_radius=6, anchor='w', justify='left', wraplength=610)
 
         # ── Google Account Card ──
-        google_title = ctk.CTkLabel(google_account_frame, text='  \u25b8 Google Account  \u00b7', font=('Arial', 14, 'bold'), text_color='#FFB347', anchor='w')
+        google_title = ctk.CTkLabel(google_account_frame, text='  \u25b8 Google Account', font=('Arial', 14, 'bold'), text_color='#FFB347', anchor='w')
         googlelogin_btn = ctk.CTkButton(google_account_frame, text='Login Google', width=200,
                                          command=lambda:threading.Thread(daemon=True,target=google_login_setting).start(),
-                                         text_color='white', font=('Arial', 13, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
+                                         text_color='white', font=('Arial', 13, 'bold'), fg_color='#3E62DC', hover_color='#4A70F0')
         googlelogout_btn = ctk.CTkButton(google_account_frame, text='Logout Google', width=200, command=google_logout_setting,
                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         deletesyskey_btn = ctk.CTkButton(google_account_frame, text='Delete System Key', width=200, command=deletesyskey,
-                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+                                          text_color='#D98C8C', font=('Arial', 13, 'bold'),
+                                          fg_color='#3A3A3A', hover_color='#4A3030',
+                                          border_width=2, border_color='#8A4A4A')
         ytdlp_use_cookie_checkbtn = ctk.CTkCheckBox(google_account_frame, text='Use account cookie with yt-dlp',
                                                     variable=ytdlp_use_cookie, command=setting_switch_ytdlp_use_cookie,
                                                     fg_color='#3A3A3A', hover_color='#505050',
                                                     text_color='#C8C8C8', font=('Arial', 12))
         ytdlp_use_cookie_note = ctk.CTkLabel(
             google_account_frame,
-            text='Note: Using account cookies may occasionally add a short wait and slightly increase\n'
+            text='NOTE: Using account cookies may occasionally add a short wait and slightly increase\n'
                  'the chance of temporary account access restrictions.',
-            font=('Arial', 11), text_color='#8F8F8F', anchor='w', justify='left')
+            height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+            corner_radius=6, anchor='w', justify='left', wraplength=610)
 
-        google_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
-        ytdlp_use_cookie_checkbtn.grid(row=1, column=0, padx=(24, 8), pady=6, columnspan=3, sticky="w")
-        ytdlp_use_cookie_note.grid(row=2, column=0, padx=(48, 8), pady=(0, 4), columnspan=3, sticky="w")
+        google_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky='w')
+        ytdlp_use_cookie_checkbtn.grid(row=1, column=0, padx=(24, 8), pady=6, columnspan=3, sticky='w')
+        ytdlp_use_cookie_note.grid(row=2, column=0, padx=16, pady=(0, 8), columnspan=3, sticky='ew')
         googlelogin_btn.grid(row=3, column=0, padx=(24, 4), pady=(6, 12))
         googlelogout_btn.grid(row=3, column=1, padx=4, pady=(6, 12))
         deletesyskey_btn.grid(row=3, column=2, padx=(4, 24), pady=(6, 12))
@@ -1421,7 +1572,9 @@ def setting_frame():
         # Download Action
         downloadselectedsong = ctk.CTkButton(download_tab, text='Download Selected Video', width=400,
                                               command=lambda:threading.Thread(daemon=True,target=download_to_loacl_setting).start(),
-                                              text_color='white', font=('Arial', 14, 'bold'), fg_color='#2E7D32', hover_color='#388E3C', corner_radius=8)
+                                              text_color='#86C98A', font=('Arial', 14, 'bold'),
+                                              fg_color='#3A3A3A', hover_color='#314735', corner_radius=8,
+                                              border_width=2, border_color='#4F8A55')
         downloadhooklabel = ctk.CTkLabel(download_tab, font=('Arial', 12), textvariable=downloadhooktext, text_color='#80C8E0')
 
 
@@ -1537,7 +1690,7 @@ def setting_frame():
         blurbtn = ctk.CTkCheckBox(advanced_frame, text='Acrylic blur effect', variable=blur_window,
                                    fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
         mpvlogbtn = ctk.CTkButton(advanced_frame, text='Show MPV Log', width=160, command=log_handler.log_handle_frame.show_mpv_log,
-                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3E62DC', hover_color='#4A70F0')
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading', width=160, command=set_force_stop_loading,
                                                 text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache,
@@ -1555,11 +1708,11 @@ def setting_frame():
                                                    text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # ══════════ External Services — Separate cards ══════════
-        external_services_scrollable_frame = ctk.CTkScrollableFrame(external_services_tab, width=680, height=400, fg_color='#242424')
-        external_services_scrollable_frame.grid_columnconfigure(0, weight=1)
-        external_services_scrollable_frame.grid(row=0, column=0, sticky="nsew")
+        external_services_frame = ctk.CTkFrame(external_services_tab, fg_color='#242424', corner_radius=0)
+        external_services_frame.grid_columnconfigure(0, weight=1)
+        external_services_frame.grid(row=0, column=0, sticky="nsew")
 
-        chrome_extension_frame = ctk.CTkFrame(external_services_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
+        chrome_extension_frame = ctk.CTkFrame(external_services_frame, fg_color='#2B2B2B', corner_radius=8)
         chrome_extension_frame.grid_columnconfigure(0, weight=0)
         chrome_extension_frame.grid_columnconfigure(1, weight=1)
         chrome_extension_frame.grid_columnconfigure(2, weight=0)
@@ -1573,7 +1726,7 @@ def setting_frame():
                                                        command=save_chrome_extension_port_setting,
                                                        text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
-        discord_presence_frame = ctk.CTkFrame(external_services_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
+        discord_presence_frame = ctk.CTkFrame(external_services_frame, fg_color='#2B2B2B', corner_radius=8)
         discord_presence_frame.grid_columnconfigure(0, weight=0)
         discord_presence_frame.grid_columnconfigure(1, weight=1)
         discord_presence_frame.grid_columnconfigure(2, weight=0)
@@ -1611,7 +1764,9 @@ def setting_frame():
                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         auto_update_ytdlp_btn = ctk.CTkButton(ytdlp_frame, text='Update', width=120,
                                                command=lambda:threading.Thread(daemon=True,target=update_ytdlp).start(),
-                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#2E7D32', hover_color='#388E3C')
+                                               text_color='#86C98A', font=('Arial', 13, 'bold'),
+                                               fg_color='#3A3A3A', hover_color='#314735',
+                                               border_width=2, border_color='#4F8A55')
 
         # JaTubePlayer Section
         player_title = ctk.CTkLabel(player_frame, text='  \u25b8 JaTubePlayer', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
@@ -1665,7 +1820,9 @@ def setting_frame():
         hotkey_set_keymem_startlisten_btn = ctk.CTkButton(hotkey_set_keymem_frame, text='Set Hotkey', width=160, command=set_keymem_setting_thread,
                                                             text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         hotkey_set_keymem_set_default_btn = ctk.CTkButton(hotkey_set_keymem_frame, text='Reset All to Default', width=160, command=set_keymem_default_setting,
-                                                            text_color='white', font=('Arial', 13, 'bold'), fg_color='#B30C00', hover_color='#A52A2A')
+                                                            text_color='#D98C8C', font=('Arial', 13, 'bold'),
+                                                            fg_color='#3A3A3A', hover_color='#4A3030',
+                                                            border_width=2, border_color='#8A4A4A')
 
         hotkey_playback_frame_title = ctk.CTkLabel(hotkey_playback_frame, text='  \u25b8 Playback', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
         hotkey_mode_frame_title = ctk.CTkLabel(hotkey_mode_frame, text='  \u25b8 Playback Mode', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
@@ -1858,16 +2015,23 @@ def setting_frame():
         insert_textbox(download_path_textbox, download_path.get())
         
         # ══════════ Layout: Account & Playlist Tab ══════════
-        youtube_data_frame.grid(row=0, column=0, columnspan=2, padx=16, pady=(10, 4), sticky="ew")
-        youtube_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        updateuserplaylists_btn.grid(row=3, column=0, columnspan=2, padx=(24, 8), pady=(5, 12), sticky="w")
+        youtube_data_frame.grid(row=0, column=0, columnspan=2, padx=16, pady=(10, 4), sticky='ew')
+        youtube_title.grid(row=0, column=0, columnspan=4, padx=8, pady=(10, 6), sticky='w')
+        updateuserplaylists_btn.grid(row=1, column=0, columnspan=4, padx=(24, 8), pady=(5, 12), sticky='w')
+        result_count_separator.grid(row=2, column=0, columnspan=4, padx=12, pady=(2, 6), sticky='ew')
+        result_count_title.grid(row=3, column=0, columnspan=4, padx=8, pady=(2, 6), sticky='w')
+        result_count_controls_frame.grid(row=4, column=0, columnspan=4, pady=(0, 2))
+        result_count_note.grid(row=5, column=0, columnspan=4, padx=16, pady=(2, 12), sticky='ew')
         
-        google_account_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        google_account_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky='ew')
 
-        playlist_remove_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
-        playlist_remove_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        playlist_remove_btn.grid(row=1, column=0, padx=(24, 8), pady=(5, 4), sticky="w")
-        playlist_remove_note.grid(row=1, column=1, columnspan=2, padx=(24, 8), pady=(2, 12), sticky="w")
+        playlist_remove_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky='ew')
+        playlist_remove_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky='w')
+        playlist_remove_btn.grid(row=1, column=0, columnspan=2, padx=(24, 8), pady=(5, 8), sticky='w')
+        playlist_remove_note.grid(row=2, column=0, columnspan=2, padx=16, pady=(0, 12), sticky='ew')
+
+        account_playlist_bottom_spacer = ctk.CTkFrame(account_playlist_scroll_frame, height=40, fg_color='transparent')
+        account_playlist_bottom_spacer.grid(row=3, column=0, columnspan=2, sticky='ew')
 
 
 
@@ -2370,7 +2534,7 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
 
         except Exception as e:
             log_handle(content=f"Error while getting playlist videos: {e}")
-            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}',f'Error while getting playlist videos: {e}'))
+            ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f'Error while getting playlist videos: {err}'))
         finally:
             loadingplaylist = False
     thread = threading.Thread(args=(playlistID,), target=_get_youtube_playlists_thread, daemon=True)
@@ -3743,7 +3907,11 @@ def init_read_config():
 
         if CONFIG["discord_presence_show_playing"]:discord_presence_show_playing.set(True)
         else:discord_presence_show_playing.set(False)
-    
+
+        max_search_result_count.set(CONFIG["max_result_count"]["search"])
+        max_recommendation_result_count.set(CONFIG["max_result_count"]["Recommendations"])
+        max_sub_result_count.set(CONFIG["max_result_count"]["sub"])
+        max_like_result_count.set(CONFIG["max_result_count"]["like"])
 
         maxresolution.set(CONFIG["max_resolution"])
         setting_run_chrome_extension_server.set(CONFIG['run_flask'])
@@ -3902,6 +4070,7 @@ def _init_load_extra_objs():
                                             ctk_messagebox=messagebox,
                                             log_handle=log_handle,
                                             account_info_handler=account_info_handler)
+    
             
     innertube_handler = innertube_handle(account_handle=account_handler,
                                          log_handle=log_handle)
@@ -3910,8 +4079,8 @@ def _init_load_extra_objs():
     
     playlist_retriever = playlist_retriever_(innertube_handle=innertube_handler,
                                              log_handle=log_handle)
-
-
+    
+    
 
 
     media_list_page_controller = MediaList_PageControl_(
@@ -3930,6 +4099,10 @@ def _init_load_extra_objs():
         )
     
     
+    playlist_retriever.maxresults_recommendation = max_recommendation_result_count.get()
+    playlist_retriever.maxresults_like = max_like_result_count.get()
+    playlist_retriever.maxresults_sub = max_sub_result_count.get()
+    media_list_page_controller.max_search_result_count = max_search_result_count.get()
     
 
     
@@ -4014,7 +4187,7 @@ def _start_up_import():
     from video_media_control.star_vid import star_vid_handler
     log_handle(content=f"star_vid_handler: {time.time()-t:.3f}s")
 
-    log_handle(content=f"Total import time: {time.time()-time1:.3f}s")
+    log_handle(content=f"Total import time: {time.time()-_TimeStartImport:.3f}s")
 
     
 
@@ -4058,7 +4231,10 @@ def _extra_startup_imports():
     log_handle(content=f'ver_check: {time.time()-t:.3f}s')
 
     from system.win_shortcut_control import ShortcutManager
-    shortcut_manager = ShortcutManager(app_user_model_id="Jackaopen.JaTubePlayer", main_path=os.path.abspath(__file__))
+    shortcut_manager = ShortcutManager(app_user_model_id="Jackaopen.JaTubePlayer",
+                                       main_path=os.path.abspath(__file__),
+                                       icon_path=icondir
+    )
     shortcut_manager.create()
 
     # SMTC
@@ -4103,18 +4279,17 @@ def _start_up():
     init_read_dlp()
     log_handle(content=f'dlp fin')
 
+    init_read_config()
+    log_handle(content=f'config fin')
+
     _init_load_extra_objs()
     log_handle(content=f'extra obj fin')
 
     threading.Thread(target=_init_process_account,daemon=True).start()
     log_handle(content=f'account fin') 
     
-    log_handle(content=f'local host fin')
-    
 
-
-    init_read_config()
-    log_handle(content=f'config fin')
+       
         
     check_keyboard()
     log_handle(content=f'keyboard fin')
@@ -4127,7 +4302,7 @@ def _start_up():
 
     root.after(0, init_quick_startup)
     root.after_idle( _extra_startup_imports)
-    log_handle(f"finish_big_init {time.time()-time1}")
+    log_handle(f"finish_big_init {time.time()-_TimeStartImport}")
     
     
     

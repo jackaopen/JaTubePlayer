@@ -4,9 +4,10 @@ from win32com.propsys import propsys  # type: ignore
 import pythoncom
 
 class ShortcutManager:
-    def __init__(self, app_user_model_id: str, main_path: str):
+    def __init__(self, app_user_model_id: str, main_path: str, icon_path:str):
         self.app_id = app_user_model_id
         self.main_path = main_path
+        self.icon_path = icon_path
         start_menu = shell.SHGetFolderPath(0, shellcon.CSIDL_PROGRAMS, None, 0)
         self.shortcut_path = os.path.join(start_menu, f"JaTubePlayer.lnk")
         
@@ -17,6 +18,7 @@ class ShortcutManager:
             
             
             
+            
             shell_link = pythoncom.CoCreateInstance(
                 shell.CLSID_ShellLink, None,
                 pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink
@@ -24,6 +26,7 @@ class ShortcutManager:
             
             shell_link.SetPath(target)
             shell_link.SetDescription("JaTube Player")
+            shell_link.SetIconLocation(self.icon_path, 0)
            
             property_store = shell_link.QueryInterface(propsys.IID_IPropertyStore)
             key = propsys.PSGetPropertyKeyFromName("System.AppUserModel.ID")

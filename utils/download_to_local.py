@@ -1,7 +1,6 @@
 import re,os
 from notification.wintoast_notify import ToastNotification
 from tkinter import BooleanVar
-from tkinter import messagebox
 import time,threading
 import customtkinter as ctk
 import queue
@@ -217,7 +216,7 @@ def download_to_local(res:str,
                                     audio_bitrate='192k',
                                     ).run()
                         
-                    except Exception as e:messagebox.showerror(f'JaTubePlayer {ver}',e)
+                    except Exception as e:ctk_messagebox.showerror(f'JaTubePlayer {ver}',e)
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
 
@@ -226,11 +225,8 @@ def download_to_local(res:str,
             main_label.insert('0.0', f"finished! you can close this window if it dont close automatically")
             main_label.configure(state='disabled')
 
-            ToastNotification().notify(app_id="JaTubePlayer", 
-                title=f'JaTubePlayer {ver} Download', 
-                msg=f'Downloaded : {better_name}', 
-                duration='short', 
-                icon = icondir)
+            
+            ctk_messagebox.showinfo(f'JaTubePlayer {ver}',f'Downloaded : {better_name}')
         except yt_dlp.utils.DownloadCancelled:
             ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download cancelled : {better_name}', duration='short', icon=icondir)
         except yt_dlp.utils.DownloadError as de:

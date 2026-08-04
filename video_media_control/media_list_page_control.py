@@ -65,7 +65,7 @@ class MediaList_PageControl_:
         self.media_type = MediaType.NONE
         self.media_data_list = media_data_list_template()
         self.local_media_handler = local_media_handle(log_handle=log_handle)
-
+        self.max_search_result_count = 50
         self.ui_queue = ui_queue
         self.tree_view_queue = tree_view_queue
         self.log_handle = log_handle
@@ -272,7 +272,7 @@ class MediaList_PageControl_:
             'extract_flat': True,  # Get video list without downloading
             'force_generic_extractor': True,
             'skip_download':True,
-            'playlistend':40,
+            'playlistend':int(int(self.max_search_result_count)*0.3)
         }
 
         if cookie:
@@ -281,36 +281,30 @@ class MediaList_PageControl_:
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             vid_search_results = ydl.extract_info(search_url_vid, download=False)
-            #ydl_opts['playlistend'] = 30
+            ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.7)
             stream_search_results = ydl.extract_info(search_url_stream, download=False)
         
 
         for item in stream_search_results['entries']:
+            print(item)
             if item and  'url' in item:
                 if item['url'].split('youtube.com/')[1].split('/')[0] != 'channel':
-                    try:
-                        thumbnail_url = f"https://i.ytimg.com/vi/{item['url'].split('v=')[1]}/hqdefault.jpg"
-                    except IndexError:
-                        thumbnail_url = f"https://i.ytimg.com/vi/{item['url'].split('shorts/')[1]}/hqdefault.jpg"
-
+                    
                     media_data_list.vid_url.append(item['url'])
                     media_data_list.playlisttitles.append(f"🛑LIVE {item['title']}")
-                    media_data_list.playlist_thumbnails.append(thumbnail_url)
+                    media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
                     media_data_list.playlist_channel.append(item['channel'])
 
 
 
         for item in vid_search_results['entries']:
+            print(item)
             if item and  'url' in item:
                 if item['url'].split('youtube.com/')[1].split('/')[0] != 'channel':
-                    try:
-                        thumbnail_url = f"https://i.ytimg.com/vi/{item['url'].split('v=')[1]}/hqdefault.jpg"
-                    except IndexError:
-                        thumbnail_url = f"https://i.ytimg.com/vi/{item['url'].split('shorts/')[1]}/hqdefault.jpg"
 
                     media_data_list.vid_url.append(item['url'])
                     media_data_list.playlisttitles.append(item['title'])
-                    media_data_list.playlist_thumbnails.append(thumbnail_url)
+                    media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
                     media_data_list.playlist_channel.append(item['channel'])
 
         self.media_data_list = media_data_list
