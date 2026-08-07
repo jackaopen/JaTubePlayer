@@ -105,7 +105,7 @@ class ytdlp_update:
         if os.path.exists(self.old_ytdlpfolder) and os.path.isdir(self.old_ytdlpfolder):
             shutil.rmtree(self.old_ytdlpfolder)
 
-    def _copy_old_files(self)->bool:
+    def _copy_old_files(self):
         '''
         copy the current file to old_, to prevent from error/failure whole loss
         '''
@@ -114,15 +114,12 @@ class ytdlp_update:
             shutil.copytree(self.ytdlp_path,self.old_ytdlpfolder)
             shutil.copy(self.ytdlpexe_path,self.old_ytdlpexe_path)
 
-            
-            return True
         except Exception as e:
             self.log_handle(
                 content=f"restore copy to old file error : {e}",
                 errtype = "error",
                 component='download_ytdlp'
             )
-            return False
 
 
 
@@ -157,9 +154,8 @@ class ytdlp_update:
             response = None
             try:
                 self._remove_downloaded_files()
-                if not self._copy_old_files():
-                    raise RuntimeError("copy old file error")
-                
+                self._copy_old_files()
+           
                 url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.tar.gz'
                 response = requests.get(url, stream=True,timeout=10)
                 self.label.configure(text=f"Downloading yt-dlp.tar.gz - version {latest_version}")
