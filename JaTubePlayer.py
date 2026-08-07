@@ -1091,9 +1091,9 @@ def setting_frame():
                 discord_idle_presence_wording.set("[Idling & Chillin' like a potato 🥔]")
             else:
                 discord_idle_presence_wording.set(discord_idle_presence_wording_textbox.get())
-            save_config()
             CONFIG['discord_idle_presence_wording'] = discord_idle_presence_wording.get()
-
+            save_config()
+            
             messagebox.showinfo(f'JaTubePlayer {ver}',f'Discord idle presence wording set to: {CONFIG["discord_idle_presence_wording"]}')
             discord_presence.discord_idle_presence_wording = CONFIG['discord_idle_presence_wording']
 
