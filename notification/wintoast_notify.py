@@ -12,7 +12,7 @@ class ToastNotification:
             show_toast(
                 title,
                 msg,
-                app_id=app_id,
+                app_id="JatubePlayer",
                 duration=duration,
                 icon={
                     "src": icon,

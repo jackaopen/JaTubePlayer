@@ -72,18 +72,28 @@ class innertube_handle:
         '''
         Extract authorization header from cookie for YouTube requests
         '''
-        jar = dict(part.strip().split("=", 1) for part in cookie.split(";") if "=" in part)
-        now = str(int(time.time()))
-        pairs = (
-            ("SAPISIDHASH", "SAPISID"),
-            ("SAPISID1PHASH", "__Secure-1PAPISID"),
-            ("SAPISID3PHASH", "__Secure-3PAPISID"),
-        )
-        return " ".join(
-            f"{scheme} {now}_{hashlib.sha1(f'{now} {jar[name]} {self.ORIGIN}'.encode()).hexdigest()}"
-            for scheme, name in pairs
-            if jar.get(name)
-        )
+        try:
+            if not cookie:
+                return
+            jar = dict(part.strip().split("=", 1) for part in cookie.split(";") if "=" in part)
+            now = str(int(time.time()))
+            pairs = (
+                ("SAPISIDHASH", "SAPISID"),
+                ("SAPISID1PHASH", "__Secure-1PAPISID"),
+                ("SAPISID3PHASH", "__Secure-3PAPISID"),
+            )
+            return " ".join(
+                f"{scheme} {now}_{hashlib.sha1(f'{now} {jar[name]} {self.ORIGIN}'.encode()).hexdigest()}"
+                for scheme, name in pairs
+                if jar.get(name)
+            )
+        except Exception as e:
+            self.log_handle(
+                content=f'warning no auth header skipping {e}',
+                errtype='warning',
+                component='innertube_handle',
+            )
+            return None
     
 
     def _ytcfg(self,html):
@@ -113,7 +123,7 @@ class innertube_handle:
         '''
         header = {
         "Accept-Language": "en-US,en;q=0.9",
-        "Cookie": cookie,
+        "Cookie": cookie if cookie else "",
         "DNT": "1",
         "Origin": self.ORIGIN,
         "Referer": referer,
@@ -123,6 +133,8 @@ class innertube_handle:
         }
         if authorization := self._auth(cookie):
             header["Authorization"] = authorization
+        else:
+            header.pop("Cookie")
 
         if option == 0:
             header.update({
@@ -136,7 +148,11 @@ class innertube_handle:
     
         elif option == 1:
             if not cfg or not version:
-                self.log_handle("cfg or version is None, cannot generate API headers", "error")
+                self.log_handle(
+                    content="cfg or version is None, cannot generate API headers",
+                    errtype='error',
+                    component='innertube',
+                )
                 return None
             header.update({
                 "Accept": "*/*",
@@ -154,11 +170,11 @@ class innertube_handle:
 
 
     def preInit_buildPayload(self,
-                        page:str,
-                       use_matching_page:bool=False,
-                       playlist_id:str=None,
-                       refresh_retry:bool=False
-
+                            page:str,
+                            use_matching_page:bool=False,
+                            playlist_id:str=None,
+                            refresh_retry:bool=False,
+                            force:bool=False
                        )->dict:
         '''
         build payload for innertube requests, additional parameters can be added later\n
@@ -167,15 +183,35 @@ class innertube_handle:
         NOTE: DO NOT USE refresh_retry\n
         will refresh cookie if not logged in, and retry once
         '''
-        cookie = self.account_handle.get_cookie()
+        home_no_cookie = False
+        cookie = self.account_handle.get_cookie(force)
+
         if not cookie:
-            self.log_handle("No cookie found, please login first." )
-            return None
+            if page != "home":
+                self.log_handle(
+                    content="No cookie found, please login first.",
+                    errtype='info',
+                    component='innertube',
+                )
+                return None
+            else:
+                self.log_handle(
+                    content="home no cookie",
+                    errtype="warning",
+                    component="innertube_handle"
+                )
+                home_no_cookie = True
+                use_matching_page = False
+
         
         if use_matching_page:
             browse_id, referer = self._build_refer_and_browse_id(page, playlist_id)
         else:
+            self.log_handle("wadonajkwdobnwanoaknwoadkonianwoadknokwadonjkadwokn")
             referer = f"{self.ORIGIN}/"
+            if page == "home":
+                playlist_id = 'RDCLAK5uy_nLkOG7ku-sA7GVAnStgGCwcF-KnWmnMDI'# The hit
+                browse_id, referer = self._build_refer_and_browse_id("playlist", playlist_id)
 
         response = self.request_session.get(referer, 
                                             headers=self._get_header(0, cookie, referer), 
@@ -184,20 +220,35 @@ class innertube_handle:
         response.raise_for_status()
         cfg = self._ytcfg(response.text)
         if cfg.get("LOGGED_IN") is False:
+            
             if not refresh_retry :
-                self.log_handle("refreshing cookie...")
-                if self.account_handle.login_refresh(1,
-                                                should_update_avator=False):
+                if not home_no_cookie:
+                    self.log_handle(
+                        content="refreshing cookie...",
+                        errtype='info',
+                        component='innertube',
+                    )
+                    if self.account_handle.Start_wv_process(1,
+                                                    should_update_avator=False):
 
-                    return self.preInit_buildPayload(use_matching_page=use_matching_page, 
-                                                    playlist_id=playlist_id, 
-                                                    page=page,
-                                                    refresh_retry=True)
-                else:
-                    self.log_handle("Failed to refresh cookie, please check your account status.", "error")
-                    return None
+                        return self.preInit_buildPayload(use_matching_page=use_matching_page, 
+                                                        playlist_id=playlist_id, 
+                                                        page=page,
+                                                        refresh_retry=True)
+                    else:
+                        self.log_handle(
+                            content="Failed to refresh cookie, please check your account status.",
+                            errtype='error',
+                            component='innertube',
+                        )
+                        return None
+                
             else:
-                self.log_handle("Failed to refresh cookie, please check your account status.", "error")
+                self.log_handle(
+                    content="Failed to refresh cookie, please check your account status.",
+                    errtype='error',
+                    component='innertube',
+                )
                 return None
         
         client = cfg.get("INNERTUBE_CONTEXT", {}).get("client", {})
@@ -249,8 +300,13 @@ class innertube_handle:
             json=payload,
             timeout=30,
         )
+        print(response.text)
         if response.status_code != 200:
-            self.log_handle(f"Failed to retrieve innertube content for page '{payload.get('browseId', '_')}': {response.status_code} - {response.text}", "error")
+            self.log_handle(
+                content=f"Failed to retrieve innertube content for page '{payload.get('browseId', '_')}': {response.status_code} - {response.text}",
+                errtype='error',
+                component='innertube',
+            )
             return None
         
         return response.json()

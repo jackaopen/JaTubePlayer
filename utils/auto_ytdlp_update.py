@@ -4,171 +4,268 @@ import tarfile,requests,os,shutil,time,customtkinter as ctk
 from utils.get_latest_version import get_latest_dlp_version
 from notification.wintoast_notify import ToastNotification
 
-
-
-def download_and_extract_dlp(_internal_dir : str,root:ctk.CTkToplevel|ctk.CTk,icondir:str="",log:Callable=print)-> bool | str:
-    version = get_latest_dlp_version()
-    #popup progress bar 
-    popup = ctk.CTkToplevel(root)
-    popup.title("JaTubePlayer yt-dlp update")
-    popup.attributes("-topmost", True)
-
-    popup.geometry(f"350x150+{root.winfo_screenwidth()//2}+{root.winfo_screenheight()//2}")
-    popup.resizable(False, False)
-    if icondir: root.after(200, lambda: popup.iconbitmap(icondir))
-
-    label = ctk.CTkLabel(popup, text=f"Found newest version {version}", font=('Arial', 14))
-    label.pack(pady=10)
-
-    sizelabel = ctk.CTkLabel(popup, text="", font=('Arial', 12))
-    sizelabel.pack()
-
-    def _close():
-        is_canceled.set()
-        while not _download_stoped.is_set(): 
-            root.update()
-            popup.update()
-            time.sleep(0.1)
-        ToastNotification().notify(app_id="JaTubePlayer", title='JaTubePlayer', msg=f'yt-dlp update canceled.', duration='short', icon=icondir)
-        popup.destroy()
-
-    cancel_btn = ctk.CTkButton(popup, text="Cancel", command= _close)
-    cancel_btn.pack(pady=10, side='bottom')
-
-    bar = ctk.CTkProgressBar(popup, width=250)
-    bar.pack(pady=5)
-    bar.set(0)
-    popup.update()
-    time.sleep(1)
-    is_canceled = threading.Event()
-    is_canceled.clear()
-    _download_stoped = threading.Event()
-    _download_stoped.clear()
-    _download_finished = threading.Event()
-    _download_finished.clear()
-    popup.protocol("WM_DELETE_WINDOW", _close)
-
-
-
-    
-
-    def _download():
+class ytdlp_update:
+    def __init__(self,
+                _internal_dir:str,
+                root:ctk.CTkToplevel|ctk.CTk,
+                icondir:str="",
+                log_handle:Callable=print):
         
-        url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.tar.gz'
-        response = requests.get(url, stream=True)
-        label.configure(text=f"Downloading yt-dlp.tar.gz - version {version}")
+        self._internal_dir = _internal_dir
+        self.root = root
+        self.icondir = icondir
+        self.log_handle = log_handle
 
-        length = int(response.headers.get('content-length'))
-        current_len = 0
+        self.new_ytdlpgz_path = os.path.join(self._internal_dir, 'new_yt-dlp.tar.gz')
+        self.new_ytdlp_path = os.path.join(self._internal_dir,"new_yt-dlp")
+        self.ytdlp_path = os.path.join(self._internal_dir, 'yt_dlp')
+
+        self.new_ytdlpexe_path = os.path.join(self._internal_dir, 'new_yt-dlp.exe')
+        self.ytdlpexe_path = os.path.join(self._internal_dir, 'yt-dlp.exe')
+
+        self.old_ytdlpexe_path = os.path.join(self._internal_dir, 'yt-dlp_old.exe')
+        self.old_ytdlpfolder = os.path.join(self._internal_dir, 'yt-dlp_old')
+
+
+    def _build_popup(self,root:ctk.CTkToplevel|ctk.CTk,version:str,icondir:str="")->ctk.CTkToplevel:
+        popup = ctk.CTkToplevel(root)
+        popup.title("JaTubePlayer yt-dlp update")
+        popup.attributes("-topmost", True)
+
+        popup.geometry(f"350x150+{root.winfo_screenwidth()//2-350//2}+{root.winfo_screenheight()//2-150//2}")
+        popup.resizable(False, False)
+        if icondir: root.after(200, lambda: popup.iconbitmap(icondir))
+
+        self.label = ctk.CTkLabel(popup, text="Searching for latest version...", font=('Arial', 14))
+        self.label.pack(pady=10)
+        self.sizelabel = ctk.CTkLabel(popup, text="", font=('Arial', 12))
+        self.sizelabel.pack()
+
+        def _close():
+            self.is_canceled.set()
+            while not self._download_stoped.is_set(): 
+                root.update()
+                popup.update()
+                time.sleep(0.1)
+            ToastNotification().notify(app_id="JaTubePlayer", title='JaTubePlayer', msg=f'yt-dlp update canceled.', duration='short', icon=icondir)
+            popup.destroy()
         
-        if length:
-            try:
-                with open(os.path.join(_internal_dir, 'yt-dlp.tar.gz'), 'wb') as file:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if is_canceled.is_set():
-                            break
-                        if chunk:
-                            file.write(chunk)
-                            current_len += len(chunk)
-                            bar.set(current_len / length)
-                            sizelabel.configure(text=f"Downloaded {current_len/1024**2 :.2f} of {length/1024**2 :.2f} MB")
-                            popup.update()
+        self.cancel_btn = ctk.CTkButton(popup, text="Cancel", command= _close)
+        self.cancel_btn.pack(pady=10, side='bottom')
 
-            except Exception as e:
-                log(f"Error downloading file: {e}")
-            if is_canceled.is_set():
-                try:os.remove(os.path.join(_internal_dir, 'yt-dlp.tar.gz'))
-                except Exception as e: log(f"Error removing file: {e}")
-                finally :
-                    _download_stoped.set()
-                    return "Download canceled by user."
+        bar = ctk.CTkProgressBar(popup, width=250)
+        bar.pack(pady=5)
+        self.bar = bar
+        bar.set(0)
+        popup.update()
 
-            with tarfile.open(os.path.join(_internal_dir, 'yt-dlp.tar.gz'), 'r:gz') as tar:
-                tar.extractall(path=_internal_dir)
-            try:
-                os.remove(os.path.join(_internal_dir, 'yt-dlp.tar.gz'))
-            except Exception as e:
-                log(f"Error removing file: {e}")
-            try:
-                if os.path.exists(os.path.join(_internal_dir, 'yt_dlp')):
-                    shutil.rmtree(os.path.join(_internal_dir, 'yt_dlp'))
-                shutil.copytree(os.path.join(_internal_dir,'yt-dlp','yt_dlp'), os.path.join(_internal_dir, 'yt_dlp'))
+        self.is_canceled = threading.Event()
+        self.is_canceled.clear()
+        self._download_stoped = threading.Event()
+        self._download_stoped.clear()
+        self._download_finished = threading.Event()
+        self._download_finished.clear()
+        popup.protocol("WM_DELETE_WINDOW", _close)
+        return popup
+
+    def _remove_downloaded_files(self):
+        try:
+            if os.path.exists(self.new_ytdlpgz_path):
+                os.remove(self.new_ytdlpgz_path)
+            if os.path.exists(self.new_ytdlpexe_path):
+                os.remove(self.new_ytdlpexe_path)
+            if os.path.exists(self.new_ytdlp_path):
+                shutil.rmtree(self.new_ytdlp_path)
+            
+        except Exception as e:
+            self.log_handle(f"Error removing downloaded file: {e}")
+
+    def _restore_old_files(self):
+        
+        try:
+            if os.path.exists(self.ytdlp_path):
+                shutil.rmtree(self.ytdlp_path)
+            shutil.copytree(self.old_ytdlpfolder,self.ytdlp_path)
+            shutil.copy(self.old_ytdlpexe_path,self.ytdlpexe_path)
+        except Exception as e:
+            self.log_handle(
+                content=f"restore old file error : {e}",
+                errtype = "error",
+                component='download_ytdlp'
+            )
+
+
+    def _remove_old_files(self):
+
+        '''
+        as the name says, will not catch error
+        '''
+        if os.path.exists(self.old_ytdlpexe_path):
+            os.remove(self.old_ytdlpexe_path)
+        if os.path.exists(self.old_ytdlpfolder) and os.path.isdir(self.old_ytdlpfolder):
+            shutil.rmtree(self.old_ytdlpfolder)
+
+    def _copy_old_files(self)->bool:
+        '''
+        copy the current file to old_, to prevent from error/failure whole loss
+        '''
+        try:
+            self._remove_old_files()
+            shutil.copytree(self.ytdlp_path,self.old_ytdlpfolder)
+            shutil.copy(self.ytdlpexe_path,self.old_ytdlpexe_path)
+
+            
+            return True
+        except Exception as e:
+            self.log_handle(
+                content=f"restore copy to old file error : {e}",
+                errtype = "error",
+                component='download_ytdlp'
+            )
+            return False
+
+
+
+    def _process_downloaded_files(self)->bool:
+        try:
+            
+            
+            
+            with tarfile.open(self.new_ytdlpgz_path, 'r:gz') as tar:
+                tar.extractall(path=self.new_ytdlp_path)
+                shutil.rmtree(self.ytdlp_path)
+                shutil.copytree(os.path.join(self.new_ytdlp_path,'yt-dlp','yt_dlp'), self.ytdlp_path)
                 
-            except Exception as e:log(f"Error copying file: {e}")
-            try:
-                shutil.rmtree(os.path.join(_internal_dir, 'yt-dlp'))
-            except Exception as e:
-                log(f"Error removing file: {e}")
-            
-        #--------------------------------------------------------
 
-            try:os.rename(os.path.join(_internal_dir,'yt-dlp.exe'),os.path.join(_internal_dir,'yt-dlp_old.exe'))
-            except Exception as e: log(f"Error rename file: {e}")
-            label.configure(text=f"Downloading yt-dlp.exe - version {version}")
-            popup.update()
-            response = requests.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', stream=True)
-            current_len = 0
-            length = int(response.headers.get('content-length'))
-            
-            if response.status_code == 200:
-                try:
-                    with open(os.path.join(_internal_dir, 'yt-dlp.exe'), 'wb') as file:
-                        
+            if os.path.exists(self.new_ytdlpexe_path):
+                shutil.copy(self.new_ytdlpexe_path,self.ytdlpexe_path)
+
+            self._remove_old_files()
+            self._remove_downloaded_files()
+            return True
+        except Exception as e:
+            self.log_handle(f"Error removing file: {e}")
+            return False
+
+
+    def download_and_extract_dlp(self)-> bool | str:
+        latest_version = get_latest_dlp_version()
+        downloader_popup = self._build_popup(self.root,latest_version,self.icondir)
+    
+        
+        def _download():
+            response = None
+            try:
+                self._remove_downloaded_files()
+                if not self._copy_old_files():
+                    raise RuntimeError("copy old file error")
+                
+                url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.tar.gz'
+                response = requests.get(url, stream=True,timeout=10)
+                self.label.configure(text=f"Downloading yt-dlp.tar.gz - version {latest_version}")
+
+                length = int(response.headers.get('content-length',1))
+                current_len = 0
+                
+                if response.status_code == 200:
+                    with open(self.new_ytdlpgz_path, 'wb') as file:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if self.is_canceled.is_set():
+                                self.sizelabel.configure(text="cancelled")
+                                raise InterruptedError
+                                
+                            if chunk:
+                                file.write(chunk)
+                                current_len += len(chunk)
+                                self.bar.set(current_len / length)
+                                self.sizelabel.configure(text=f"Downloaded {current_len/1024**2 :.2f} of {length/1024**2 :.2f} MB")
+                                downloader_popup.update()
+                else:
+                    raise ConnectionError
+                 
+                #--------------------------------------------------------
+  
+                self.label.configure(text=f"Downloading yt-dlp.exe - version {latest_version}")
+                downloader_popup.update()
+                response = requests.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', stream=True,timeout=10)
+                current_len = 0
+                length = int(response.headers.get('content-length',1))
+                
+                if response.status_code == 200:
+                    with open(self.new_ytdlpexe_path,'wb') as file:
                         for chunk in response.iter_content(chunk_size=8192):
                             if chunk:
-                                if is_canceled.is_set():
-                                    break
+                                if self.is_canceled.is_set():
+                                    self.sizelabel.configure(text="cancelled")
+                                    raise InterruptedError
                                 file.write(chunk)
-                                bar.set(current_len / length)
-                                sizelabel.configure(text=f"Downloaded {current_len/1024**2 :.2f} of {length/1024**2 :.2f} MB")
-                                popup.update()
                                 current_len += len(chunk)
+                                self.bar.set(current_len / length)
+                                self.sizelabel.configure(text=f"Downloaded {current_len/1024**2 :.2f} of {length/1024**2 :.2f} MB")
+                                downloader_popup.update()
                                 
-                except Exception as e:
-                    log(f"Error downloading file: {e}")
-            if is_canceled.is_set():
-                try:os.remove(os.path.join(_internal_dir, 'yt-dlp.exe'))
-                except Exception as e: log(f"Error removing file: {e}")
-                try:os.rename(os.path.join(_internal_dir,'yt-dlp_old.exe'),os.path.join(_internal_dir,'yt-dlp.exe'))
-                except Exception as e: log(f"Error rename file: {e}")
-                finally:
-                    _download_stoped.set()
-                    return "Download canceled by user."
+                else:
+                    raise ConnectionError
 
-            try:os.remove(os.path.join(_internal_dir,'yt-dlp_old.exe'))
-            except Exception as e: log(f"Error removing file: {e}")
-            current_len = None
-            label.configure(text="Done!")
-            sizelabel.configure(text=f"")
-            popup.update()
-            time.sleep(1)
-            popup.destroy()
-            ToastNotification().notify(app_id="JaTubePlayer", title='JaTubePlayer', msg=f'yt-dlp updated!\nVersion {version}', duration='short', icon=icondir)
-            _download_finished.set()
+                
+                if self.is_canceled.is_set():
+                    raise InterruptedError
+                
+                self.label.configure(text="processing files...")
+                self.cancel_btn.configure(state="disabled")
+
+                if self._process_downloaded_files():
+                    self.label.configure(text="Done!")
+                    self.bar.set(1.0)
+                    self.sizelabel.configure(text=f"")
+                    downloader_popup.update()
+                    time.sleep(1)
+                    self.log_handle(content="ytdlp updated",
+                                        errtype='info',
+                                        component='download_ytdlp')
+                    
+                    self._download_finished.set()
+                else:
+                    self.log_handle(content="Failed to process downloaded file, restoring old files",
+                                errtype='error',
+                                component='download_ytdlp')
+                    ToastNotification().notify(
+                        app_id="JaTubePlayer",
+                        title='JaTubePlayer', 
+                        msg='Failed to process downloaded file, restoring old files', 
+                        duration='short', 
+                        icon=self.icondir
+                    )
+                    self._restore_old_files()
+
+            except ConnectionError:
+                self.log_handle(content=f"connection failed {response.text}",
+                        errtype='error',
+                        component='download_ytdlp')
+
+            except InterruptedError:
+                self.log_handle(content="download cancelled by user,restoring old files",
+                            errtype='warning',
+                            component='download_ytdlp')
+
+            except Exception as e:
+                self.log_handle(content=f"download failed, {e}",
+                            errtype='warning',
+                            component='download_ytdlp')
+            finally:
+                self._download_stoped.set()
+                self._remove_old_files()
+                self._remove_downloaded_files()
+
+        
+        download_thread = threading.Thread(target=_download,daemon=False)
+        download_thread.start()
+        
+        while download_thread.is_alive():
+            self.root.update()
+            time.sleep(0.05)
+        if self._download_finished.is_set():
+            downloader_popup.destroy()
             return True
-    
-    download_thread = threading.Thread(target=_download,daemon=False)
-    download_thread.start()
-    
-    while download_thread.is_alive():
-        
-        root.update()
-        time.sleep(0.05)
-    if _download_finished.is_set():
-        return True
-    else:
-        return False
-
-    
-    
-    
-if __name__ == "__main__":
-    testfolderpath = 'ytdlp_autoupdate_testfolder/'
-    root = ctk.CTk()
-    root.geometry("1x1")
-    print(download_and_extract_dlp(testfolderpath,root,log=print))
-    root.mainloop()
-
-
-        
-    
+        else:
+            return False

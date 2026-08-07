@@ -105,8 +105,11 @@ class MediaList_PageControl_:
         self.ui_queue.put(lambda: self.page_num_label.configure(text=f'page {self.current_page}/{self.total_page}'))
         start_index = (self.current_page - 1) * 50
         end_index = min(self.current_page * 50, len(self.media_data_list.vid_url))
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'load page {self.current_page}/{self.total_page} items {start_index}-{max(start_index, end_index - 1)}')
+        self.log_handle(
+            content=f'load page {self.current_page}/{self.total_page} items {start_index}-{max(start_index, end_index - 1)}',
+            errtype='info',
+            component='page_control',
+        )
         for i in range(start_index, end_index):
             self.tree_view_queue.put((self.media_data_list.playlist_thumbnails[i],
                                       self.media_data_list.playlisttitles[i],
@@ -119,17 +122,29 @@ class MediaList_PageControl_:
         try:
             current_playing_url = self._get_cur_playing_url()
         except Exception as e:
-            self.log_handle(errtype='error', component='page_control/HPH',content=f'Failed to get current playing url: {e}')
+            self.log_handle(
+                content=f'Failed to get current playing url: {e}',
+                errtype='error',
+                component='page_control',
+            )
             
         result = self.history_page_handler.record_history(current_playing_url=current_playing_url, 
                                                 media_data=self.media_data_list,
                                                 media_type=self.media_type,
                                                 playlistname=playlistname or self._get_cur_playlist_title())
         if result:
-            self.log_handle(errtype='info', component='page_control/HPH',content=f'record hisory PLAYLIST{playlistname or self._get_cur_playlist_title()} ')
+            self.log_handle(
+                content=f'record hisory PLAYLIST{playlistname or self._get_cur_playlist_title()} ',
+                errtype='info',
+                component='page_control',
+            )
             return True
         else:
-            self.log_handle(errtype='warning', component='page_control/HPH',content=f'Failed to record history PLAYLIST{playlistname or self._get_cur_playlist_title()} ')
+            self.log_handle(
+                content=f'Failed to record history PLAYLIST{playlistname or self._get_cur_playlist_title()} ',
+                errtype='warning',
+                component='page_control',
+            )
             return False
 
 
@@ -146,7 +161,11 @@ class MediaList_PageControl_:
         if page is playlist_type.PLAYLISTS, the user_playlist_dict_list will be filled with the playlist content, mdl and other var will not be modified\n
         '''
         if page!= playlist_type.PLAYLISTS:
-            self.log_handle(errtype='info', component='page_control',content=f'init reload media_type= youtube page={page} playlist_id={playlist_id} total_items={len(media_data_list.vid_url)}')
+            self.log_handle(
+                content=f'init reload media_type= youtube page={page} playlist_id={playlist_id} total_items={len(media_data_list.vid_url)}',
+                errtype='info',
+                component='page_control',
+            )
             if page == playlist_type.PLAYLIST:
                 
                 self._record_history(self._prev_playlist_name if self._prev_playlist_name else None)
@@ -160,10 +179,15 @@ class MediaList_PageControl_:
             self.media_data_list.clear()
         else:
             self._prev_playlist_name = self._get_cur_playlist_title()
-            self.log_handle(errtype='info', component='page_control',content=f'record prev playlist name={self._prev_playlist_name}')
+            self.log_handle(
+                content=f'record prev playlist name={self._prev_playlist_name}',
+                errtype='info',
+                component='page_control',
+            )
     
         if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() == False:return 
-        if self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False: return
+        if (self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False 
+            and page != playlist_type.HOME): return
         
         if page != playlist_type.PLAYLISTS:
             self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
@@ -178,8 +202,11 @@ class MediaList_PageControl_:
                                            "url":url}
                 self.user_playlist_dict_list.append(self.user_playlist_dict)
         
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+        self.log_handle(
+            content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
+            errtype='info',
+            component='page_control',
+        )
 
     
 
@@ -197,8 +224,11 @@ class MediaList_PageControl_:
         self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
 
         self._insert_to_ui_queue()
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'init reload media_type= starred videos total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+        self.log_handle(
+            content=f'init reload media_type= starred videos total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
+            errtype='info',
+            component='page_control',
+        )
 
         
     def local_files_init_and_reload(self,
@@ -234,21 +264,34 @@ class MediaList_PageControl_:
         self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
 
         self._insert_to_ui_queue()
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+        self.log_handle(
+            content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
+            errtype='info',
+            component='page_control',
+        )
     
 
 
     def handle_url_drop(self, url:str):
         self._record_history()
         self.media_type = MediaType.DIRECT_URL_DROP
-        self.log_handle(content=f"URL dropped: {url}")
+        self.log_handle(
+            content=f"URL dropped: {url}",
+            errtype='info',
+            component='page_control',
+        )
         self.thumbnail_loader.clear_thumbnails()
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'handle url drop, url={url}')
+        self.log_handle(
+            content=f'handle url drop, url={url}',
+            errtype='info',
+            component='page_control',
+        )
         self.load_thread_queue.put((None,url))
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'put url drop to load_thread_queue, url={url}')
+        self.log_handle(
+            content=f'put url drop to load_thread_queue, url={url}',
+            errtype='info',
+            component='page_control',
+        )
         
 
     def search_init_and_reload(self,
@@ -327,8 +370,11 @@ class MediaList_PageControl_:
         self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
         
         self._insert_to_ui_queue()
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'init reload media_type= history page total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}')
+        self.log_handle(
+            content=f'init reload media_type= history page total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
+            errtype='info',
+            component='page_control',
+        )
         
 
 
@@ -366,11 +412,18 @@ class MediaList_PageControl_:
             self.tree_view_queue.put((thumbnail_url,
                                         title,
                                         channel))
-            self.log_handle(errtype='info', component='page_control',
-                            content=f'added video to media list, at index {insert_idx}, title={title} channel={channel} url={video_url} thumbnail={thumbnail_url}')
+            self.log_handle(
+                content=f'added video to media list, at index {insert_idx}, title={title} channel={channel} url={video_url} thumbnail={thumbnail_url}',
+                errtype='info',
+                component='page_control',
+            )
             
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='page_control',
+            )
 
 
     def clear_selected(self,
@@ -389,7 +442,11 @@ class MediaList_PageControl_:
 
 
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='page_control',
+            )
         
 
 
@@ -402,18 +459,27 @@ class MediaList_PageControl_:
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
-            self.log_handle(errtype='warning', component='page_control',
-                            content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}')
+            self.log_handle(
+                content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}',
+                errtype='warning',
+                component='page_control',
+            )
             
             
             
             return -1
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'try to load next page,totalpagecurrentdata ={_total_page_of_current_data}, current_page={self.current_page} total_page={self.total_page}')
+        self.log_handle(
+            content=f'try to load next page,totalpagecurrentdata ={_total_page_of_current_data}, current_page={self.current_page} total_page={self.total_page}',
+            errtype='info',
+            component='page_control',
+        )
         try:
             if self.loading_page:
-                self.log_handle(errtype='warning', component='page_control',
-                                content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}')
+                self.log_handle(
+                    content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}',
+                    errtype='warning',
+                    component='page_control',
+                )
                 return -1
             self.loading_page = True
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
@@ -422,25 +488,38 @@ class MediaList_PageControl_:
                         self.current_page += 1
                     else:
                         self.current_page = 1
-                    self.log_handle(errtype='info', component='page_control',
-                                    content=f'next page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
+                    self.log_handle(
+                        content=f'next page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}',
+                        errtype='info',
+                        component='page_control',
+                    )
                 
                     self._insert_to_ui_queue()
                     
                     if select_first_of_next_page:
                         self.thumbnail_loader.select_first_item()
                         
-                        self.log_handle(errtype='info', component='page_control',
-                                        content=f'select first item of next page')
+                        self.log_handle(
+                            content=f'select first item of next page',
+                            errtype='info',
+                            component='page_control',
+                        )
                     if self.current_page == self.media_data_list.current_media_page:
                         self.set_playing_tag(self.media_data_list.current_playing_idx_num)
                 return 0
             else:
-                self.log_handle(errtype='warning', component='page_control',
-                                content=f'current media type does not support page control, media_type={self.media_type}')
+                self.log_handle(
+                    content=f'current media type does not support page control, media_type={self.media_type}',
+                    errtype='warning',
+                    component='page_control',
+                )
                 return -3
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='page_control',
+            )
             return -2
         finally:
             self.loading_page = False
@@ -456,15 +535,24 @@ class MediaList_PageControl_:
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if self.current_page == 1 and _total_page_of_current_data < self.total_page:
-            self.log_handle(errtype='warning', component='page_control',
-                            content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}')
+            self.log_handle(
+                content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}',
+                errtype='warning',
+                component='page_control',
+            )
             return -1
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'try to load previous page,totalpagecurrentdata ={_total_page_of_current_data}, current_page={self.current_page} total_page={self.total_page}')
+        self.log_handle(
+            content=f'try to load previous page,totalpagecurrentdata ={_total_page_of_current_data}, current_page={self.current_page} total_page={self.total_page}',
+            errtype='info',
+            component='page_control',
+        )
         try:
             if self.loading_page:
-                self.log_handle(errtype='warning', component='page_control',
-                                content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}')
+                self.log_handle(
+                    content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}',
+                    errtype='warning',
+                    component='page_control',
+                )
                 return -1
             self.loading_page = True   
             if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
@@ -473,22 +561,35 @@ class MediaList_PageControl_:
                         self.current_page -= 1
                     else:
                         self.current_page = self.total_page
-                    self.log_handle(errtype='info', component='page_control',
-                                    content=f'previous page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}')
+                    self.log_handle(
+                        content=f'previous page -> {self.current_page}/{self.total_page}\n current media page in MDL {self.media_data_list.current_media_page}',
+                        errtype='info',
+                        component='page_control',
+                    )
                     
                     self._insert_to_ui_queue()
                     if select_last_of_prev_page:
                         self.thumbnail_loader.select_last_item()
-                        self.log_handle(errtype='info', component='page_control',
-                                        content=f'select last item of previous page')
+                        self.log_handle(
+                            content=f'select last item of previous page',
+                            errtype='info',
+                            component='page_control',
+                        )
                     if self.current_page == self.media_data_list.current_media_page:
                         self.set_playing_tag(self.media_data_list.current_playing_idx_num)
                 return 0
             else:
-                self.log_handle(errtype='warning', component='page_control',
-                                content=f'current media type does not support page control, media_type={self.media_type}')
+                self.log_handle(
+                    content=f'current media type does not support page control, media_type={self.media_type}',
+                    errtype='warning',
+                    component='page_control',
+                )
         except Exception as e:
-            self.log_handle(content=str(e)) 
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='page_control',
+            ) 
             return -3
         finally:
             self.loading_page = False
@@ -509,13 +610,20 @@ class MediaList_PageControl_:
             if self.media_data_list.current_playing_idx_num == selected_idx:
                 self._insert_to_ui_queue()
                 self.thumbnail_loader.root.after(1000, lambda: self.thumbnail_loader.select_item(random_idx%50))
-            self.log_handle(errtype='info', component='page_control',
-                            content=f'randomly selected video: {random_idx}, page: {self.current_page}')
+            self.log_handle(
+                content=f'randomly selected video: {random_idx}, page: {self.current_page}',
+                errtype='info',
+                component='page_control',
+            )
             self.media_data_list.current_media_page = self.current_page
             self.media_data_list.current_playing_idx_num = random_idx
 
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='page_control',
+            )
             return -1
         return random_idx
 
@@ -546,8 +654,11 @@ class MediaList_PageControl_:
         self.total_page = 0
         self.current_page = 1
         self.media_type = MediaType.NONE
-        self.log_handle(errtype='info', component='page_control',
-                        content=f'cleared media data and reset page control')
+        self.log_handle(
+            content=f'cleared media data and reset page control',
+            errtype='info',
+            component='page_control',
+        )
         
         
         

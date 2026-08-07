@@ -55,7 +55,8 @@ class innertube_parser:
 
         if media_type == "LOCKUP_CONTENT_TYPE_VIDEO":
             url = f"https://www.youtube.com/watch?v={media_id}"
-        elif media_type == "LOCKUP_CONTENT_TYPE_PLAYLIST":
+        elif media_type in ("LOCKUP_CONTENT_TYPE_PLAYLIST",
+                            "LOCKUP_CONTENT_TYPE_ALBUM"):
             url = f"https://www.youtube.com/playlist?list={media_id}"
         else:
             return None

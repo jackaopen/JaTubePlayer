@@ -60,7 +60,11 @@ class local_media_handle:
                 else:
                     folder_path = filedialog.askdirectory()
 
-                self.log_handle(content=str(folder_path))
+                self.log_handle(
+                    content=str(folder_path),
+                    errtype='info',
+                    component='player',
+                )
                 if folder_path:
                     media_data_list.playlisttitles.clear()
                     media_data_list.playlist_thumbnails.clear()
@@ -75,5 +79,9 @@ class local_media_handle:
             return media_data_list
           
         except Exception as e:
-            self.log_handle(content=f'Error loading local files: {e}')
+            self.log_handle(
+                content=f'Error loading local files: {e}',
+                errtype='error',
+                component='player',
+            )
             return None

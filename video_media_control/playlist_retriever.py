@@ -41,7 +41,11 @@ class playlist_retriever_:
         contiunation_page = False
 
         if page not in playlist_type:
-            self.log_handle(f"Page '{page}' is not supported", "error")
+            self.log_handle(
+                content=f"Page '{page}' is not supported",
+                errtype='error',
+                component='playlist',
+            )
             return None
         else:
             match page:
@@ -65,12 +69,20 @@ class playlist_retriever_:
             while count < int(maxresults):
 
                 if payload is None:
-                    self.log_handle(f"Failed to build payload for page '{page}'", "error")
+                    self.log_handle(
+                        content=f"Failed to build payload for page '{page}'",
+                        errtype='error',
+                        component='playlist',
+                    )
                     break
 
                 response = self.innertube_handle.get_innertube_response(payload)
                 if response is None:
-                    self.log_handle(f"Failed to retrieve innertube content for page '{page}'", "error")
+                    self.log_handle(
+                        content=f"Failed to retrieve innertube content for page '{page}'",
+                        errtype='error',
+                        component='playlist',
+                    )
                     break
 
                 for media in self.innertube_parser.parse(response, contiunation_page):
@@ -91,7 +103,11 @@ class playlist_retriever_:
                 continuation_token = self.innertube_parser.get_continuation_token()
                 contiunation_page = True
                 if not continuation_token:
-                    self.log_handle(f"No more continuation token found for page '{page}'", "info")
+                    self.log_handle(
+                        content=f"No more continuation token found for page '{page}'",
+                        errtype='info',
+                        component='playlist',
+                    )
                     break
                 else:
                     payload["continuation"] = continuation_token
@@ -99,7 +115,11 @@ class playlist_retriever_:
 
             return media_data_list
         except Exception as err:
-            self.log_handle(f"An error occurred while retrieving playlist content for page '{page}': {err}", "error")
+            self.log_handle(
+                content=f"An error occurred while retrieving playlist content for page '{page}': {err}",
+                errtype='error',
+                component='playlist',
+            )
             return None
 
 

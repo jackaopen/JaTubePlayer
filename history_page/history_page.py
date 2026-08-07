@@ -27,17 +27,7 @@ class history_page:
         
         '''
      
-    @staticmethod
-    def _format_history_entry(history_entry: dict) -> str:
-        """Return readable history data, including the media-list contents."""
-        media_data = history_entry.get("media_data")
-        formatted_entry = {
-            "current_playing": history_entry.get("current_playing"),
-            "playlistname": history_entry.get("playlistname"),
-            "media_type": history_entry.get("media_type"),
-            "media_data": vars(media_data) if media_data is not None else None,
-        }
-        return pformat(formatted_entry, width=120, sort_dicts=False)
+    
 
     def record_history(self, 
                        current_playing_url:str, 
@@ -49,9 +39,13 @@ class history_page:
             self.history_list.pop()
         self.current_index = 0
         if media_data.vid_url or current_playing_url:# not empty
-            self.log_handle(component="history_page", content=(f"Recording history: {current_playing_url}, media_type: {media_type}," 
+            self.log_handle(
+                content=f"Recording history: {current_playing_url}, media_type: {media_type}," 
                                                                f" playlistname: {playlistname}, media_data length: {len(media_data.vid_url)}"
-                                                               f" current_index: {self.current_index}, history_list length: {len(self.history_list)}"))
+                                                               f" current_index: {self.current_index}, history_list length: {len(self.history_list)}",
+                errtype='info',
+                component="history",
+            )
             history_dict_template = {"current_playing":"",
                                         "media_data":None,
                                         "playlistname":"",
@@ -65,11 +59,9 @@ class history_page:
             if len(self.history_list) > self.maxlength:
                 self.history_list.pop(0)
             self.log_handle(
-                component="history_page",
-                content=(
-                    f"Recorded history entry {len(self.history_list) - 1}:\n"
-                    f"{self._format_history_entry(history_dict_template)}"
-                ),
+                content=f"Recorded history entry {len(self.history_list) - 1}:\n",
+                errtype='info',
+                component="history",
             )
             return True
         return False
@@ -79,16 +71,18 @@ class history_page:
             self.current_index += 1
             history_entry = self.history_list[-self.current_index]
             self.log_handle(
-                component="history_page",
-                content=(
-                    f"Loading history backward (current_index={self.current_index}):\n"
-                    f"{self._format_history_entry(history_entry)}"
-                ),
+                content=f"Loading history backward (current_index={self.current_index}):\n",
+                errtype='info',
+                component="history",
             )
             return history_entry
         else:
 
-            self.log_handle(component="history_page", content="No more history to read")
+            self.log_handle(
+                content="No more history to read",
+                errtype='warning',
+                component="history",
+            )
             self.messagebox.showinfo("Jatubeplayer", "No more history to read")
             return None
     
@@ -97,15 +91,17 @@ class history_page:
             self.current_index -= 1
             history_entry = self.history_list[-self.current_index]
             self.log_handle(
-                component="history_page",
-                content=(
-                    f"Loading history forward (current_index={self.current_index}):\n"
-                    f"{self._format_history_entry(history_entry)}"
-                ),
+                content=f"Loading history forward (current_index={self.current_index}):\n",
+                errtype='info',
+                component="history",
             )
             return history_entry
         else:
-            self.log_handle(component="history_page", content="No more history to read")
+            self.log_handle(
+                content="No more history to read",
+                errtype='warning',
+                component="history",
+            )
             self.messagebox.showinfo("Jatubeplayer", "No more history to read")
             return None
 

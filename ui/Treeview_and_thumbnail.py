@@ -58,20 +58,24 @@ class ThumbnailLoader:
                     imgdata = await response.read()
                     img = Image.open(io.BytesIO(imgdata))
                     img = img.resize(
-                        (int(140 * self.tkinter_scaling / 1.25), int(85 * self.tkinter_scaling / 1.25)),
+                        (int(112 * self.tkinter_scaling ), int(68 * self.tkinter_scaling )),
                         Image.LANCZOS
                     )
                     img1 = img.crop((
                         0,
-                        int(5 * self.tkinter_scaling / 1.25),
-                        int(140 * self.tkinter_scaling / 1.25),
-                        int(85 * self.tkinter_scaling / 1.25)
+                        int(5 * self.tkinter_scaling ),
+                        int(112 * self.tkinter_scaling ),
+                        int(68 * self.tkinter_scaling )
                     ))
                     thumbnailpic = ImageTk.PhotoImage(img1)
                     self.temp.append(thumbnailpic)
                     self.ui_queue.put(lambda id=id, pic=thumbnailpic: self.playlisttreebox.item(id, image=pic))
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='treeview',
+            )
 
     # ─────────────────────────────────────────────────────────────────────────
     # Async Event Loop for Thumbnail Loading
@@ -121,7 +125,11 @@ class ThumbnailLoader:
                 else:
                     self.playlisttreebox.column("#0", width=0, anchor='center')
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='treeview',
+            )
         self.root.after(20, self.treeview_queue_GetterLoop)
     
 
@@ -133,7 +141,11 @@ class ThumbnailLoader:
         if children:
             self.playlisttreebox.selection_set(children[0])
             self.playlisttreebox.see(children[0])  
-        self.log_handle(content='selected first item in the playlist')
+        self.log_handle(
+            content='selected first item in the playlist',
+            errtype='info',
+            component='treeview',
+        )
 
     def select_last_item(self):
         self.root.after(500, self._select_last_item)
@@ -174,7 +186,11 @@ class ThumbnailLoader:
         try:
             self.root.after(50, lambda: self._set_item_color(idx, color))
         except Exception as e:
-            self.log_handle(f"[set_item_color] error: {str(e)}")
+            self.log_handle(
+                content=f"[set_item_color] error: {str(e)}",
+                errtype='error',
+                component='treeview',
+            )
             raise e
         
     def _set_item_color(self, idx = int, color:str = 'playing'):
@@ -192,7 +208,11 @@ class ThumbnailLoader:
                 self.playlisttreebox.item(child, tags=("normal",))
                 
         except Exception as e:
-            self.log_handle(content=str(e))
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='treeview',
+            )
 
     def close(self):
         if self.asyncio_session:

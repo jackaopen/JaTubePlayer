@@ -7,7 +7,6 @@ import tkinter as tk
 from tkinter import ttk,filedialog
 from tkinter import *
 import os
-import ffmpeg
 import io
 import json
 import sys
@@ -27,7 +26,7 @@ from customtkinter import CTkImage
 import ctypes
 
 
-from utils.get_scaling import get_window_dpi
+from utils.get_scaling import *
 from utils.load_yt_dlp import *
 from utils.download_to_local import download_to_local
 from utils.check_internet import *
@@ -85,25 +84,29 @@ os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-ver='2.4'
-root.title(f'JaTubePlayer {ver} by Jackaopen')
-root.geometry('1320x680')
+ver='3.0'
+root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
 hwnd = win32gui.FindWindow(None, root.title())
-tkinter_scaling = get_window_dpi(hwnd)/1.25 # 1.25 is 100% scaling
+tkinter_scaling = get_window_dpi(hwnd) 
+print(f"Tkinter scaling factor: {tkinter_scaling}")
 
+BASE_WIDTH = 1320
+BASE_HEIGHT = 680
+root.geometry(f"{BASE_WIDTH}x{BASE_HEIGHT}")
 ui_queue = queue.Queue()
 
-mpv_log = deque(maxlen=2000)
+log_queue = deque(maxlen=5000)
 messagebox = ctk_messagebox(root,_internal_path=_internal_dir)
 log_handler = log_handler_(ui_queue=ui_queue,
                            ver=ver,
-                           mpv_log=mpv_log,
+                           log_queue=log_queue,
                            messagebox=messagebox,
                            force_stop_loading = lambda: set_force_stop_loading(True),
                            root=root,
                            icondir=icondir,
-                           blur_callable=lambda: (blur_hexColor.get(),blur_window.get())
+                           blur_callable=lambda: (blur_hexColor.get(),blur_window.get()),
+                           current_dir=current_dir
                            )
 log_handle = log_handler.log_handle
 ytdlp_log_handle = log_handler.ytdlp_log_handler
@@ -116,7 +119,11 @@ def _process_ui_queue():
         for _ in range(200):
             f = ui_queue.get_nowait()
             try:f()
-            except Exception as e:log_handle(e)
+            except Exception as e:log_handle(
+                                      content=e,
+                                      errtype='error',
+                                      component='ui_queue',
+                                  )
     except queue.Empty:pass
     root.after(20, _process_ui_queue)
 root.after(20, _process_ui_queue)
@@ -202,7 +209,7 @@ selected_song_title = tk.StringVar()
 downloadhooktext = tk.StringVar()
 
 info = None
-with Image.open(icondir) as title_icon_source:
+with Image.open(os.path.join(_internal_dir,"banner.png")) as title_icon_source:
     title_icon_image = title_icon_source.copy()
 
 
@@ -213,6 +220,7 @@ with Image.open(icondir) as title_icon_source:
 loadingplaylist = False
 loadingvideo = False
 insert_treeview_quene = queue.Queue()
+load_thread_queue = queue.Queue()   
 auto_check_ver = tk.BooleanVar()
 init_quickstartup_mode = tk.StringVar()
 init_quickstartup_playlist_mode = tk.StringVar()
@@ -228,7 +236,6 @@ force_stop_loading = False
 is_downloading = tk.BooleanVar()
 is_downloading.set(False)
 hover_fullscreen = tk.BooleanVar()
-cache_secs = tk.IntVar()
 demuxer_max_bytes = tk.IntVar()
 demuxer_max_back_bytes = tk.IntVar()
 cache_pause_wait = tk.DoubleVar()
@@ -263,10 +270,7 @@ media_data_list = media_data_list_template()
     - playlist_thumbnails
 '''
 
-# ==== 系統相關 ====
-cookie = None
 
-# ==== config ====
 
 
 def save_config():
@@ -399,7 +403,11 @@ class Chrome_ext_server_ui_functions:
                                             icon=icondir)
                                
             except Exception as e:
-                log_handle(content=f"Error adding video to playlist: {e}")
+                log_handle(
+                    content=f"Error adding video to playlist: {e}",
+                    errtype='error',
+                    component='playlist',
+                )
                 messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to add video to playlist.\nError: {e}")    
         else:
             ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
@@ -430,16 +438,21 @@ class AccountInfo:
             return None
 
 
-    def set_account_avator(self)->None:
+    def set_account_avator(self,force:bool = False)->None:
         '''
         use self.account_avator_url to get the avator pic and set it to google_status_profile_pic_label
         '''
         from utils.parser import innertube_parser
         payload = account_innertube_handler.preInit_buildPayload("home",
-                                                                 use_matching_page=True)         
+                                                                 use_matching_page=True,
+                                                                 force = force)         
         if not payload:
             messagebox.showerror(f'JaTubePlayer {ver}', "Failed to build payload for account info. Please check the log for more details.")
-            log_handle("Failed to build payload for account info", "error")
+            log_handle(
+                content="Failed to build payload for account info",
+                errtype='error',
+                component='account',
+            )
             return                                     
         account_response = account_innertube_handler.get_innertube_response(payload=payload, 
                                                                            get_account=True)
@@ -452,7 +465,11 @@ class AccountInfo:
                 ui_queue.put(lambda: google_status_profile_pic_label.configure(image=avator_pic))
                 insert_textbox(google_status_text, self.account_name)
             except Exception as e:
-                log_handle(content=f"Failed to get account avator: {e}")
+                log_handle(
+                    content=f"Failed to get account avator: {e}",
+                    errtype='error',
+                    component='account',
+                )
                 self.account_avator_url = ''
                 self.clear_account_info()
 
@@ -496,7 +513,11 @@ def _switch_local_server(mode:int)->None|str:
             return str(e)
         
     elif mode == 1:
-        log_handle(content="Shutting down local server for chrome extension communication...")
+        log_handle(
+            content="Shutting down local server for chrome extension communication...",
+            errtype='info',
+            component='account',
+        )
         try:
             setting_run_chrome_extension_server.set(False)
             chrome_extension_flask.shutdown(icondir=icondir)
@@ -559,25 +580,55 @@ def setting_frame():
        
         @check_internet
         def google_login_setting():
-            if not account_handler.login_refresh(0):
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to login, please check the log for more details'))
-                return
+            try:
+                googlelogin_btn.configure(state="disabled")
+                if not account_handler.Start_wv_process(0):
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to login, please check the log for more details'))
+                    return
+            except Exception as e:
+                log_handle(
+                    content=f" err:{e}",
+                    errtype="error",
+                    component="google_login_setting"
+                )
+            finally:
+                googlelogin_btn.configure(state='normal')
         def google_logout_setting():
-            if not account_handler.clear_login_data(cookie_only=True):
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
-                return
-            account_info_handler.clear_account_info()
-            innertube_handler.clear_header()
-            account_innertube_handler.clear_header()
-
-        def deletesyskey():
-            if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including cookies and AES key\nAre you sure?'):
-                if not account_handler.clear_login_data(cookie_only=False):
+            try:
+                googlelogout_btn.configure(state="disabled")
+                if not account_handler.clear_login_data(cookie_only=True):
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
                     return
                 account_info_handler.clear_account_info()
                 innertube_handler.clear_header()
                 account_innertube_handler.clear_header()
+            except Exception as e:
+                log_handle(
+                    content=f" err:{e}",
+                    errtype="error",
+                    component="google_logout_setting"
+                )
+            finally:
+                googlelogout_btn.configure(state='normal')
+
+        def deletesyskey():
+            try:
+                deletesyskey_btn.configure(state="disabled")
+                if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including cookies and AES key\nAre you sure?'):
+                    if not account_handler.clear_login_data(cookie_only=False):
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
+                        return
+                    account_info_handler.clear_account_info()
+                    innertube_handler.clear_header()
+                    account_innertube_handler.clear_header()
+            except Exception as e:
+                log_handle(
+                    content=f" err:{e}",
+                    errtype="error",
+                    component="delete sys key setting"
+                )
+            finally:
+                deletesyskey_btn.configure(state='normal')
             
         @check_internet
         def get_resolution_setting():
@@ -600,7 +651,11 @@ def setting_frame():
                     else:
                         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','selected a video first'))
 
-                except Exception as e:log_handle(content=str(e))
+                except Exception as e:log_handle(
+                                          content=str(e),
+                                          errtype='error',
+                                          component='download',
+                                      )
                 finally:
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
             elif playing_vid_mode == 3:
@@ -615,7 +670,11 @@ def setting_frame():
                     ui_queue.put(lambda: resoltion_combox._open_dropdown_menu())
                     ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
 
-                except Exception as e :log_handle(content=str(e))
+                except Exception as e :log_handle(
+                                           content=str(e),
+                                           errtype='error',
+                                           component='download',
+                                       )
                 finally:
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
                 
@@ -673,12 +732,25 @@ def setting_frame():
                             msg="Preparing to download...\n Checking video valiability and fetching info",
                             icon=icondir,
                             )
-                            log_handle(content=f"Start fetching video info for downloading, url: {_vid_url[_selected_idx]}")
+                            log_handle(
+                                content=f"Start fetching video info for downloading, url: {_vid_url[_selected_idx]}",
+                                errtype='info',
+                                component='download',
+                            )
                             _,info_dict = get_info(loader=get_info_loader,
                                             target_url=_vid_url[_selected_idx],
                                             )
-                            log_handle(content=f"Finished fetching video info for downloading, info: {info_dict}")
+                            log_handle(
+                                content=f"Finished fetching video info for downloading, info: {info_dict}",
+                                errtype='info',
+                                component='download',
+                            )
                             if not info_dict:
+                                log_handle(
+                                    content="Failed to fetch video information for download",
+                                    errtype="error",
+                                    component="download",
+                                )
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to fetch video info, the video may be unavailable or private\nPlease check the log for more details'))
                                 is_downloading.set(False)
                                 return
@@ -728,13 +800,17 @@ def setting_frame():
                         icondir=icondir,
                         ver=ver,
                         root=root,   
-                        ffmpeg=ffmpeg,
                         ytdlp_log_handle=ytdlp_log_handle,
                         is_downloading = is_downloading,
                         deno_path=deno_exe,
-                        ctk_messagebox=messagebox
+                        ctk_messagebox=messagebox,
+                        log_handle=log_handle
                         )
-                    log_handle(content=f"downloaded {title  }")
+                    log_handle(
+                        content=f"downloaded {title  }",
+                        errtype='info',
+                        component='download',
+                    )
                     
                     time.sleep(2)
                     ui_queue.put(lambda: downloadselectedsong.configure(state = "normal"))
@@ -745,16 +821,12 @@ def setting_frame():
                     
 
             
-
         @check_internet
         def updateplaylists():
-            
             updateuserplaylists_btn.configure(text='⏳ loading...')
-                #TODO
+            userplaylistcombobox.configure(values=[])
+            get_user_playlists()
             updateuserplaylists_btn.configure(text='update Playlist ')
-
-
-        
 
         def remove_selected_from_playlist_setting():
             global selected_song_number
@@ -768,6 +840,11 @@ def setting_frame():
                 
                 selected_song_number = None
             except Exception as e:
+                log_handle(
+                    content=f"Failed to remove selected playlist item: {e}",
+                    errtype="error",
+                    component="playlist",
+                )
                 messagebox.showerror(f'JaTubePlayer {ver}', f'Failed to remove item from playlist:\n{e}')
 
         def leave():
@@ -925,7 +1002,7 @@ def setting_frame():
             selected_playlist_name = ''
             match init_quickstartup_playlist_mode.get():
                 case "yt_playlist":
-                    selected_idx = user_playlists_name.index(init_playlist_combobox.cget('values'))
+                    selected_idx = user_playlists_name.index(init_playlist_combobox.get())
                     selected_playlist_id = user_playlist_id_list[selected_idx]
                     selected_playlist_name = user_playlists_name[selected_idx]
                 case "like":
@@ -983,6 +1060,11 @@ def setting_frame():
                 chrome_extension_server_checkbtn.configure(state='disabled')
                 
                 if _switch_local_server(1) :
+                    log_handle(
+                        content="Failed to stop the Chrome extension server",
+                        errtype="error",
+                        component="chrome_ext",
+                    )
                     messagebox.showerror(f'JaTubePlayer {ver}','Failed to stop the chrome extension server')
                 
                 root.after(2000,lambda:chrome_extension_server_checkbtn.configure(state='normal'))
@@ -1035,7 +1117,11 @@ def setting_frame():
                     try:blur(win32gui.FindWindow(None,info.title()), disable=True)
                     except:pass
             except Exception as e:
-                log_handle(content=str(e))    
+                log_handle(
+                    content=str(e),
+                    errtype='error',
+                    component='settings',
+                )    
                 
         def max_resolution_select(event=None):
             maxresolution.set(int(maxresolutioncombobox.get()))
@@ -1047,17 +1133,21 @@ def setting_frame():
             global yt_dlp,utils,ytdlpver
             ui_queue.put(lambda: auto_update_ytdlp_btn.configure(state='disabled'))
             ui_queue.put(lambda: auto_update_ytdlp_btn.configure(text='⏳ updating...'))
-            result = download_and_extract_dlp(_internal_dir,root,icondir,log_handle)
+            result = ytdlp_updater.download_and_extract_dlp()
             if not result:
-                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','ytdlp Update failed!, please check log file'))
+                log_handle(
+                    content="yt-dlp update failed or cancelled",
+                    errtype="warning",
+                    component="settings",
+                )
+                ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','ytdlp Update failed or cancelled, please check log file'))
             else:
                 messagebox.showinfo(f'JaTubePlayer {ver}',(f'ytdlp Update successful! new version: {result}'
                                                            '\nPlease restart the app to apply the update!'))
-                star_vid_handle.yt_dlp = yt_dlp #update yt-dlp reference in star vid handle
                 threading.Thread(daemon=True,target=get_version_setting_thread).start()
 
                 ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='New version installed!', duration='short',icon=icondir)
-            
+                
             ui_queue.put(lambda: auto_update_ytdlp_btn.configure(state='normal'))
             ui_queue.put(lambda: auto_update_ytdlp_btn.configure(text='update yt-dlp'))
 
@@ -1082,16 +1172,11 @@ def setting_frame():
             save_config()
 
         def _save_cache_settings():
-            CONFIG['cache']['cache_secs'] = int(cache_secs.get())
             CONFIG['cache']['demuxer_max_bytes'] = int(demuxer_max_bytes.get())
             CONFIG['cache']['demuxer_max_back_bytes'] = int(demuxer_max_back_bytes.get())
             CONFIG['cache']['cache_pause_wait'] = int(cache_pause_wait.get())
             CONFIG['cache']['audio_wait_open'] = int(audio_wait_open.get())
             save_config()
-
-        def _cache_secs_slider_change(value):
-            cache_secs.set(int(float(value)))
-            cache_secs_value_label.configure(text=f'{cache_secs.get()}s')
 
         def _demuxer_max_bytes_slider_change(value):
             demuxer_max_bytes.set(int(float(value)))
@@ -1114,7 +1199,11 @@ def setting_frame():
 
         def subtitle_combobox_callback(event):
             subtitle_selection_idx.set(subtitlecombobox.cget('values').index(subtitlecombobox.get()))
-            log_handle(f'selected subtitle idx{subtitle_selection_idx.get()}')
+            log_handle(
+                content=f'selected subtitle idx{subtitle_selection_idx.get()}',
+                errtype='info',
+                component='settings',
+            )
             if subtitle_selection_idx.get() != 0:
                 try:player.sub_add(subtitle_urllist[subtitle_selection_idx.get()-1])
                 except:pass
@@ -1148,7 +1237,11 @@ def setting_frame():
                         else:discord_presence.idle()
                     else:raise Exception("No title found")
                 except Exception as e:
-                    log_handle(content=str(e))
+                    log_handle(
+                        content=str(e),
+                        errtype='error',
+                        component='settings',
+                    )
                     discord_presence.idle()
             else:
                 ui_queue.put(lambda: discord_presence_show_playing_btn.configure(state='disabled'))
@@ -1230,13 +1323,21 @@ def setting_frame():
             try:
                 playerspeed_speed_label.configure(text=f'{player_speed.get():.1f}x')
             except Exception as e:
-                log_handle(content=str(e))
+                log_handle(
+                    content=str(e),
+                    errtype='error',
+                    component='settings',
+                )
         
         def apply_player_speed_setting(event=None):
             try:
                 player.speed = player_speed.get()
             except Exception as e:
-                log_handle(content=str(e))
+                log_handle(
+                    content=str(e),
+                    errtype='error',
+                    component='settings',
+                )
 
         def select_download_path():
             path =filedialog.askdirectory()
@@ -1282,7 +1383,11 @@ def setting_frame():
                 try:
                     switch_blur_window()
                 except Exception as e:
-                    log_handle(content=str(e))
+                    log_handle(
+                        content=str(e),
+                        errtype='error',
+                        component='settings',
+                    )
             else:messagebox.showinfo(f'JaTubePlayer {ver}','Cancelled!')
 
         def setting_switch_ytdlp_use_cookie():
@@ -1300,7 +1405,11 @@ def setting_frame():
                 liked_video_value = int(liked_video_result_count_entry.get().strip())
             except (ValueError, tk.TclError):
                 messagebox.showerror(f'JaTubePlayer {ver}', 'Max result counts must be whole numbers')
-                log_handle(content="Invalid max result count input type, reverting to previous values")
+                log_handle(
+                    content="Invalid max result count input type, reverting to previous values",
+                    errtype='warning',
+                    component='settings',
+                )
                 err = True
             else:
                 if recommendation_value not in range(10, 301):
@@ -1322,7 +1431,11 @@ def setting_frame():
                 max_sub_result_count.set(previous_values.get("sub", 100))
                 max_search_result_count.set(previous_values.get("search", 100))
                 max_like_result_count.set(previous_values.get("like", 5000))
-                log_handle(content="Invalid max result count input, reverting to previous values")
+                log_handle(
+                    content="Invalid max result count input, reverting to previous values",
+                    errtype='warning',
+                    component='settings',
+                )
             else:
                 max_recommendation_result_count.set(recommendation_value)
                 max_sub_result_count.set(subscription_value)
@@ -1532,19 +1645,19 @@ def setting_frame():
         resolution_frame.grid_columnconfigure(1, weight=1)
         
         # Video Info Section
-        info_title = ctk.CTkLabel(download_info_frame, text='  \u25b8 Selected Video', font=('Arial', 14, 'bold'), text_color='#E0A07E', anchor='w')
+        info_title = ctk.CTkLabel(download_info_frame, text='  I. Selected Video', font=('Arial', 14, 'bold'), text_color='#E0A07E', anchor='w')
         download_seleted_title_text = ctk.CTkTextbox(download_info_frame, font=('Arial', 14), width=650, height=55, fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
         download_seleted_title_text.configure(state='disabled')
         
         # Format Selection Section
-        format_title = ctk.CTkLabel(format_frame, text='  \u25b8 Format', font=('Arial', 14, 'bold'), text_color='#D4A0E0', anchor='w')
+        format_title = ctk.CTkLabel(format_frame, text='  II. Format', font=('Arial', 14, 'bold'), text_color='#D4A0E0', anchor='w')
         download_mp3 = ctk.CTkRadioButton(format_frame, text='Audio (MP3)', variable=formats, value=0, command=lambda:download_select_mode_setting(0),
                                            font=('Arial', 12), text_color='#C8C8C8')
         download_mp4 = ctk.CTkRadioButton(format_frame, text='Video (MP4)', variable=formats, value=1, command=lambda:download_select_mode_setting(1),
                                            font=('Arial', 12), text_color='#C8C8C8')
         
         # Resolution Section
-        resolution_title = ctk.CTkLabel(resolution_frame, text='  \u25b8 Resolution ( Select Format First! )', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
+        resolution_title = ctk.CTkLabel(resolution_frame, text='  III. Resolution', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
         resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 12), width=200, values=[],state='readonly',
                                             dropdown_fg_color='#333333', button_color='#444444')
         get_resoltion_btn = ctk.CTkButton(resolution_frame, text='Get Available', width=140,
@@ -1557,7 +1670,7 @@ def setting_frame():
         download_path_frame.grid_columnconfigure(1, weight=1)
         download_path_frame.grid_columnconfigure(2, weight=0)
 
-        download_path_title = ctk.CTkLabel(download_path_frame, text='  \u25b8 Download Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
+        download_path_title = ctk.CTkLabel(download_path_frame, text='  IV. Download Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
         download_path_label = ctk.CTkLabel(download_path_frame, font=('Arial', 12), text='Save to:', text_color='#B0B0B0')
         download_path_textbox = ctk.CTkTextbox(download_path_frame, font=('Arial', 12), height=28, text_color='#C8C8C8',
                                                fg_color='#1a1a1a', corner_radius=6, wrap='none', activate_scrollbars=False)
@@ -1632,19 +1745,20 @@ def setting_frame():
         _slider_kw = dict(progress_color='#8E7A4A', button_color='#E0C48C', button_hover_color='#F0D8A0')
         cache_buffer_header = ctk.CTkLabel(cache_buffer_frame, text='  ▸ Cache & Buffer', font=('Arial', 14, 'bold'), text_color='#E0C48C', anchor='w')
 
-        cache_secs_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Cache Duration', text_color='#B0B0B0')
-        cache_secs_slider = ctk.CTkSlider(cache_buffer_frame, variable=cache_secs, from_=10, to=300, width=200,
-                                           number_of_steps=290, command=_cache_secs_slider_change, **_slider_kw)
-        cache_secs_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        cache_secs_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{cache_secs.get()}s', text_color='#E0C48C')
+        cache_buffer_note = ctk.CTkLabel(
+            cache_buffer_frame,
+            text='NOTE: Front and back buffer limits are added together as the total cache budget.\n'
+                 'Unused front-buffer space may be shared with the back buffer, but not the reverse.',
+            height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+            corner_radius=6, anchor='w', justify='left', wraplength=610)
 
-        demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max Buffer Size', text_color='#B0B0B0')
+        demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max front Buffer Size', text_color='#B0B0B0')
         demuxer_max_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_bytes, from_=16, to=2048, width=200,
                                                   number_of_steps=2032, command=_demuxer_max_bytes_slider_change, **_slider_kw)
         demuxer_max_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
         demuxer_max_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{demuxer_max_bytes.get()}M', text_color='#E0C48C')
 
-        demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max Back Buffer', text_color='#B0B0B0')
+        demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max Back Buffer Size', text_color='#B0B0B0')
         demuxer_max_back_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_back_bytes, from_=16, to=2048, width=200,
                                                        number_of_steps=2032, command=_demuxer_max_back_bytes_slider_change, **_slider_kw)
         demuxer_max_back_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
@@ -1900,7 +2014,11 @@ def setting_frame():
                             init_quickstartup_playlist_mode.set(quickstartconfig['playlistmode_playlist_ID'])
                         init_playlist_select()
                     else:
-                        log_handle(content=f'No playlist name found in config for quick startup mode.')
+                        log_handle(
+                            content=f'No playlist name found in config for quick startup mode.',
+                            errtype='warning',
+                            component='settings',
+                        )
                         return
                 
                         
@@ -1923,7 +2041,11 @@ def setting_frame():
                 insert_textbox(hotkey_volume_down_textbox, CONFIG['keyboard_hotkeys'].get('volume_down', 'Not set'))
                 insert_textbox(hotkey_toggle_minimize_textbox, CONFIG['keyboard_hotkeys'].get('toggle_minimize', 'Not set'))
             except Exception as e:
-                log_handle(content=f"Error loading hotkey settings: {e}")
+                log_handle(
+                    content=f"Error loading hotkey settings: {e}",
+                    errtype='error',
+                    component='settings',
+                )
                 
         
         def get_version_setting_thread():
@@ -1939,7 +2061,11 @@ def setting_frame():
                     ui_queue.put(lambda: ytdlp_ver_current_label.configure(text=f'{ytdlpver.__version__}'))
                     ui_queue.put(lambda: player_ver_current_label.configure(text=f'{ver}'))
                     ui_queue.put(lambda: player_ver_latest_label.configure(text=f'No internet'))
-            except Exception as e:log_handle(content=str(e))
+            except Exception as e:log_handle(
+                                      content=str(e),
+                                      errtype='error',
+                                      component='settings',
+                                  )
 
 
 
@@ -1964,7 +2090,11 @@ def setting_frame():
                         elif mode == 3:insert_textbox(init_quick_startup_mode_text, f'Local folder : {CONFIG["quickstartup_init"]["localfoldermode_folder_Path"]}')
 
 
-                    except Exception as e:log_handle(content=str(e))
+                    except Exception as e:log_handle(
+                                              content=str(e),
+                                              errtype='error',
+                                              component='settings',
+                                          )
 
                     
                     ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
@@ -2082,9 +2212,7 @@ def setting_frame():
         # ── Cache & Buffer Card ──
         cache_buffer_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
         cache_buffer_header.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
-        cache_secs_label.grid(row=1, column=0, padx=(24, 8), pady=4, sticky="w")
-        cache_secs_slider.grid(row=1, column=1, padx=8, pady=4, sticky="ew")
-        cache_secs_value_label.grid(row=1, column=2, padx=(4, 14), pady=4, sticky="w")
+        cache_buffer_note.grid(row=1, column=0, columnspan=3, padx=16, pady=(0, 8), sticky="ew")
         demuxer_max_bytes_label.grid(row=2, column=0, padx=(24, 8), pady=4, sticky="w")
         demuxer_max_bytes_slider.grid(row=2, column=1, padx=8, pady=4, sticky="ew")
         demuxer_max_bytes_value_label.grid(row=2, column=2, padx=(4, 14), pady=4, sticky="w")
@@ -2392,7 +2520,7 @@ def history_control(mode:int):
 
             
             if history_template_dict:
-                insert_textbox(playlist_name_textbox," Playlist ⏳loading")
+                insert_textbox(playlist_name_textbox,"⏳loading")
                 media_type = history_template_dict.get("media_type")
                 match media_type:
                     case MediaType.STARRED_VIDEO:
@@ -2406,7 +2534,11 @@ def history_control(mode:int):
                     
                 media_list_page_controller.history_page_init_and_reload(history_template_dict.get("media_data"),
                                                                         media_type=media_type)
-                log_handle(f"History page loaded with {history_template_dict.get("media_data", []).vid_url} items")
+                log_handle(
+                    content=f"History page loaded with {history_template_dict.get("media_data", []).vid_url} items",
+                    errtype='info',
+                    component='history',
+                )
                 media_data_list = media_list_page_controller.media_data_list
                 playing_url = history_template_dict.get("current_playing",None)
                 if playing_url:
@@ -2418,8 +2550,13 @@ def history_control(mode:int):
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
                     selected_song_number = media_data_list.vid_url.index(playing_url)
+                    playlisttreebox.see(selected_song_number)
         except Exception as e:
-            log_handle(f"Error in _history_thread: {e}")
+            log_handle(
+                content=f"Error in _history_thread: {e}",
+                errtype='error',
+                component='history',
+            )
         finally:
             ui_queue.put(lambda:history_back_btn.configure(state='normal'))
             ui_queue.put(lambda:history_forward_btn.configure(state='normal'))
@@ -2479,14 +2616,15 @@ def get_user_playlists():
 
 @check_internet
 def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
-                          sel_idx: int = 0):
+                          sel_idx: int = 0,
+                          playlist_name:str=''):
     '''
     will get playlist video with the platlistID, or "sub" for user subscriptions, or "like" for user liked videos
     '''
     if not account_handler.check_aes_key():
         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Invalid AES key, please clear account data and restart the app'))
         return
-    if account_handler.check_cookie_exist() == False:
+    if account_handler.check_cookie_exist() == False and playlistID != "home":
         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please set your login first'))
         return
 
@@ -2495,20 +2633,29 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
     selected_song_number = None
     playing_vid_mode = 0
     loadingplaylist = True
-    log_handle(content=f"start to get playlist videos with playlistID: {playlistID}")
+    log_handle(
+        content=f"start to get playlist videos with playlistID: {playlistID}",
+        errtype='info',
+        component='playlist',
+    )
 
     if playlistID == 'sub':
         playlistname = 'Subscriptions'
     elif playlistID == 'like':
         playlistname = 'Liked Videos'
     elif playlistID == 'home':
-        playlistname = 'Home'
+        playlistname = 'Recommend'
     else:
-        playlistname = media_list_page_controller.user_playlist_dict_list[sel_idx]['name']
+
+        if not playlist_name:
+            playlistname = media_list_page_controller.user_playlist_dict_list[sel_idx]['name']
+        else:
+            playlistname = playlist_name
+
 
     thumbnail_loader.clear_thumbnails()
 
-    insert_textbox(playlist_name_textbox, f"Playlist - ⏳loading\n{playlistname}")
+    insert_textbox(playlist_name_textbox, f"⏳loading: {playlistname}")
     ui_queue.put(lambda: page_num_label.configure(text=''))
 
     def _get_youtube_playlists_thread(playlistID:str):
@@ -2529,11 +2676,15 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
                                                                 playlist_id=playlistID)
             media_data_list = media_list_page_controller.media_data_list
 
-            insert_textbox(playlist_name_textbox, f"Playlist\n{playlistname}")
+            insert_textbox(playlist_name_textbox, f"{playlistname}")
             
 
         except Exception as e:
-            log_handle(content=f"Error while getting playlist videos: {e}")
+            log_handle(
+                content=f"Error while getting playlist videos: {e}",
+                errtype='error',
+                component='playlist',
+            )
             ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f'Error while getting playlist videos: {err}'))
         finally:
             loadingplaylist = False
@@ -2561,7 +2712,7 @@ def youtube_search_thread():
         )
         media_data_list = media_list_page_controller.media_data_list
 
-        insert_textbox(playlist_name_textbox, f"Search\n{searchentry.get()}")
+        insert_textbox(playlist_name_textbox, f"Search: {searchentry.get()}")
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
 
 
@@ -2584,7 +2735,11 @@ def get_starred_vid(event=None):
         selected_song_number = None
         playing_vid_mode = 4
         loadingplaylist = True
-        log_handle(content="start to get starred videos")
+        log_handle(
+            content="start to get starred videos",
+            errtype='info',
+            component='playlist',
+        )
         insert_textbox(playlist_name_textbox, "Starred Videos")
         ui_queue.put(lambda: page_num_label.configure(text=''))
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
@@ -2642,7 +2797,11 @@ def switch_starred_vid(event=None):
                 media_data_list.playlist_thumbnails.pop(selected_song_number)
                 media_data_list.playlist_channel.pop(selected_song_number)
             except Exception as e:
-                log_handle(content=str(e))
+                log_handle(
+                    content=str(e),
+                    errtype='error',
+                    component='playlist',
+                )
                 
         
     else:#add
@@ -2737,6 +2896,11 @@ def update_playing_pos_local_and_chrome():
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
                             elif media_idx == -1:
+                                log_handle(
+                                    content="Failed to select a random video after playback ended",
+                                    errtype="error",
+                                    component="player",
+                                )
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
                                 break
                             else:
@@ -2805,7 +2969,11 @@ def update_playing_pos_yt():
                         pass
                 else:ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
                 if player.eof_reached and  length != -1: ## video ends
-                    log_handle(content=f'video ended detected in yt thread , now do {player_mode_selector.get()}')
+                    log_handle(
+                        content=f'video ended detected in yt thread , now do {player_mode_selector.get()}',
+                        errtype='info',
+                        component='player',
+                    )
                     if selected_song_number != None:
 
                         if player_mode_selector.get() =='continue':
@@ -2822,6 +2990,11 @@ def update_playing_pos_yt():
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
                             elif media_idx == -1:
+                                log_handle(
+                                    content="Failed to select a random video after playback ended",
+                                    errtype="error",
+                                    component="player",
+                                )
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
                                 break
                             else:
@@ -2857,7 +3030,11 @@ def update_playing_pos_yt():
                 break
 
     except Exception as e:
-        log_handle(content=f"Error in update_playing_pos_yt: {e}")
+        log_handle(
+            content=f"Error in update_playing_pos_yt: {e}",
+            errtype='error',
+            component='player',
+        )
         
 
             
@@ -2869,7 +3046,11 @@ def scaler_start_seek(event):
         player.pause = True
         userposition = math.floor(event)
         player.seek(userposition, reference='absolute+exact')
-        log_handle(content=f"seek to {userposition}")
+        log_handle(
+            content=f"seek to {userposition}",
+            errtype='info',
+            component='player',
+        )
         pauseStr.set('||')
     except:pass
 
@@ -2889,7 +3070,11 @@ def arrow_release(event):
 userposition = None
 def set_position_keyboard_thread(mode):#1 == backward 2 == forward
     global seeking,userposition
-    log_handle(content=f"{seeking} {userposition}") 
+    log_handle(
+        content=f"{seeking} {userposition}",
+        errtype='info',
+        component='player',
+    ) 
     try:
         if str(root.focus_get()) != '.!entry' and player.duration != None and not seeking:
             seeking = True
@@ -2900,17 +3085,29 @@ def set_position_keyboard_thread(mode):#1 == backward 2 == forward
                     userposition = max(0, userposition - 5)##not fk it to the negative lol
 
                     player.seek(userposition, reference='absolute+exact')
-                except Exception as e:log_handle(content=str(e))
+                except Exception as e:log_handle(
+                                          content=str(e),
+                                          errtype='error',
+                                          component='player',
+                                      )
             elif mode == 2:
                 try:
                     if not userposition :userposition = player.time_pos
                     userposition = min(player.duration - 1, userposition + 5)##not fk it to the end
                     player.seek(userposition, reference='absolute+exact')
-                except Exception as e:log_handle(content=str(e))
+                except Exception as e:log_handle(
+                                          content=str(e),
+                                          errtype='error',
+                                          component='player',
+                                      )
             time.sleep(0.2)
             seeking = False
     except Exception as e:
-            log_handle(content=str(e))
+            log_handle(
+                content=str(e),
+                errtype='error',
+                component='player',
+            )
             seeking = False
 
 def set_position_keyboard(mode):
@@ -2948,7 +3145,11 @@ def set_volume(value,mode = 0):
         volume = float(value)
         player.volume =int(volume)
     except AttributeError:pass
-    except Exception as e:log_handle(content=str(e))
+    except Exception as e:log_handle(
+                              content=str(e),
+                              errtype='error',
+                              component='player',
+                          )
 
 def set_volume_wheel(event=None):
 
@@ -3012,7 +3213,11 @@ def playprevnext(direction:int)->None:
         if loadingvideo == False or loadingvideo==True and messagebox.askokcancel(f'JaTubePlayer {ver}','The video is still loading, sure to load again?'):
             stop_playing_video()
             
-            log_handle(content=f"[next]selected follow is {SELECTED_FOLLOW}, current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}")
+            log_handle(
+                content=f"[next]selected follow is {SELECTED_FOLLOW}, current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}",
+                errtype='info',
+                component='player',
+            )
             if media_list_page_controller.total_page > 1:
                 if media_data_list.current_playing_idx_num % PER_PAGE == edge_index_per_page or media_data_list.current_playing_idx_num == edge_index_all_page:
                     if direction == 1:
@@ -3023,7 +3228,11 @@ def playprevnext(direction:int)->None:
                                                                         selected_follow=SELECTED_FOLLOW)
 
                     if pageRes == 0:
-                        log_handle(content="successfully load the next page")
+                        log_handle(
+                            content="successfully load the next page",
+                            errtype='info',
+                            component='player',
+                        )
                         if media_data_list.current_media_page != 0:
                             
                             if media_data_list.current_media_page == edge_page_count:
@@ -3031,7 +3240,11 @@ def playprevnext(direction:int)->None:
                             else:
                                 media_data_list.current_media_page += page_direction_val
 
-                            log_handle(content=f"[next]current media page is {media_data_list.current_media_page}")
+                            log_handle(
+                                content=f"[next]current media page is {media_data_list.current_media_page}",
+                                errtype='info',
+                                component='player',
+                            )
 
                     if pageRes == -1:
                         messagebox.showinfo(f'JaTubePlayer {ver}','The next page is still loading')
@@ -3072,9 +3285,17 @@ def playprevnext(direction:int)->None:
             else:
                 ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
 
-            log_handle(content=f"[next]current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}")
+            log_handle(
+                content=f"[next]current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}",
+                errtype='info',
+                component='player',
+            )
     except Exception as e:
-        log_handle(content=f"Error in playprevnext(1): {e}")
+        log_handle(
+            content=f"Error in playprevnext(1): {e}",
+            errtype='error',
+            component='player',
+        )
         messagebox.showerror(f'JaTubePlayer {ver}',f'An error occurred: {e}')
 
 
@@ -3100,7 +3321,11 @@ def load_thread():  ### add every try except to a new log system for next update
     while True:
         while load_thread_queue.empty():
             time.sleep(0.3)  ### wait for loading command
-        log_handle(content=f"load thread got sth")
+        log_handle(
+            content=f"load thread got sth",
+            errtype='info',
+            component='player',
+        )
         # start loading
         chosen_file, direct_url = load_thread_queue.get()
 
@@ -3111,9 +3336,17 @@ def load_thread():  ### add every try except to a new log system for next update
             ui_queue.put(lambda: media_list_page_controller.remove_playing_tag())
             
         except Exception as e:
-            log_handle(content=f"Failed to remove playing tag: {e}")
+            log_handle(
+                content=f"Failed to remove playing tag: {e}",
+                errtype='error',
+                component='player',
+            )
 
-        log_handle(content=f"load thread got cmd {chosen_file}, {direct_url}")
+        log_handle(
+            content=f"load thread got cmd {chosen_file}, {direct_url}",
+            errtype='info',
+            component='player',
+        )
         force_stop_loading = False  # reset force stop loading bc it is a new load command
 
         while not load_thread_queue.empty():
@@ -3168,9 +3401,19 @@ def load_thread():  ### add every try except to a new log system for next update
                                player.http_header_fields = [
                                   f"{name}: {value}"
                                  for name, value in http_headers.items()
-                                ]
-                               
-                            log_handle(content=f"[headers] set {list(http_headers)}")
+                               ]
+                            # set mpv req size, with bitwise
+                            player.stream_lavf_o = {
+                                "request_size": str(10<<20),
+                                "initial_request_size": str(4<<20),
+                                "multiple_requests": "1",
+                                "short_seek_size": str(10<<20),
+                            }
+                            log_handle(
+                                content=f"[headers] set {list(http_headers)}",
+                                errtype='info',
+                                component='player',
+                            )
                             player.play(final_url)
                             subtitle_selection_idx.set(0)
                             subtitle_namelist = ['No subtitles']
@@ -3185,9 +3428,17 @@ def load_thread():  ### add every try except to a new log system for next update
                                     ui_queue.put(lambda: subtitlecombobox.configure(values=subtitle_namelist))
                                     ui_queue.put(lambda: subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
                                 except Exception as e:
-                                    log_handle(type='error', content=f"Error processing subtitle: {e}")
+                                    log_handle(
+                                        content=f"Error processing subtitle: {e}",
+                                        errtype='error',
+                                        component='player',
+                                    )
 
-                            log_handle(content=f"Available subtitles: {subtitle_namelist}")
+                            log_handle(
+                                content=f"Available subtitles: {subtitle_namelist}",
+                                errtype='info',
+                                component='player',
+                            )
 
                             try:  ## try to make the vid play info somehow ytdlp fail to get info dict
                                 if playing_vid_info_dict.get('live_status') == 'is_live':
@@ -3197,13 +3448,27 @@ def load_thread():  ### add every try except to a new log system for next update
                                     stream = False
                             except:
                                 stream = False
-                                log_handle(type='error', content='failed to get live status')
+                                log_handle(
+                                    content='failed to get live status',
+                                    errtype='error',
+                                    component='player',
+                                )
 
                         else:
                             force_stop_loading = True
+                            log_handle(
+                                content="Failed to extract video information",
+                                errtype="error",
+                                component="player",
+                            )
                             messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to extract video information, Please refer to log for more details')
                     except Exception as e:
                         playing_vid_info_dict = None
+                        log_handle(
+                            content=f"Video information extraction degraded: {e}",
+                            errtype="warning",
+                            component="player",
+                        )
                         threading.Thread(
                             daemon=True,
                             target=lambda: messagebox.showerror(
@@ -3212,7 +3477,11 @@ def load_thread():  ### add every try except to a new log system for next update
                             )
                         ).start()
                     except yt_dlp.utils.DownloadError as e:
-                        log_handle(type='[error]', msg=f'ytdlp error {e}')
+                        log_handle(
+                            content=f'ytdlp error {e}',
+                            errtype='error',
+                            component='player',
+                        )
 
                     for i in range(31):  ####### for wating mpv to load the vid
                         if force_stop_loading:
@@ -3223,7 +3492,11 @@ def load_thread():  ### add every try except to a new log system for next update
                             break
 
                         ui_queue.put(lambda: root.update())
-                        mpv_log.append(f'loading_thread {i} ')
+                        log_handle(
+                            content=f"loading video {i} times",
+                            errtype='info',
+                            component='player',
+                        )
 
                         if i % 2 == 0:
                             ui_queue.put(lambda: player_loading_label.configure(text='loading..'))
@@ -3258,11 +3531,15 @@ def load_thread():  ### add every try except to a new log system for next update
                             ui_queue.put(lambda: playing_title_textbox.insert(tk.END, playing_vid_info_dict['title']))
 
                             if fullscreen_status == 0:
-                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver}  '))
                             else:
-                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen - {playing_vid_info_dict["title"]}'))
+                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver}  - {playing_vid_info_dict["title"]}'))
                         except Exception as e:
-                            log_handle(content=f"Error inserting title: {e}")
+                            log_handle(
+                                content=f"Error inserting title: {e}",
+                                errtype='error',
+                                component='player',
+                            )
 
                         ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
                         ui_queue.put(lambda: smtc.update_media_info(
@@ -3279,10 +3556,18 @@ def load_thread():  ### add every try except to a new log system for next update
                                 else:
                                     discord_presence.idle()
                             except Exception as ex:
-                                log_handle(content=f"Error occurred while updating Discord presence: {ex}")
+                                log_handle(
+                                    content=f"Error occurred while updating Discord presence: {ex}",
+                                    errtype='error',
+                                    component='player',
+                                )
 
                         if current_idx is not None:
-                            log_handle(content=f"Setting playing tag for index {current_idx}")
+                            log_handle(
+                                content=f"Setting playing tag for index {current_idx}",
+                                errtype='info',
+                                component='player',
+                            )
                             media_list_page_controller.set_playing_tag(current_idx, 'playing')
 
                         player.volume = (int(player_volume_scale.get()))
@@ -3296,6 +3581,11 @@ def load_thread():  ### add every try except to a new log system for next update
                         ui_queue.put(lambda: player_loading_label.configure(text=''))
                         ui_queue.put(lambda: pauseStr.set('||'))
                 except Exception as e:
+                    log_handle(
+                        content=f"Failed to play video: {e}",
+                        errtype="error",
+                        component="player",
+                    )
                     ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play video: {str(err)}"))
 
                     if current_idx is not None:
@@ -3320,12 +3610,20 @@ def load_thread():  ### add every try except to a new log system for next update
                         if os.path.exists(chosen_file):
                             player.play(chosen_file)
                             player.volume = int(player_volume_scale.get())
-                            log_handle(content=str(chosen_file))
+                            log_handle(
+                                content=str(chosen_file),
+                                errtype='info',
+                                component='player',
+                            )
                             time.sleep(0.1)
 
                             if player.duration == None:
                                 for i in range(31):
-                                    log_handle(content='testing point')
+                                    log_handle(
+                                        content='testing point',
+                                        errtype='info',
+                                        component='player',
+                                    )
 
                                     if force_stop_loading:
                                         loadingvideo = False
@@ -3338,7 +3636,11 @@ def load_thread():  ### add every try except to a new log system for next update
                                         succed = True
                                         break
 
-                                    log_handle(content=str(i))
+                                    log_handle(
+                                        content=str(i),
+                                        errtype='info',
+                                        component='player',
+                                    )
 
                                     if i > 29:
                                         if autoretry.get() or messagebox.askretrycancel(f'JaTubePlayer {ver}', 'The player encounter some problem while loading, retry?'):
@@ -3353,19 +3655,27 @@ def load_thread():  ### add every try except to a new log system for next update
                                             loadingvideo = False
                                             break
 
-                                    log_handle(content='loading')
+                                    log_handle(
+                                        content='loading',
+                                        errtype='info',
+                                        component='player',
+                                    )
                                     time.sleep(0.1)
                             else:
                                 succed = True
 
                             if fullscreen_status == 0:
-                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                ui_queue.put(lambda: root.title(f'JaTubePlayer {ver}  '))
                             else:
-                                ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {os.path.basename(cf)}'))
+                                ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver}  - {os.path.basename(cf)}'))
 
                             if succed:
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='normal'))
-                                log_handle(content=f"playing mode {playing_vid_mode}")
+                                log_handle(
+                                    content=f"playing mode {playing_vid_mode}",
+                                    errtype='info',
+                                    component='player',
+                                )
 
                                 if playing_vid_mode == 1:
                                     ui_queue.put(lambda cf=chosen_file: playing_title_textbox.insert(tk.END, str(cf)))
@@ -3375,9 +3685,9 @@ def load_thread():  ### add every try except to a new log system for next update
                                 ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
 
                                 if fullscreen_status == 0:
-                                    ui_queue.put(lambda: root.title(f'JaTubePlayer {ver} by Jackaopen '))
+                                    ui_queue.put(lambda: root.title(f'JaTubePlayer {ver}  '))
                                 else:
-                                    ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver} by Jackaopen - {cf}'))
+                                    ui_queue.put(lambda cf=chosen_file: root.title(f'JaTubePlayer {ver}  - {cf}'))
 
                                 try:
                                     ui_queue.put(lambda cf=chosen_file: smtc.update_media_info(
@@ -3387,7 +3697,11 @@ def load_thread():  ### add every try except to a new log system for next update
                                         thumbnail_url=None
                                     ))
                                 except Exception as e:
-                                    log_handle(content=f"Error updating media info: {e}")
+                                    log_handle(
+                                        content=f"Error updating media info: {e}",
+                                        errtype='error',
+                                        component='player',
+                                    )
 
                                 if enable_discord_presence.get():
                                     try:
@@ -3411,6 +3725,11 @@ def load_thread():  ### add every try except to a new log system for next update
 
                                 loadingvideo = False
                         else:
+                            log_handle(
+                                content=f"Local media file no longer exists: {chosen_file}",
+                                errtype="error",
+                                component="player",
+                            )
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
                             loadingvideo = False
                             ui_queue.put(lambda: player_loading_label.configure(text=''))
@@ -3418,6 +3737,11 @@ def load_thread():  ### add every try except to a new log system for next update
                             if current_idx is not None:
                                 media_list_page_controller.remove_playing_tag()
                 except Exception as e:
+                    log_handle(
+                        content=f"Failed to play local file: {e}",
+                        errtype="error",
+                        component="player",
+                    )
                     ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}', f"Failed to play local file:  {str(err)}"))
                     loadingvideo = False
                     ui_queue.put(lambda: player_loading_label.configure(text=''))
@@ -3460,7 +3784,11 @@ def load_local_files(mode:int,
             insert_textbox(playlist_name_textbox, "Local File")
     elif result is False:
         messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to load local files, or canceled by user.')
-        log_handle(content='Failed to load local files, please check the folder or file path and try again')
+        log_handle(
+            content='Failed to load local files, please check the folder or file path and try again',
+            errtype='error',
+            component='player',
+        )
         
             
 
@@ -3477,7 +3805,11 @@ def download_and_play(event=None):### button and double click event
         global media_data_list
         media_data_list = media_list_page_controller.media_data_list
     except Exception as e:
-        log_handle(content=f"Error accessing media_data_list: {e}")
+        log_handle(
+            content=f"Error accessing media_data_list: {e}",
+            errtype='error',
+            component='player',
+        )
         messagebox.showerror(f'JaTubePlayer {ver}', 'An error occurred while accessing the media data list.')
 
     if playing_vid_mode == 0:
@@ -3566,18 +3898,21 @@ def fullscreen_widget_change(mode:int=0):
     global fullscreen_status, stream, tkinter_scaling
    
     try:
-        window_dpi = copy(get_window_dpi(hwnd))
-        tkinter_scaling = window_dpi
+        effective_scaling = get_effective_scaling(hwnd,root)
+        window_width = round(BASE_WIDTH * effective_scaling)
+        window_height = round(BASE_HEIGHT * effective_scaling)
+        
         
         # Force geometry update before making changes
         root.update_idletasks()
         
         if mode == 0:
-            
-            root.geometry('1320x680')
-            
+
+            root.geometry(f"{window_width}x{window_height}")
+            ctk.set_widget_scaling(effective_scaling)
+
             # Tkinter widgets need DPI scaling
-            playlisttreebox.configure(height=int(20*window_dpi))
+            playlisttreebox.configure(height=int(20*effective_scaling))
             if playing_vid_mode == 0 or playing_vid_mode == 4:
                 playlisttreebox.column("#0", width=180, anchor='center')
             else:
@@ -3602,8 +3937,8 @@ def fullscreen_widget_change(mode:int=0):
                 progress_frame.place_configure(relx=0.008, rely=0.405, relwidth=0.984, relheight=0.230)
                 mode_frame.place_configure(relx=0.008, rely=0.585, relwidth=0.132, relheight=0.375)
                 playback_frame.place_configure(relx=0.150, rely=0.585, relwidth=0.43, relheight=0.375)
-                volume_frame.place_configure(relx=0.635, rely=0.605, relwidth=0.105, relheight=0.350)
-                action_btn_frame.place_configure(relx=0.745, rely=0.585, relwidth=0.300, relheight=0.375)
+                volume_frame.place_configure(relx=0.595, rely=0.605, relwidth=0.105, relheight=0.350)
+                action_btn_frame.place_configure(relx=0.705, rely=0.585, relwidth=0.290, relheight=0.375)
                 
 
                 
@@ -3631,10 +3966,12 @@ def fullscreen_widget_change(mode:int=0):
                 player_volume_scale.place_configure(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
                 
                 # Action buttons
-                setting_btn.place_configure(relx=0, rely=0.06, relwidth=0.255, relheight=0.88)
-                star_btn.place_configure(relx=0.270, rely=0.06, relwidth=0.175, relheight=0.88)
-                select_info_btn.place_configure(relx=0.460, rely=0.06, relwidth=0.175, relheight=0.88)
-                playing_info_btn.place_configure(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
+                setting_btn.place_configure(relx=0, rely=0.06, relwidth=0.290, relheight=0.88)
+                star_btn.place_configure(relx=0.305, rely=0.06, relwidth=0.200, relheight=0.88)
+                video_info_btn_frame.place_configure(relx=0.520, rely=0.06, relwidth=0.475, relheight=0.88)
+                video_info_title.place_configure(relx=0.04, rely=0.04, relwidth=0.92, relheight=0.34)
+                select_info_btn.place_configure(relx=0.04, rely=0.42, relwidth=0.44, relheight=0.47)
+                playing_info_btn.place_configure(relx=0.52, rely=0.42, relwidth=0.44, relheight=0.47)
                 
                 # Now playing
                 np_icon.place_configure(relx=0.008, rely=0.14)
@@ -3646,7 +3983,7 @@ def fullscreen_widget_change(mode:int=0):
             Frame_for_mpv.lift()
             fullscreenbtn.configure(text='⛶')
             fullscreen_status = 0
-            root.title(f'JaTubePlayer {ver} by Jackaopen')
+            root.title(f'JaTubePlayer {ver} ')
             
         elif mode == 1:
             if fullscreenmode.get() !=1 :
@@ -3697,7 +4034,11 @@ def fullscreen_widget_change(mode:int=0):
                 
 
             except Exception as e:
-                log_handle(content=f"Error in fullscreen_widget_change: {e}"    )
+                log_handle(
+                    content=f"Error in fullscreen_widget_change: {e}",
+                    errtype='error',
+                    component='fullscreen',
+                )
             
             player_position_scale.configure(height=int(root.winfo_height()*0.07*0.5*0.5*0.05))
             Frame_for_mpv.lift()
@@ -3707,11 +4048,15 @@ def fullscreen_widget_change(mode:int=0):
             
             try:
                 if playing_title_textbox.get("1.0", "end").strip():
-                    root.title(f'JaTubePlayer {ver} by Jackaopen  -  {playing_title_textbox.get("1.0", "end").strip()}')
+                    root.title(f'JaTubePlayer {ver}   -  {playing_title_textbox.get("1.0", "end").strip()}')
                 else:
-                    root.title(f'JaTubePlayer {ver} by Jackaopen')
+                    root.title(f'JaTubePlayer {ver} ')
             except Exception as e:
-                log_handle(content=f"Error updating title: {e}")
+                log_handle(
+                    content=f"Error updating title: {e}",
+                    errtype='error',
+                    component='fullscreen',
+                )
         
         root.update_idletasks()
         
@@ -3725,7 +4070,11 @@ def fullscreen_widget_change(mode:int=0):
             pass
         
     except Exception as e:
-        log_handle(content=f"Error in fullscreen_widget_change: {e}")
+        log_handle(
+            content=f"Error in fullscreen_widget_change: {e}",
+            errtype='error',
+            component='fullscreen',
+        )
        
 def full_screen_contorl_hover_thread():
     global hover_fullscreen_last_statue
@@ -3739,12 +4088,20 @@ def full_screen_contorl_hover_thread():
 
                 if hover_fullscreen_last_statue == 0:
                     ui_queue.put(lambda:fullscreen_widget_change(mode = 1))
-                    log_handle('hover control frame removed')
+                    log_handle(
+                        content='hover control frame removed',
+                        errtype='info',
+                        component='fullscreen',
+                    )
                     hover_fullscreen_last_statue = 1
             else:
                 if hover_fullscreen_last_statue == 1:
 
-                    log_handle('hover control frame showed')
+                    log_handle(
+                        content='hover control frame showed',
+                        errtype='info',
+                        component='fullscreen',
+                    )
                     def _place_controls():# Since there will be a delay with the ui queue root .after thus this function is needed to make sure the controls will be placed and mpv frame is placed at the right place after the fullscreen change
                         if fullscreen_status == 1:
                             controls_frame.place_forget()
@@ -3787,6 +4144,7 @@ def fullscreen_detect_thread():## auto drag
                 time.sleep(0.1) 
         except:pass
 
+        
 def init_quick_startup(iter:int=0):
     if len(sys.argv) == 1:#if no file opened with
         mode = CONFIG["quickstartup_init"]["mode"]
@@ -3796,18 +4154,27 @@ def init_quick_startup(iter:int=0):
                     searchentry.insert(tk.END,CONFIG['quickstartup_init']['entrymode_entry_content'])
                     youtube_search()
                 elif mode == 2:
-                    insert_textbox(playlist_name_textbox, f'Playlist\n{CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]}')
-                    get_youtube_playlists(CONFIG["quickstartup_init"]["playlistmode_playlist_ID"])
+                    insert_textbox(playlist_name_textbox, f'Playlist {CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]}')
+                    get_youtube_playlists(CONFIG["quickstartup_init"]["playlistmode_playlist_ID"].split("?list=")[1],
+                                          playlist_name=CONFIG["quickstartup_init"]["playlistmode_playlist_NAME"])
                 elif mode == 3:
                     load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
                 
             else:
-                log_handle(content="yt_dlp is not loaded, quick startup in youtube related mode is cancelled.")
+                log_handle(
+                    content="yt_dlp is not loaded, quick startup in youtube related mode is cancelled.",
+                    errtype='info',
+                    component='startup',
+                )
         elif mode == 3:
             load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
         elif iter < 10:
             root.after(500,lambda: init_quick_startup(iter+1))
-            log_handle(content=f"quickstartup internet test {iter} times")
+            log_handle(
+                content=f"quickstartup internet test {iter} times",
+                errtype='info',
+                component='startup',
+            )
         elif iter >= 10:
             try:
                 ToastNotification().notify(app_id="JaTubePlayer",
@@ -3816,8 +4183,16 @@ def init_quick_startup(iter:int=0):
                                         duration='short', icon=icondir)
                 
             except Exception as e:
-                log_handle(content="Error in init_quick_startup notification:")
-                log_handle(content=str(e))
+                log_handle(
+                    content="Error in init_quick_startup notification:",
+                    errtype='error',
+                    component='startup',
+                )
+                log_handle(
+                    content=str(e),
+                    errtype='error',
+                    component='startup',
+                )
 
 def init_openwith_thread():
     global playing_vid_mode
@@ -3829,7 +4204,11 @@ def init_openwith_thread():
             #then we can go to fullscreen
 
             if CONFIG['open_with_fullscreen']:
-                log_handle(content='fullscreen')
+                log_handle(
+                    content='fullscreen',
+                    errtype='info',
+                    component='startup',
+                )
                 fullscreen_widget_change(mode=1)
             
     except:pass
@@ -3852,42 +4231,76 @@ def init_read_dlp():
     try:
         yt_dlp,utils,ytdlpver = load_yt_dlp(_internal_dir)
         if yt_dlp == None:
+            log_handle(
+                content=f"Failed to load yt-dlp: {utils}",
+                errtype="error",
+                component="startup",
+            )
             ui_queue.put(lambda u=utils: messagebox.showerror(f'JaTubePlayer {ver}',f'seems to be something wrong with yt_dlp!\n{u}'))
-    except Exception as e :ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
+    except Exception as e:
+        log_handle(
+            content=f"Failed to initialize yt-dlp: {e}",
+            errtype="error",
+            component="startup",
+        )
+        ui_queue.put(lambda err=e: messagebox.showerror(f'JaTubePlayer {ver}',err))
         
 
 def init_read_config():
-    global ytdlp_use_cookie,auto_like_refresh,auto_sub_refresh,auto_check_ver,maxresolution,cache_secs,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open,blur_hexColor
+    global ytdlp_use_cookie,auto_like_refresh,auto_sub_refresh,auto_check_ver,maxresolution,demuxer_max_bytes,demuxer_max_back_bytes,cache_pause_wait,audio_wait_open,blur_hexColor
     global chrome_extension_port,discord_idle_presence_wording
 
     ytdlp_use_cookie.set(CONFIG['ytdlp_use_cookie'])
-    log_handle(content=f"ytdlp_use_cookie {ytdlp_use_cookie.get()}")
+    log_handle(
+        content=f"ytdlp_use_cookie {ytdlp_use_cookie.get()}",
+        errtype='info',
+        component='startup',
+    )
     try:
         if CONFIG['auto_sub_refresh']:auto_sub_refresh.set(True)
         else:auto_sub_refresh.set(False)
-        log_handle(content="sub fin")
+        log_handle(
+            content="sub fin",
+            errtype='info',
+            component='startup',
+        )
         if CONFIG['auto_like_refresh']:auto_like_refresh.set(True)
         else:auto_like_refresh.set(False)
-        log_handle(content="like fin")
+        log_handle(
+            content="like fin",
+            errtype='info',
+            component='startup',
+        )
 
         if CONFIG['vercheck']:auto_check_ver.set(True)
         else:auto_check_ver.set(False)
-        log_handle(content="ver fin")
+        log_handle(
+            content="ver fin",
+            errtype='info',
+            component='startup',
+        )
         
         if CONFIG['open_with_fullscreen']:open_with_fullscreen.set(True)
         else:open_with_fullscreen.set(False)
-        log_handle(content="open fin")
+        log_handle(
+            content="open fin",
+            errtype='info',
+            component='startup',
+        )
         
         if CONFIG['show_cache']:show_cache.set(True)
         else:show_cache.set(False)
-        log_handle(content="cache fin")
+        log_handle(
+            content="cache fin",
+            errtype='info',
+            component='startup',
+        )
 
         if CONFIG['hover_fullscreen']:hover_fullscreen.set(True)
         else:hover_fullscreen.set(False)
 
         
         download_path.set(CONFIG['download_path'])
-        cache_secs.set(CONFIG['cache']['cache_secs'])
         demuxer_max_bytes.set(CONFIG['cache']['demuxer_max_bytes'])
         demuxer_max_back_bytes.set(CONFIG['cache']['demuxer_max_back_bytes'])
         cache_pause_wait.set(CONFIG['cache']['cache_pause_wait'])
@@ -3918,8 +4331,16 @@ def init_read_config():
 
         
     except Exception as e:
-        log_handle(content="Error in init_read_config:")
-        log_handle(str(e))
+        log_handle(
+            content="Error in init_read_config:",
+            errtype='error',
+            component='startup',
+        )
+        log_handle(
+            content=str(e),
+            errtype='error',
+            component='startup',
+        )
 
 
 
@@ -3945,7 +4366,6 @@ def create_mpv_player():
     global player,deno_exe
 
     cache_cfg = CONFIG.get("cache", {})
-    cache_secs_val = int(cache_secs.get() or cache_cfg.get("cache_secs", 80))
     demuxer_max_bytes_val = int(demuxer_max_bytes.get() or cache_cfg.get("demuxer_max_bytes", 512))
     demuxer_max_back_bytes_val = int(demuxer_max_back_bytes.get() or cache_cfg.get("demuxer_max_back_bytes", 256))
     cache_pause_wait_val = int(cache_pause_wait.get() or cache_cfg.get("cache_pause_wait", 3))
@@ -3953,7 +4373,6 @@ def create_mpv_player():
 
     buf_arg = {
     "cache": "yes",
-    "cache-secs": cache_secs_val,
     "demuxer-max-bytes": f"{demuxer_max_bytes_val}M",
     "demuxer-max-back-bytes": f"{demuxer_max_back_bytes_val}M",
     "cache-pause": "yes",
@@ -3974,7 +4393,11 @@ def create_mpv_player():
     }
 
 
-    log_handle("create mpv")
+    log_handle(
+        content="create mpv",
+        errtype='info',
+        component='player',
+    )
 
     if player:
         player.terminate()
@@ -3986,7 +4409,11 @@ def create_mpv_player():
             discord_presence.idle()
         except:
             pass
-        log_handle(content="killed")
+        log_handle(
+            content="killed",
+            errtype='info',
+            component='player',
+        )
 
 
     player = mpv.MPV(
@@ -3994,16 +4421,16 @@ def create_mpv_player():
         hwdec="auto",
         profile="fast",
         wid=Frame_for_mpv.winfo_id(),
-        log_handler=log_handle,
+        log_handler=log_handler.mpv_log_handler,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
         af='scaletempo',
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
+        script_opts=f"ytdl_hook-ytdl_path={os.path.join(_internal_dir, 'yt-dlp.exe')}",
         **buf_arg,
         **sub_arg
     )
 
-    log_handle(content=str(True if playing_vid_mode == 1 else False))
 
 
 
@@ -4023,7 +4450,11 @@ def _init_dnd_on_root_thread():
     )
 
     dnd_handle.init_URL_handler()
-    log_handle(content="Drag and drop handler initialized on root thread")
+    log_handle(
+        content="Drag and drop handler initialized on root thread",
+        errtype='info',
+        component='drag_drop',
+    )
 
 
 def _init_load_extra_objs():
@@ -4168,33 +4599,59 @@ def _start_up_import():
         
     t = time.time()
     
-    log_handle(content=f"account: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"account: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
     t = time.time()
     from utils.innertube_handle import innertube_handle
-    log_handle(content=f"innertube: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"innertube: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
     t = time.time()
     from video_media_control.playlist_retriever import playlist_retriever_,playlist_type
-    log_handle(content=f"playlist_retriever: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"playlist_retriever: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
     # Version check functions (needed by settings before delayed import)
     t = time.time()
     from utils.get_latest_version import get_latest_dlp_version, get_latest_player_version
-    log_handle(content=f"version_funcs: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"version_funcs: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
     
     t = time.time()
     from video_media_control.star_vid import star_vid_handler
-    log_handle(content=f"star_vid_handler: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"star_vid_handler: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
-    log_handle(content=f"Total import time: {time.time()-_TimeStartImport:.3f}s")
+    log_handle(
+        content=f"Total import time: {time.time()-_TimeStartImport:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
     
 
 
 
-def _init_process_account():
-    
+def _init_account_and_quickstartup():
+    '''
+    Since the 2 function uses samme lock
+    '''
     
     if os.path.exists(account_handler.cookie_dir):
         ui_queue.put(lambda: ToastNotification().notify(app_id="JaTubePlayer",
@@ -4204,6 +4661,7 @@ def _init_process_account():
                                                         icon=icondir))
         
         account_info_handler.set_account_avator()
+        root.after(0, init_quick_startup)
 
 
 
@@ -4213,7 +4671,7 @@ def _init_process_account():
 
 
 def _extra_startup_imports():
-    global download_and_extract_dlp
+    global ytdlp_updater
     global MediaControlOverlay,chrome_extension_flask,requests
     global shortcut_manager
 
@@ -4222,13 +4680,27 @@ def _extra_startup_imports():
     
     # YT-DLP Update
     t = time.time()
-    from utils.auto_ytdlp_update import download_and_extract_dlp
-    log_handle(content=f"ytdlp_update: {time.time()-t:.3f}s")
+    from utils.auto_ytdlp_update import ytdlp_update 
+    ytdlp_updater = ytdlp_update(
+        _internal_dir = _internal_dir,
+        root=root,
+        icondir=icondir,
+        log_handle=log_handle
+    )
+    log_handle(
+        content=f"ytdlp_update: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
     # Run version check
     t = time.time()
     init_ver_check()
-    log_handle(content=f'ver_check: {time.time()-t:.3f}s')
+    log_handle(
+        content=f'ver_check: {time.time()-t:.3f}s',
+        errtype='info',
+        component='startup',
+    )
 
     from system.win_shortcut_control import ShortcutManager
     shortcut_manager = ShortcutManager(app_user_model_id="Jackaopen.JaTubePlayer",
@@ -4240,14 +4712,26 @@ def _extra_startup_imports():
     # SMTC
     t = time.time()
     from system.SMTC import MediaControlOverlay
-    log_handle(content=f"smtc: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"smtc: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
     _init_load_smtc_obj()
-    log_handle(content=f'smtc fin')
+    log_handle(
+        content=f'smtc fin',
+        errtype='info',
+        component='startup',
+    )
 
     # Requests
     t = time.time()
     import requests
-    log_handle(content=f"requests: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"requests: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
     
         # Flask
     t = time.time()
@@ -4261,7 +4745,11 @@ def _extra_startup_imports():
                                                        get_info_loader=get_info_loader)
                                                        
 
-    log_handle(content=f"flask: {time.time()-t:.3f}s")
+    log_handle(
+        content=f"flask: {time.time()-t:.3f}s",
+        errtype='info',
+        component='startup',
+    )
 
     if CONFIG["run_flask"]:
         chrome_extension_flask.server_port = CONFIG["chrome_ext_server_port"]
@@ -4274,35 +4762,67 @@ def _start_up():
     """Background thread - ONLY for heavy I/O operations"""
     root.after(0, fullscreen_widget_change)
     _start_up_import()
-    log_handle(content=f'Import fin')
+    log_handle(
+        content=f'Import fin',
+        errtype='info',
+        component='startup',
+    )
     
     init_read_dlp()
-    log_handle(content=f'dlp fin')
+    log_handle(
+        content=f'dlp fin',
+        errtype='info',
+        component='startup',
+    )
 
     init_read_config()
-    log_handle(content=f'config fin')
+    log_handle(
+        content=f'config fin',
+        errtype='info',
+        component='startup',
+    )
 
     _init_load_extra_objs()
-    log_handle(content=f'extra obj fin')
+    log_handle(
+        content=f'extra obj fin',
+        errtype='info',
+        component='startup',
+    )
 
-    threading.Thread(target=_init_process_account,daemon=True).start()
-    log_handle(content=f'account fin') 
+    threading.Thread(target=_init_account_and_quickstartup,daemon=True).start()
+    log_handle(
+        content=f'account fin',
+        errtype='info',
+        component='startup',
+    ) 
     
 
        
         
     check_keyboard()
-    log_handle(content=f'keyboard fin')
+    log_handle(
+        content=f'keyboard fin',
+        errtype='info',
+        component='startup',
+    )
 
     init_openwith_thread()
-    log_handle(content=f'openwith fin')
+    log_handle(
+        content=f'openwith fin',
+        errtype='info',
+        component='startup',
+    )
 
 
     
 
-    root.after(0, init_quick_startup)
+    
     root.after_idle( _extra_startup_imports)
-    log_handle(f"finish_big_init {time.time()-_TimeStartImport}")
+    log_handle(
+        content=f"finish_big_init {time.time()-_TimeStartImport}",
+        errtype='info',
+        component='startup',
+    )
     
     
     
@@ -4326,7 +4846,7 @@ if __name__ == '__main__':
 sv_ttk.use_dark_theme() ### must be here or will overrider the style
 playlisttree_style = ttk.Style()
 playlisttree_style.configure("Treeview",
-                rowheight=int(95*tkinter_scaling),
+                rowheight=int(75*tkinter_scaling),
                 font=("Arial", 12),
                 fieldbackground="#1e1e1e",
                 background="#1e1e1e",
@@ -4347,18 +4867,23 @@ header_frame.place(relx=0, rely=0, relwidth=1, relheight=0.063)
 
     
 title_icon = ctk.CTkImage(light_image=title_icon_image,
-                          dark_image=title_icon_image, size=(28, 28))
-title = ctk.CTkLabel(header_frame, text=' JaTubePlayer', image=title_icon,
-                     compound='left', font=('Segoe UI', 20, 'bold'),
+                          dark_image=title_icon_image, size=(28,28))
+
+title_front = ctk.CTkLabel(header_frame, text=' JaTube', image=title_icon,
+                     compound='left', font=('Segoe UI', 20, 'bold','italic'),
                      text_color='#FF6B35', anchor="w")
-title.place(relx=0.012, rely=0.19)
+title_front.place(relx=0.012, rely=0.19)
+title_back = ctk.CTkLabel(header_frame, text='Player',
+                     compound='left', font=('Segoe UI', 20.8, 'bold','italic'),
+                     text_color="#3e62dc", anchor="w")
+title_back.place(relx=0.09, rely=0.19)
 
 searchlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 13), text='🔍',
                                text_color='#888888', anchor="w", bg_color='transparent')
 searchlistlabel.place(relx=0.148, rely=0.18)
 
 searchentry = ctk.CTkEntry(header_frame, font=('Segoe UI', 13), corner_radius=8,
-                           placeholder_text="Search YouTube...",
+                           placeholder_text="Search...",
                            border_color="#3e62dc", border_width=1)
 searchentry.place(relx=0.170, rely=0.17, relwidth=0.215, relheight=0.66)
 
@@ -4486,14 +5011,11 @@ current_playlist_caption = ctk.CTkLabel(
 )
 current_playlist_caption.place(relx=0.025, rely=0.00, relwidth=0.4, relheight=0.32)
 
-mode_icon_label = ctk.CTkLabel(current_playlist_frame, text='📋', font=('Segoe UI', 17))
-mode_icon_label.place(relx=0.020, rely=0.36, relwidth=0.10, relheight=0.55)
 
 playlist_name_textbox = tk.Text(current_playlist_frame, font=('Segoe UI', 11), fg='#c5c5c5',
-                      bg='#252525', relief='flat', height=2, wrap='char', borderwidth=0)
-playlist_name_textbox.place(relx=0.125, rely=0.32, relwidth=0.85, relheight=0.64)
-playlist_name_textbox.insert(tk.END, 'Please login or search something')
-playlist_name_textbox.configure(state='disabled')
+                      bg='#252525', relief='flat', height=2, wrap='word', borderwidth=0)
+playlist_name_textbox.place(relx=0.025, rely=0.35, relwidth=0.95, relheight=0.64)
+insert_textbox(playlist_name_textbox,"Hey! Search, Login or see Recommended")
 
 playlist_history_separator = ctk.CTkLabel(
     mode_header_frame,
@@ -4581,36 +5103,36 @@ playselectedsong.place(relx=0.212, rely=0.54, relwidth=0.19, relheight=0.33)
 # Source buttons in a compact row
 _src_w = 0.187
 _src_gap = 0.008
-recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='✨Recommed',
+recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='🏠Recommend',
                                     command=lambda: threading.Thread(daemon=True, target=lambda: get_youtube_playlists("home")).start(),
                                     fg_color='#2E2E2E', hover_color='#404040', corner_radius=6,
-                                    font=('Segoe UI', 11), border_width=1, border_color='#444444')
+                                    font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
 recommendation_btn.place(relx=0.020, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 load_star_btn = ctk.CTkButton(playlist_btn_frame, text='★ Star',
                         command= lambda :threading.Thread(daemon=True, target=get_starred_vid).start(), fg_color='#2E2E2E', hover_color='#404040',
-                        corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
+                        corner_radius=6, font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
 load_star_btn.place(relx=0.020, rely=0.54, relwidth=_src_w, relheight=0.33)
 
-sub_btn = ctk.CTkButton(playlist_btn_frame, text='📺Subcription',
+sub_btn = ctk.CTkButton(playlist_btn_frame, text='🔔Subcription',
                         command=lambda: get_youtube_playlists("sub"), fg_color='#2E2E2E', hover_color='#404040',
-                        corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
+                        corner_radius=6, font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
 sub_btn.place(relx=0.020+(_src_w+_src_gap)*1, rely=0.1, relwidth=_src_w, relheight=0.33)
 
-like_btn = ctk.CTkButton(playlist_btn_frame, text='❤ Like',
+like_btn = ctk.CTkButton(playlist_btn_frame, text='👍Like',
                          command=lambda: get_youtube_playlists("like"), fg_color='#2E2E2E', hover_color='#404040',
-                         corner_radius=6, font=('Segoe UI', 11), border_width=1, border_color='#444444')
+                         corner_radius=6, font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
 like_btn.place(relx=0.020+(_src_w+_src_gap)*2, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 playselectedfile = ctk.CTkButton(playlist_btn_frame, text='📄 File',
                                   command=lambda: load_local_files(mode=0), fg_color='#2E2E2E',
-                                  hover_color='#404040', corner_radius=6, font=('Segoe UI', 11),
+                                  hover_color='#404040', corner_radius=6, font=('Segoe UI', 11.5),
                                   border_width=1, border_color='#444444')
 playselectedfile.place(relx=0.020+(_src_w+_src_gap)*3, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 playselectedfolder = ctk.CTkButton(playlist_btn_frame, text='📁 Folder',
                                     command=lambda: load_local_files(mode=1), fg_color='#2E2E2E',
-                                    hover_color='#404040', corner_radius=6, font=('Segoe UI', 11),
+                                    hover_color='#404040', corner_radius=6, font=('Segoe UI', 11.5),
                                     border_width=1, border_color='#444444')
 playselectedfolder.place(relx=0.020+(_src_w+_src_gap)*4, rely=0.1, relwidth=_src_w, relheight=0.33)
 
@@ -4742,7 +5264,7 @@ player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 12), text=
 player_loading_label.place(relx=0.81, rely=0.25, relwidth=0.18)
 
 volume_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-volume_frame.place(relx=0.635, rely=0.605, relwidth=0.105, relheight=0.350)
+volume_frame.place(relx=0.595, rely=0.605, relwidth=0.105, relheight=0.350)
 
 player_volume_label = ctk.CTkLabel(volume_frame, font=('Segoe UI', 16), text='🔊',
                                    text_color='#888888', anchor="e")
@@ -4760,30 +5282,40 @@ Frame_for_mpv.bind('<MouseWheel>', set_volume_wheel)
 
 # ── Action Buttons ──
 action_btn_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
-action_btn_frame.place(relx=0.745, rely=0.585, relwidth=0.300, relheight=0.375)
+action_btn_frame.place(relx=0.705, rely=0.585, relwidth=0.290, relheight=0.375)
 
 setting_btn = ctk.CTkButton(action_btn_frame, text='⚙️ Settings', command=setting_frame,
                             fg_color='#FF6B35', hover_color='#FF8555', corner_radius=8,
                             font=('Segoe UI', 13, 'bold'))
-setting_btn.place(relx=0, rely=0.06, relwidth=0.255, relheight=0.88)
+setting_btn.place(relx=0, rely=0.06, relwidth=0.290, relheight=0.88)
 
 star_btn = ctk.CTkButton(action_btn_frame, text='☆', command=switch_starred_vid,
                             fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0',
                             corner_radius=8, font=('Segoe UI', 13, 'bold'))
-star_btn.place(relx=0.270, rely=0.06, relwidth=0.175, relheight=0.88)
+star_btn.place(relx=0.305, rely=0.06, relwidth=0.200, relheight=0.88)
 
 
-select_info_btn = ctk.CTkButton(action_btn_frame, text='ℹ️ Sel',
-                                 command=lambda: video_info_frame_main(1), fg_color='#2E2E2E',
-                                 hover_color='#404040', corner_radius=8, font=('Segoe UI', 11),
-                                 border_width=1, border_color='#444444')
-select_info_btn.place(relx=0.460, rely=0.06, relwidth=0.175, relheight=0.88)
+video_info_btn_frame = ctk.CTkFrame(action_btn_frame, fg_color='#252525',
+                                     border_color='#444444', border_width=1,
+                                     corner_radius=8)
+video_info_btn_frame.place(relx=0.520, rely=0.06, relwidth=0.475, relheight=0.88)
 
-playing_info_btn = ctk.CTkButton(action_btn_frame, text='📊 Now',
-                                  command=lambda: video_info_frame_main(2), fg_color='#2E2E2E',
-                                  hover_color='#404040', corner_radius=8, font=('Segoe UI', 11),
-                                  border_width=1, border_color='#444444')
-playing_info_btn.place(relx=0.650, rely=0.06, relwidth=0.175, relheight=0.88)
+video_info_title = ctk.CTkLabel(video_info_btn_frame, text='ⓘ Video Info',
+                                font=('Segoe UI', 12, 'bold'), text_color='#D0D0D0',
+                                anchor='center')
+video_info_title.place(relx=0.04, rely=0.04, relwidth=0.92, relheight=0.34)
+
+select_info_btn = ctk.CTkButton(video_info_btn_frame, text='Selected',
+                                 command=lambda: video_info_frame_main(1), fg_color='#303030',
+                                 hover_color='#454545', corner_radius=6, font=('Segoe UI', 11.5),
+                                 border_width=1, border_color='#4A4A4A')
+select_info_btn.place(relx=0.04, rely=0.42, relwidth=0.44, relheight=0.47)
+
+playing_info_btn = ctk.CTkButton(video_info_btn_frame, text='Playing',
+                                  command=lambda: video_info_frame_main(2), fg_color='#303030',
+                                  hover_color='#454545', corner_radius=6, font=('Segoe UI', 11.5),
+                                  border_width=1, border_color='#4A4A4A')
+playing_info_btn.place(relx=0.52, rely=0.42, relwidth=0.44, relheight=0.47)
 
 
 

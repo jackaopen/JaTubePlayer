@@ -40,7 +40,11 @@ class ChromeExtensionServer:
 
 
     def direct_url(self,url:str)-> None:
-        self.log_handle(f"Direct URL received: {url}")
+        self.log_handle(
+            content=f"Direct URL received: {url}",
+            errtype='info',
+            component='chrome_ext',
+        )
         self.ext_ui_functions.direct_url()
         self.media_list_page_controller.handle_url_drop(url)
 
@@ -56,7 +60,11 @@ class ChromeExtensionServer:
         def _receive_url(action):
             try:
                 url = request.data.decode().split("&")[0]
-                self.log_handle(f"Received URL from Chrome extension: {url} with action: {action}")
+                self.log_handle(
+                    content=f"Received URL from Chrome extension: {url} with action: {action}",
+                    errtype='info',
+                    component='chrome_ext',
+                )
                 auth = request.headers.get("X-auth")
 
                 if auth != "Jatubeplayerextensionbyjackaopen":
@@ -68,7 +76,11 @@ class ChromeExtensionServer:
                 
 
                 elif action == 'star':
-                    self.log_handle(content=f"chrome extension star video url: {url}")
+                    self.log_handle(
+                        content=f"chrome extension star video url: {url}",
+                        errtype='info',
+                        component='chrome_ext',
+                    )
                     if not self.star_vid_handle.search(url):
                         res = self.star_vid_handle.add(url)
                         if res:ToastNotification().notify(app_id="JaTubePlayer", 
@@ -76,7 +88,11 @@ class ChromeExtensionServer:
                                                         msg='Added starred video to playlist\nFetching data...', 
                                                         duration='short')
                         else:
-                            self.log_handle(content=f"Failed to add starred video from chrome extension, error in adding: {res}")
+                            self.log_handle(
+                                content=f"Failed to add starred video from chrome extension, error in adding: {res}",
+                                errtype='error',
+                                component='chrome_ext',
+                            )
                             self.ui_queue.put(lambda: self.messagebox.showerror(f'JaTubePlayer ', "Failed to add starred video to playlist.\nError in adding video."))
                         if self.ext_ui_functions.get_playing_vid_mode() == 4:
                             self.ext_ui_functions.show_star_video()
@@ -88,7 +104,11 @@ class ChromeExtensionServer:
                 elif action == 'add_to_end':
                     playing_vid_mode = self.ext_ui_functions.get_playing_vid_mode()
                     if playing_vid_mode ==0 or playing_vid_mode == 3 or playing_vid_mode == 4:
-                        self.log_handle(content=f"Adding video to playlist from chrome extension: {url}")
+                        self.log_handle(
+                            content=f"Adding video to playlist from chrome extension: {url}",
+                            errtype='info',
+                            component='chrome_ext',
+                        )
                         try:
 
                             ToastNotification().notify(app_id="JaTubePlayer", 
@@ -116,20 +136,36 @@ class ChromeExtensionServer:
                                                         msg='Added video to playlist',
                                                         duration='short')
                         except Exception as e:
-                            self.log_handle(content=f"Error adding video to playlist: {e}")
+                            self.log_handle(
+                                content=f"Error adding video to playlist: {e}",
+                                errtype='error',
+                                component='chrome_ext',
+                            )
                             self.ui_queue.put(lambda: self.messagebox.showerror(f'JaTubePlayer ', f"Failed to add video to playlist.\nError: {e}"))
                     else:
                         self.ui_queue.put(lambda: self.messagebox.showinfo(f'JaTubePlayer ', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
                 return "ok", 200
             except Exception as e:
-                self.log_handle('Error receiving URL from Chrome extension: ' + str(e))
+                self.log_handle(
+                    content='Error receiving URL from Chrome extension: ' + str(e),
+                    errtype='error',
+                    component='chrome_ext',
+                )
                 return "failed", 403
 
     def _shutdown_server(self, server):
-        self.log_handle('Chrome extension server shutdown initiated.')
+        self.log_handle(
+            content='Chrome extension server shutdown initiated.',
+            errtype='info',
+            component='chrome_ext',
+        )
         server.shutdown()      # stop serve_forever() 
         server.server_close()  # release the socket 
-        self.log_handle('Chrome extension server has been shut down.')
+        self.log_handle(
+            content='Chrome extension server has been shut down.',
+            errtype='info',
+            component='chrome_ext',
+        )
 
     def shutdown(self, icondir: str = None):
         if self.server:
@@ -138,18 +174,26 @@ class ChromeExtensionServer:
                 daemon=True
             ).start()
         else:
-            self.log_handle('shutdown() called but server is not running.')
+            self.log_handle(
+                content='shutdown() called but server is not running.',
+                errtype='info',
+                component='chrome_ext',
+            )
 
     def run_flask_app(self, icondir: str = None):
         self.server = make_server("127.0.0.1", self.server_port, self.chrome_flaskapp, threaded=True)
         self.server.timeout = 1
         self.server.protocol_version = "HTTP/1.0"  # disables keep-alive
         ToastNotification().notify(
-            title="JaTubePlayer",
-            msg="JaTubePlayer Chrome Extension Server Started\nRunning at http://127.0.0.1:" + str(self.server_port),
+            title="Chrome Extension Server",
+            msg="Started\nRunning at http://127.0.0.1:" + str(self.server_port),
             duration='short',
             icon=icondir
         )
-        self.log_handle(f"Chrome extension server started at {self.server}")
+        self.log_handle(
+            content=f"Chrome extension server started at {self.server}",
+            errtype='info',
+            component='chrome_ext',
+        )
         self.server.serve_forever(poll_interval=0.5)
 

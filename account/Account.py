@@ -43,7 +43,11 @@ class account_handle:
         read the log from the process and print it to the console
         '''
         for line in process.stderr:
-            try:self.log_handle(line.strip())
+            try:self.log_handle(
+                    content=line.strip(),
+                    errtype='info',
+                    component='account',
+                )
             except:pass
 
     def _start_process_log_reader(self, process:subprocess.Popen):
@@ -55,17 +59,24 @@ class account_handle:
             self.process_log_reader_thread.daemon = True
             self.process_log_reader_thread.start()
         else:
-            self.log_handle("Log reader thread is already running, skipping start.")
+            self.log_handle(
+                content="Log reader thread is already running, skipping start.",
+                errtype='info',
+                component='account',
+            )
     
-    def login_refresh(self,
+    def Start_wv_process(self,
                       option:int,
-                      should_update_avator:bool=True)->bool:
+                      should_update_avator:bool=True,
+                      _force_no_lock:bool=False
+                      )->bool:
         '''
         login, retrun 
-        option: 0 = login, 1 = refresh
+        option: 0 = login, 1 = refresh, 2 = clear profile
         should_update_avator: if True, update the account avator after refresh, for login, it will always update the avator
+        _force_no_lock : if True, do not acquire the lock, for internal use only
         '''
-        if not self._encfile_lock.acquire(blocking=False):
+        if not _force_no_lock and not self._encfile_lock.acquire(blocking=False):
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message="Another login/refresh operation is in progress. Please wait."
@@ -73,19 +84,48 @@ class account_handle:
             return False
             
         try:
-            if option not in [0, 1]:
-                self.log_handle(f"Invalid option: {option}. Must be 0 (login) or 1 (refresh).", "error")
+
+            if option not in [0, 1,2]:
+                self.log_handle(
+                    content=f"Invalid option: {option}. Must be 0 (login), 1 (refresh), or 2 (clear profile).",
+                    errtype='error',
+                    component='account',
+                )
+                return False
+            match option:
+                case 0:
+                    command = "login"
+                case 1:
+                    command = "refresh"
+                case 2:
+                    command = "clear"
+                    should_update_avator = False # cannot update avator after clear profile
+            if option == 0 and not self.check_aes_key():
+                self.log_handle(
+                    content="No aes key found!",
+                    errtype='error',
+                    component='account',
+                )
+                self.ctk_messagebox.showerror(
+                    title="JaTubePlayer",
+                    message=f"No AES key found!\n Try to restart the app to recreate one",
+                )
                 return False
             
             if not os.path.exists(self.host_exe_path):
-                self.log_handle("WebView2 host not found")
+                self.log_handle(
+                    content="WebView2 host not found",
+                    errtype='warning',
+                    component='account',
+                )
                 self.ctk_messagebox.showerror_and_wait(
                     title="JaTubePlayer",
                     message=f" WebView2 host : {self.host_exe_path} not found!\n "
                 )
-                return False   
-            command = "login" if option == 0 else "refresh"
-
+                return False
+            
+            
+            
             if command == "refresh" and os.path.exists(self.cookie_dir):
                 ToastNotification().notify(
                     title="JaTubePlayer",
@@ -105,7 +145,11 @@ class account_handle:
             exit_code = WV_host_result.wait()
             self.process_log_reader_thread.join()  
             if exit_code != 0:
-                self.log_handle(f"WebView2 host exited with code {exit_code}","error")
+                self.log_handle(
+                    content=f"WebView2 host exited with code {exit_code}",
+                    errtype='error',
+                    component='account',
+                )
                 self.ctk_messagebox.showerror_and_wait(
                     title="JaTubePlayer",
                     message=f"WebView2 host exited with code {exit_code}\nPlease check the log for more details."
@@ -113,29 +157,35 @@ class account_handle:
                 return False
             
             if should_update_avator and command == "refresh" or command == "login":
-                self.account_info_handler.set_account_avator()
+                self.account_info_handler.set_account_avator(force=True)
             return True
 
         except Exception as e:
+            self.log_handle(
+                content=f"Failed to {command} login: {e}",
+                errtype='error',
+                component='account',
+            )
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"Failed to {command} login: {e}"
             )
-            self.log_handle(f"Failed to {command} login: {e}", "error")
             return False
         finally:
-            self._encfile_lock.release()
+            if not _force_no_lock:
+                self._encfile_lock.release()
         
-        
-    def get_cookie(self)->str|None:
+    
+    def get_cookie(self,force:bool=False)->str|None:
         '''
         get the cookie from the cookie file
         return the cookie string
+        force: True ONLY for login get avator 
         '''
         
         if not self.check_cookie_exist():
             return None
-        if not self._encfile_lock.acquire(blocking=False):
+        if not self._encfile_lock.acquire(blocking=False) and not force:
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message="Another login/refresh operation is in progress. Please wait."
@@ -159,21 +209,31 @@ class account_handle:
                 cookie = cipher.decrypt_and_verify(ciphertext, tag)
                 return cookie.decode("utf-8")
         except Exception as e:
+            self.log_handle(
+                content=f"Failed to retrieve cookie: {e}",
+                errtype='error',
+                component='account',
+            )
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=(f"Failed to retrieve cookie: {e}"
                          "\nPlease try to login again.")
             )
-            self.log_handle(f"Failed to retrieve cookie: {e}", "error")
             return None
         finally:
-            self._encfile_lock.release()
+            if not force:
+                self._encfile_lock.release()
 
     def check_cookie_exist(self)->bool:
         '''
         check if the cookie file exists
         '''
         if not os.path.exists(self.aes_key_path):
+            self.log_handle(
+                content=f"AES key file is missing: {self.aes_key_path}",
+                errtype="warning",
+                component="account",
+            )
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"AES key file : {self.aes_key_path} not found!\n "
@@ -181,10 +241,12 @@ class account_handle:
             return False
                 
         if not os.path.exists(self.cookie_dir):
-            self.ctk_messagebox.showerror_and_wait(
-                title="JaTubePlayer",
-                message=f"Cookie file : {self.cookie_dir} not found!\n "
+            self.log_handle(
+                content=f"Cookie file is missing: {self.cookie_dir}",
+                errtype="warning",
+                component="account",
             )
+            
             return False
         return True
 
@@ -201,17 +263,43 @@ class account_handle:
             )
             return False
         try:
+            clear_result = False
             if os.path.exists(self.cookie_dir):
                 os.remove(self.cookie_dir)
             if os.path.exists(self.aes_key_path) and not cookie_only:
                 os.remove(self.aes_key_path)
+            if not cookie_only:
+                clear_result = self.Start_wv_process(
+                    option=2,
+                    should_update_avator=False,
+                    _force_no_lock=True
+                )
+
+
+            
+                if not clear_result:
+                    self.log_handle(
+                        content=f"Failed to clear profile data",
+                        errtype='error',
+                        component='account',
+                    )
+                    self.ctk_messagebox.showerror(
+                        title="JaTubePlayer",
+                        message=f"Failed to clear profile data"
+                    )
+                    return False
             return True
+            
         except Exception as e:
+            self.log_handle(
+                content=f"Failed to clear login data: {e}",
+                errtype='error',
+                component='account',
+            )
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"Failed to clear login data: {e}"
             )
-            self.log_handle(f"Failed to clear login data: {e}", "error")
             return False
         finally:
             self._encfile_lock.release()
@@ -226,6 +314,11 @@ class account_handle:
         use AES 256
         '''
         if os.path.exists(self.cookie_dir):
+            self.log_handle(
+                content="AES key is missing; the stored login session will be cleared",
+                errtype="warning",
+                component="account",
+            )
             self.ctk_messagebox.showwarning(
                 title="JaTubePlayer",
                 message="The AES key seems to be missing, recreate one will also delete the stored login session.\n Please login again afterward!")
@@ -242,10 +335,12 @@ class account_handle:
         
         '''
         if not os.path.exists(self.aes_key_path):
-            self.ctk_messagebox.showerror_and_wait(
-                title="JaTubePlayer",
-                message=f"AES key file : {self.aes_key_path} not found!\n "
+            self.log_handle(
+                content=f"AES key file is missing: {self.aes_key_path}",
+                errtype="warning",
+                component="account",
             )
+            
             return False
         with open(self.aes_key_path, "rb") as f:
             bolb = f.read()
@@ -253,12 +348,22 @@ class account_handle:
             win32crypt.CryptUnprotectData(bolb)[1]
 
         except pywintypes.error as e:           # different user or machine.
+            self.log_handle(
+                content=f"Failed to decrypt the credential key: {e.strerror}",
+                errtype="error",
+                component="account",
+            )
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"FATAL ERROR: \nget credential key failed: {e.strerror}\nPlease delete the file .enc and restart the app")                
             return False
         
         except Exception as e:
+            self.log_handle(
+                content=f"Failed to validate the credential key: {e}",
+                errtype="error",
+                component="account",
+            )
             self.ctk_messagebox.showerror_and_wait(
                 title="JaTubePlayer",
                 message=f"ERROR: \nget credential key failed: {str(e)}\n")                
@@ -273,7 +378,11 @@ class account_handle:
         '''
         print("check_and_create_aes_key")
         if os.path.exists(self.aes_key_path):
-            self.log_handle(f"{self.aes_key_path} AES key file exists, checking validity...")
+            self.log_handle(
+                content=f"{self.aes_key_path} AES key file exists, checking validity...",
+                errtype='info',
+                component='account',
+            )
             if not self.check_aes_key():
                 self.ctk_messagebox.showerror_and_wait(
                     title="JaTubePlayer",
@@ -285,6 +394,11 @@ class account_handle:
                     return
                 self._create_AES_key()
         else:
+            self.log_handle(
+                content="AES key is missing; creating a replacement key",
+                errtype="warning",
+                component="account",
+            )
             self.ctk_messagebox.showwarning(title="JaTubePlayer",
                 message="The AES key seems to be missing, recreate one will also delete the stored cookie , please login again afterward!")
             self._create_AES_key()

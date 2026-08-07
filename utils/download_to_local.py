@@ -1,11 +1,11 @@
 import re,os
-from notification.wintoast_notify import ToastNotification
+from notification.ctkmessagebox import ctk_messagebox
 from tkinter import BooleanVar
 import time,threading
 import customtkinter as ctk
 import queue
 from pathlib import Path
-
+import ffmpeg
 
 
 cancel_download = threading.Event()
@@ -25,11 +25,11 @@ def download_to_local(res:str,
                       icondir:str,
                       ver:str,
                       root:ctk.CTkToplevel,
-                      ffmpeg:object,
                       ytdlp_log_handle:object,
                       deno_path:str,
                       is_downloading:BooleanVar,
-                      ctk_messagebox:object,
+                      ctk_messagebox:ctk_messagebox,
+                      log_handle:object
                       ):
     
     '''
@@ -40,7 +40,8 @@ def download_to_local(res:str,
     '''
     try:is_downloading.set(True)
     except:pass
-    
+    ffmpeg_path = os.path.join(current_dir,'_internal','ffmpeg.exe')
+    ffmpeg_process = None
     def _pre_download_cleanup():
         if not os.path.exists(os.path.join(current_dir,'user_data','downloaded_file')):
             os.makedirs(os.path.join(current_dir,'user_data','downloaded_file'))
@@ -94,7 +95,7 @@ def download_to_local(res:str,
                 elif d['status'] == 'finished':
                     root.after(0,lambda:bar.set(1.0))
                     root.after(0,lambda:sub_info_label.configure(text=""))
-            except Exception as e:print(e)
+            except Exception as e:pass
                     
         
             
@@ -102,7 +103,7 @@ def download_to_local(res:str,
         
     def _start_download():
         global cancel_download,ytdlp_killed
-        nonlocal download_path
+        nonlocal download_path,ffmpeg_process
         cancel_download.clear()
         ytdlp_killed.clear()
 
@@ -197,45 +198,72 @@ def download_to_local(res:str,
                     vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                     aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
 
-                    try:
-                        try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
-                        except:pass
-                        bar.place_forget()
-                        main_label.configure(state='normal')
-                        main_label.delete('0.0', 'end')
-                        main_label.insert('0.0', f"processing video and audio...")
-                        main_label.configure(state='disabled')
+                    try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
+                    except:pass
+                    bar.place_forget()
+                    main_label.configure(state='normal')
+                    main_label.delete('0.0', 'end')
+                    main_label.insert('0.0', f"processing video and audio...")
+                    main_label.configure(state='disabled')
 
-                        download_frame.update()
+                    download_frame.update()
 
-                        
-                        ffmpeg.output(vid,aud,
-                                    download_path,
-                                    vcodec='copy', 
-                                    acodec='aac',
-                                    audio_bitrate='192k',
-                                    ).run()
-                        
-                    except Exception as e:ctk_messagebox.showerror(f'JaTubePlayer {ver}',e)
+                    
+                    ffmpeg_process = (
+                        ffmpeg
+                        .output(vid,aud,
+                                download_path,
+                                vcodec='copy', 
+                                acodec='aac',
+                                audio_bitrate='192k',
+                                ).run_async(cmd=ffmpeg_path, overwrite_output=True,pipe_stderr=True))
+
+                    for output in ffmpeg_process.stderr:
+                        log_handle(
+                            content=output.decode(),
+                            errtype='info',
+                            component="download",
+                        )
+                    returncode = ffmpeg_process.wait()
+                    if returncode != 0:
+                        log_handle(
+                            content=output.decode(),
+                            errtype='error',
+                            component="download",
+                        )
+                        if not cancel_download.is_set():
+                            raise(output.decode())
+                        else:
+                            raise(yt_dlp.utils.DownloadCancelled)
+                    
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-
-            main_label.configure(state='normal')
-            main_label.delete('0.0', 'end')
-            main_label.insert('0.0', f"finished! you can close this window if it dont close automatically")
-            main_label.configure(state='disabled')
-
-            
+            try:
+                main_label.configure(state='normal')
+                main_label.delete('0.0', 'end')
+                main_label.insert('0.0', f"finished! you can close this window if it dont close automatically")
+                main_label.configure(state='disabled')
+            except:pass
             ctk_messagebox.showinfo(f'JaTubePlayer {ver}',f'Downloaded : {better_name}')
         except yt_dlp.utils.DownloadCancelled:
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download cancelled : {better_name}', duration='short', icon=icondir)
-        except yt_dlp.utils.DownloadError as de:
-            print(de)
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{de}', duration='short', icon=icondir)
-        except Exception as e:
-            print(e)
-            ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver} Download', msg=f'Download failed : {better_name}\n{e}', duration='short', icon=icondir)
 
+            ctk_messagebox.showerror(f'JaTubePlayer {ver}',f'Download cancelled by user : {better_name}')
+        except yt_dlp.utils.DownloadError as de:
+            log_handle(
+                content=de,
+                errtype='error',
+                component="download",
+            )
+            ctk_messagebox.showerror(f'JaTubePlayer {ver}',f'Download failed : \n{de}')
+        except Exception as e:
+            log_handle(
+                content=e,
+                errtype='error',
+                component="download",
+            )
+            ctk_messagebox.showerror(f'JaTubePlayer {ver}',f'Download failed : \n{e}')
+
+    
         time.sleep(1)
         try:is_downloading.set(False)
         except:pass
@@ -252,21 +280,32 @@ def download_to_local(res:str,
 
     def _on_close():
         global cancel_download
+        nonlocal ffmpeg_process
         if ctk_messagebox.askyesno(title="JaTubePlayer Download",
                                    message="Are you sure you want to cancel the download?"):
-            print("Download cancelled by user.")
+            ytdlp_log_handle.warning("Download cancelled by user.")
             
             cancel_download.set()
+            try:
+                ffmpeg_process.terminate()
+            except AttributeError:pass
+            except Exception as e:log_handle(
+                                      content=e,
+                                      errtype='error',
+                                      component="download",
+                                  )
             
             t1 = time.time()
             while ytdlp_killed.is_set() == False and time.time() - t1 < 5:
                 ytdlp_log_handle.info("Waiting for yt-dlp to acknowledge cancellation...")
                 time.sleep(1)
+                if ffmpeg_process and ffmpeg_process.poll():ffmpeg_process.kill()
             
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempaud.webm.part"))
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempvid.mp4.part"))
+            file_deletion_queue.put(download_path)
             
             # Prevent infinite loop - max 10 retries per file
             retry_count = 0
@@ -284,12 +323,12 @@ def download_to_local(res:str,
                 except PermissionError:
                     retry_count += 1
                     if retry_count < max_total_retries:
-                        print(f"File locked, retry {retry_count}/{max_total_retries}: {file_path}")
+                        ytdlp_log_handle.warning(f"File locked, retry {retry_count}/{max_total_retries}: {file_path}")
                         file_deletion_queue.put(file_path)    
                     else:
-                        print(f"Could not remove {file_path}: Still locked after {max_total_retries} retries")
+                        ytdlp_log_handle.error(f"Could not remove {file_path}: Still locked after {max_total_retries} retries")
                 except Exception as e:
-                    print(f"Could not remove {file_path}: {e}")
+                    ytdlp_log_handle.error(f"Could not remove {file_path}: {e}")
             is_downloading.set(False)
             try:download_frame.destroy()
             except:pass

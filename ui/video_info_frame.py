@@ -30,7 +30,11 @@ def vid_info_frame(mode,
     mode: 1 for selected video, 2 for currently playing video
     '''
     global info
-    log_handle(content=f"info frame mode: {mode}")
+    log_handle(
+        content=f"info frame mode: {mode}",
+        errtype='info',
+        component='video_info',
+    )
     try:
         if info and info.winfo_exists():
             info.lift()
@@ -118,7 +122,11 @@ def vid_info_frame(mode,
 
         def loadselectedinfo():
             global info
-            log_handle(content=f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number is not None and len(vid_url) > 0 else 'N/A'}")
+            log_handle(
+                content=f"load selected info, mode: {playing_vid_mode}, url: {vid_url[selected_song_number] if selected_song_number is not None and len(vid_url) > 0 else 'N/A'}",
+                errtype='info',
+                component='video_info',
+            )
             try:
                 if selected_song_number is not None:
 
@@ -147,9 +155,19 @@ def vid_info_frame(mode,
                     ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','No video selected'))
                     return
             except googleapiclient.errors.HttpError as err: ######  handle stupid api
+                log_handle(
+                    content=f"Failed to load selected video information: {err}",
+                    errtype="error",
+                    component="video_info",
+                )
                 ui_queue.put(lambda e=err: messagebox.showerror(f'JaTubePlayer {ver}', f"An error occurred: {e}"))
                 ui_queue.put(lambda: info.destroy())
             except Exception as e : 
+                log_handle(
+                    content=f"Failed to populate selected video information: {e}",
+                    errtype="error",
+                    component="video_info",
+                )
                 try:       
                     ui_queue.put(lambda: description_text.configure(state='normal'))
                     ui_queue.put(lambda err=e: description_text.insert(tk.END, f'opps we got some problmes\n{err}'))

@@ -38,3 +38,5 @@ account/obj/*
 profile/
 WebView2Host.exeafte
 tmp/*
+JaTubePlayer_log.txt
+pub.ps1

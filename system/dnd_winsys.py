@@ -94,7 +94,11 @@ class URL_DropHandler(DesignatedWrapPolicy):
         url = self.get_url(pDataObj)
         if url:
             self.url_queue.put(url)
-            self.log_handle(content=f"URL put in queue: {url}")
+            self.log_handle(
+                content=f"URL put in queue: {url}",
+                errtype='info',
+                component='drag_drop',
+            )
             return self.DROPEFFECT_COPY
         return self.DROPEFFECT_NONE
 
@@ -102,7 +106,11 @@ class URL_DropHandler(DesignatedWrapPolicy):
         
         for format, encode in self.formats:
             try:
-                self.log_handle(f"Trying format: {format}, encode: {encode}")
+                self.log_handle(
+                    content=f"Trying format: {format}, encode: {encode}",
+                    errtype='info',
+                    component='drag_drop',
+                )
                 data = pDataObj.GetData((format,
                                         None,
                                         pythoncom.DVASPECT_CONTENT,
@@ -110,10 +118,18 @@ class URL_DropHandler(DesignatedWrapPolicy):
                                         pythoncom.TYMED_HGLOBAL))
                 url = data.data.decode(encode, errors="ignore").replace("\x00", " ")
                 if url:
-                    self.log_handle(f"URL obtained: {url}")
+                    self.log_handle(
+                        content=f"URL obtained: {url}",
+                        errtype='info',
+                        component='drag_drop',
+                    )
                     return url
             except Exception as e:
-                self.log_handle(f"Failed to get data for format {format}: {e}")
+                self.log_handle(
+                    content=f"Failed to get data for format {format}: {e}",
+                    errtype='error',
+                    component='drag_drop',
+                )
         return None
         
 
@@ -240,10 +256,18 @@ class DropHandler(object):
 
                     buffer = ctypes.create_unicode_buffer(size + 1) # alloc buffer, +1 for null terminator
                     shell32.DragQueryFileW(drop, i, buffer, size + 1) # put file name into buffer
-                    self.log_handle(content=f"File dropped: {buffer.value}")
+                    self.log_handle(
+                        content=f"File dropped: {buffer.value}",
+                        errtype='info',
+                        component='drag_drop',
+                    )
                     files.append(f"{buffer.value}")
                 except Exception as e:  
-                    self.log_handle(content=f"Error retrieving file {i}: {e}")
+                    self.log_handle(
+                        content=f"Error retrieving file {i}: {e}",
+                        errtype='error',
+                        component='drag_drop',
+                    )
             
             shell32.DragFinish(drop)
             self.handle_file_drop(file_paths=files)
@@ -260,7 +284,11 @@ class DropHandler(object):
             
             also listen to the URL drop, and call the handle_url_drop function in the main thread
             '''
-            self.log_handle(content="DnD listener initialized")
+            self.log_handle(
+                content="DnD listener initialized",
+                errtype='info',
+                component='drag_drop',
+            )
             
             while True:
                 try:
@@ -282,11 +310,19 @@ class DropHandler(object):
                         try:
 
                             
-                            self.log_handle(content=f"Valid files/folder dropped: {file_paths}")
+                            self.log_handle(
+                                content=f"Valid files/folder dropped: {file_paths}",
+                                errtype='info',
+                                component='drag_drop',
+                            )
 
                             if len(file_paths) == 1:
                                 if os.path.isfile(file_paths[0]):
-                                    self.log_handle(content=f"Single file dropped: {file_paths[0]}")
+                                    self.log_handle(
+                                        content=f"Single file dropped: {file_paths[0]}",
+                                        errtype='info',
+                                        component='drag_drop',
+                                    )
                                     
 
                                     self.media_data_list.vid_url.append(file_paths[0])
@@ -298,9 +334,17 @@ class DropHandler(object):
                                                                                             dnd_mode=True)#still put a file into it
                                     self.selected_song_number_status_changer(1)
                                 elif os.path.isdir(file_paths[0]):
-                                    self.log_handle(content=f"Folder dropped: {file_paths[0]}")
+                                    self.log_handle(
+                                        content=f"Folder dropped: {file_paths[0]}",
+                                        errtype='info',
+                                        component='drag_drop',
+                                    )
                                     for dir,_,files in os.walk(file_paths[0]):
-                                        self.log_handle(content=f": {files}")
+                                        self.log_handle(
+                                            content=f": {files}",
+                                            errtype='info',
+                                            component='drag_drop',
+                                        )
                                         for file in files:
                                             if os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
                                                 
@@ -328,10 +372,22 @@ class DropHandler(object):
                     if dropped_url:
                         for domain in self.valid_domains:
                             if domain in dropped_url:
-                                self.log_handle(content=f"Valid URL dropped: {dropped_url}")
-                                self.log_handle(content=f"Invalid URL dropped: {dropped_url}")
+                                self.log_handle(
+                                    content=f"Valid URL dropped: {dropped_url}",
+                                    errtype='info',
+                                    component='drag_drop',
+                                )
+                                self.log_handle(
+                                    content=f"Invalid URL dropped: {dropped_url}",
+                                    errtype='warning',
+                                    component='drag_drop',
+                                )
                                 self.media_list_page_control.handle_url_drop(dropped_url)
-                                self.log_handle(content=f" see url : {dropped_url}")
+                                self.log_handle(
+                                    content=f" see url : {dropped_url}",
+                                    errtype='info',
+                                    component='drag_drop',
+                                )
                                 while not self.URL_DropHandler.url_queue.empty():
                                     self.URL_DropHandler.url_queue.get()
                                 self.ext_ui_functions.direct_url()
@@ -341,5 +397,9 @@ class DropHandler(object):
                             
                     time.sleep(0.5)
                 except Exception as err:
-                    self.log_handle(content=f"Error in DnD listener: {err}")
+                    self.log_handle(
+                        content=f"Error in DnD listener: {err}",
+                        errtype='error',
+                        component='drag_drop',
+                    )
                 
