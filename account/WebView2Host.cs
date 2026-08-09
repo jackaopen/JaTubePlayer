@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
-
 static class Program
 {
     [STAThread]
@@ -15,10 +14,38 @@ static class Program
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        
         if (args.Length != 2 || (args[1] != "login" && args[1] != "refresh" && args[1] != "clear"))
         {
+            Helper.ErrorLog("invalid arg");
             Environment.Exit(1);
         }
+
+        if(!Verifier.verifyDir(args[0]))
+        {
+            Helper.ErrorLog("invalid dir");
+            Environment.Exit(1);
+        }
+        if(!Verifier.verifyLocalResources(args[0]))
+        {
+            Helper.ErrorLog("invalid LocalResources");
+            Environment.Exit(1);
+        }
+        
+
+        string? encoded = Console.ReadLine();
+        if (encoded == null)
+        {
+            Helper.ErrorLog("no token");
+            Environment.Exit(1);
+        }
+        byte[] InputToken = Convert.FromBase64String(encoded);
+        if (Verifier.verifyToken(args[0],InputToken) == false)
+        {
+            Helper.ErrorLog("invalid token");
+            Environment.Exit(1);
+        }
+        
         Application.Run(new CookieForm(args[0], args[1]));
     }
     
@@ -114,6 +141,8 @@ public class CookieForm : Form
             );
             await view.EnsureCoreWebView2Async(env);
 
+            HashSet<string> GoogleAccountHost = Helper.LoadGoogleAccountHosts();
+
             // Keep the WebView small and locked down.
             view.CoreWebView2.Settings.AreDevToolsEnabled = false;
             view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -159,7 +188,8 @@ public class CookieForm : Form
                     args.IsRedirected &&
                     Uri.TryCreate(args.Uri, UriKind.Absolute, out Uri setSidUri) &&
                     setSidUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
-                    setSidUri.Host.StartsWith("accounts.google.", StringComparison.OrdinalIgnoreCase) &&
+                    setSidUri.Port == 443 &&
+                    GoogleAccountHost.Contains(setSidUri.IdnHost)  &&
                     setSidUri.AbsolutePath.Equals("/accounts/SetSID", StringComparison.OrdinalIgnoreCase);
 
                 if (Helper.Allowed(args.Uri) || allowedRegionalSetSid) return;

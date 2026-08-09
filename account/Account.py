@@ -1,14 +1,14 @@
 import subprocess
 import os 
 import sys
-import json
+import base64
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from notification.ctkmessagebox import ctk_messagebox
 import win32crypt
 import pywintypes
 import threading
-
+from utils.Account_token import account_token
 from notification.wintoast_notify import ToastNotification
 
 
@@ -18,12 +18,14 @@ class account_handle:
                  current_dir: str,
                  ctk_messagebox: ctk_messagebox,
                  log_handle:object,
-                 account_info_handler:object):
+                 account_info_handler:object,
+                 account_token_handle:account_token):
         
         self.current_dir = current_dir
         self.ctk_messagebox = ctk_messagebox
         self.log_handle = log_handle
         self.account_info_handler = account_info_handler
+        self.account_token_handle = account_token_handle
 
         self.account_dir = os.path.join(self.current_dir, "account")
         self.user_data_dir = os.path.join(self.current_dir, "user_data")
@@ -32,6 +34,7 @@ class account_handle:
 
         self.aes_key_path = os.path.join(self.user_data_dir, "AES_key.enc")
         self.cookie_dir = os.path.join(self.user_data_dir, "cookie_key.enc")
+        self.account_token_dir = os.path.join(self.user_data_dir,"account_token.enc")
 
         self._encfile_lock = threading.Lock()
         self.check_and_create_aes_key()
@@ -45,6 +48,14 @@ class account_handle:
         for line in process.stderr:
             try:self.log_handle(
                     content=line.strip(),
+                    errtype='err',
+                    component='account',
+                )
+            except:pass
+
+        for line in process.stdout:
+            try:self.log_handle(
+                    content=line.strip(), 
                     errtype='info',
                     component='account',
                 )
@@ -92,6 +103,24 @@ class account_handle:
                     component='account',
                 )
                 return False
+            if not self.account_token_handle.verify_WV_hash(self.host_exe_path):
+                self.ctk_messagebox.showerror_and_wait(
+                    title="JaTubePlayer",
+                    message="The account handling executable is incorrect, please check the file!"
+                )
+                self.log_handle(
+                        content=f"The account handling executable is incorrect",
+                        errtype='error',
+                        component='account',
+                    )
+                return False
+
+            self.account_token_handle.clear_token_file()
+            self.account_token_handle.gen_and_encrypt()
+            encoded_token = None
+            with open(self.account_token_dir,"rb") as f:
+                encoded_token = f.read()
+
             match option:
                 case 0:
                     command = "login"
@@ -100,6 +129,7 @@ class account_handle:
                 case 2:
                     command = "clear"
                     should_update_avator = False # cannot update avator after clear profile
+
             if option == 0 and not self.check_aes_key():
                 self.log_handle(
                     content="No aes key found!",
@@ -135,10 +165,18 @@ class account_handle:
             WV_host_result = subprocess.Popen(
                 [str(self.host_exe_path), str(self.current_dir), command],
                 text=True,
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=1,
+                creationflags=subprocess.CREATE_NO_WINDOW                
             )
+
+            token = win32crypt.CryptUnprotectData(encoded_token)[1]
+            encoded = base64.b64encode(token).decode("ascii")
+
+            WV_host_result.stdin.write(encoded+'\n')
+            WV_host_result.stdin.flush()
             self._start_process_log_reader(WV_host_result)
             
 
@@ -174,6 +212,7 @@ class account_handle:
         finally:
             if not _force_no_lock:
                 self._encfile_lock.release()
+            self.account_token_handle.clear_token_file()
         
     
     def get_cookie(self,force:bool=False)->str|None:
@@ -185,12 +224,15 @@ class account_handle:
         
         if not self.check_cookie_exist():
             return None
-        if not self._encfile_lock.acquire(blocking=False) and not force:
-            self.ctk_messagebox.showerror_and_wait(
-                title="JaTubePlayer",
-                message="Another login/refresh operation is in progress. Please wait."
-            )
-            return None
+        _lock = None
+        if not force:
+            _lock = self._encfile_lock.acquire(blocking=False)
+            if not _lock:
+                self.ctk_messagebox.showerror_and_wait(
+                    title="JaTubePlayer",
+                    message="Another login/refresh operation is in progress. Please wait."
+                )
+                return None
         try:
 
             with open(self.aes_key_path, "rb") as f:
@@ -221,7 +263,7 @@ class account_handle:
             )
             return None
         finally:
-            if not force:
+            if _lock:
                 self._encfile_lock.release()
 
     def check_cookie_exist(self)->bool:

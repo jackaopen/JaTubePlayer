@@ -14,7 +14,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3537.50" />
   </ItemGroup>
-
+  <ItemGroup>
+  <EmbeddedResource
+    Include="Resouces\chrome_supported_domain.txt"
+    LogicalName="chrome_supported_domain.txt" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Remove="bin\**\*.cs" />
     <Compile Remove="obj\**\*.cs" />

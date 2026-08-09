@@ -412,6 +412,24 @@ class Chrome_ext_server_ui_functions:
         else:
             ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}', "You are in local media mode, cannot add video to playlist.\nYou can star the video to add it to the starred list, then go to starred mode to watch it."))
 
+class dnd_ui_functions:
+    @staticmethod
+    def single_file():
+        global playing_vid_mode,selected_song_number
+        playing_vid_mode = 1
+        selected_song_number = 0
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        insert_textbox(playlist_name_textbox, "[Drag&Drop] Single file")
+
+    @staticmethod
+    def folder_and_files():
+        global playing_vid_mode,selected_song_number
+        playing_vid_mode = 2
+        selected_song_number = None
+        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        insert_textbox(playlist_name_textbox, "[Drag&Drop] Folder/Multiple Files")
+    
+
 
 class AccountInfo:
     def __init__(self):
@@ -443,35 +461,36 @@ class AccountInfo:
         use self.account_avator_url to get the avator pic and set it to google_status_profile_pic_label
         '''
         from utils.parser import innertube_parser
-        payload = account_innertube_handler.preInit_buildPayload("home",
-                                                                 use_matching_page=True,
-                                                                 force = force)         
-        if not payload:
-            messagebox.showerror(f'JaTubePlayer {ver}', "Failed to build payload for account info. Please check the log for more details.")
-            log_handle(
-                content="Failed to build payload for account info",
-                errtype='error',
-                component='account',
-            )
-            return                                     
-        account_response = account_innertube_handler.get_innertube_response(payload=payload, 
-                                                                           get_account=True)
-        parsed_account_info = innertube_parser().parse_account_info(account_response)
-        self.account_name, self.account_avator_url = parsed_account_info.get("name"), parsed_account_info.get("thumb")
-
-        if self.account_name != '' and self.account_avator_url != '':
-            try:
-                avator_pic = asyncio.run(self._get_avator_pic())
-                ui_queue.put(lambda: google_status_profile_pic_label.configure(image=avator_pic))
-                insert_textbox(google_status_text, self.account_name)
-            except Exception as e:
+        try:
+            payload = account_innertube_handler.preInit_buildPayload("home",
+                                                                    use_matching_page=True,
+                                                                    force = force)         
+            if not payload:
+                messagebox.showerror(f'JaTubePlayer {ver}', "Failed to build payload for account info. Please check the log for more details.")
                 log_handle(
-                    content=f"Failed to get account avator: {e}",
+                    content="Failed to build payload for account info",
                     errtype='error',
                     component='account',
                 )
-                self.account_avator_url = ''
-                self.clear_account_info()
+                return                                     
+            account_response = account_innertube_handler.get_innertube_response(payload=payload, 
+                                                                            get_account=True)
+            parsed_account_info = innertube_parser().parse_account_info(account_response)
+            self.account_name, self.account_avator_url = parsed_account_info.get("name"), parsed_account_info.get("thumb")
+
+            if self.account_name != '' and self.account_avator_url != '':
+                
+                avator_pic = asyncio.run(self._get_avator_pic())
+                ui_queue.put(lambda: google_status_profile_pic_label.configure(image=avator_pic))
+                insert_textbox(google_status_text, self.account_name)
+        except Exception as e:
+            log_handle(
+                content=f"Failed to get account avator: {e}",
+                errtype='error',
+                component='account',
+            )
+            self.account_avator_url = ''
+            self.clear_account_info()
 
     def clear_account_info(self):
         self.account_name = ''
@@ -1702,9 +1721,11 @@ def setting_frame():
         # ══════════════════════════════════════════════════════
 
         # ── General Playback Card ──
-        general_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
+        general_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8,
+                                      border_width=1, border_color='#3A3A3A')
         general_frame.grid_columnconfigure(0, weight=0, minsize=180)
         general_frame.grid_columnconfigure(1, weight=1)
+        general_frame.grid_columnconfigure(2, weight=0, minsize=50)
 
         general_header = ctk.CTkLabel(general_frame, text='  ▸ General', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
         maxresolutionlabel = ctk.CTkLabel(general_frame, font=('Arial', 12), text='Max Resolution', text_color='#B0B0B0')
@@ -1718,21 +1739,16 @@ def setting_frame():
         audio_only_checkbtn = ctk.CTkCheckBox(general_frame, text='Audio only mode', variable=audio_only,
                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_audio_only)
 
-        # ── Speed & Subtitle Card ──
-        speed_subtitle_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
-        speed_subtitle_frame.grid_columnconfigure(0, weight=0, minsize=180)
-        speed_subtitle_frame.grid_columnconfigure(1, weight=1)
-        speed_subtitle_frame.grid_columnconfigure(2, weight=0, minsize=50)
-
-        speed_subtitle_header = ctk.CTkLabel(speed_subtitle_frame, text='  ▸ Speed & Subtitle', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
-        playerspeed_title_label = ctk.CTkLabel(speed_subtitle_frame, font=('Arial', 12), text='Playback Speed', text_color='#B0B0B0')
-        playerspeed_slider = ctk.CTkSlider(speed_subtitle_frame, variable=player_speed, from_=0.3, to=3.0, width=200,
+        # ── Speed & Subtitle controls (directly inside General) ──
+        general_playback_divider = ctk.CTkFrame(general_frame, height=1, fg_color='#444444', corner_radius=0)
+        playerspeed_title_label = ctk.CTkLabel(general_frame, font=('Arial', 12), text='Playback Speed', text_color='#B0B0B0')
+        playerspeed_slider = ctk.CTkSlider(general_frame, variable=player_speed, from_=0.3, to=3.0, width=200,
                                             number_of_steps=27, command=set_player_speed_setting,
                                             progress_color='#4A9E6E', button_color='#7EE0A8', button_hover_color='#98F0C0')
         playerspeed_slider.bind('<ButtonRelease-1>', apply_player_speed_setting)
-        playerspeed_speed_label = ctk.CTkLabel(speed_subtitle_frame, font=('Arial', 12, 'bold'), text='1.0x', text_color='#7EE0A8')
-        subtitle_label = ctk.CTkLabel(speed_subtitle_frame, text='Subtitle', font=('Arial', 12), text_color='#B0B0B0')
-        subtitlecombobox = ctk.CTkComboBox(speed_subtitle_frame, font=('Arial', 12), width=220, state='readonly',
+        playerspeed_speed_label = ctk.CTkLabel(general_frame, font=('Arial', 12, 'bold'), text='1.0x', text_color='#7EE0A8')
+        subtitle_label = ctk.CTkLabel(general_frame, text='Subtitle', font=('Arial', 12), text_color='#B0B0B0')
+        subtitlecombobox = ctk.CTkComboBox(general_frame, font=('Arial', 12), width=220, state='readonly',
                                             values=subtitle_namelist, command=subtitle_combobox_callback,
                                             dropdown_fg_color='#333333', button_color='#444444')
 
@@ -1801,23 +1817,32 @@ def setting_frame():
         advanced_frame.grid_columnconfigure(1, weight=1)
 
         advanced_title = ctk.CTkLabel(advanced_frame, text='  ▸ Advanced', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
-        blurbtn = ctk.CTkCheckBox(advanced_frame, text='Acrylic blur effect', variable=blur_window,
-                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
+
         mpvlogbtn = ctk.CTkButton(advanced_frame, text='Show MPV Log', width=160, command=log_handler.log_handle_frame.show_mpv_log,
-                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3E62DC', hover_color='#4A70F0')
+                                   text_color='#6EA0FF', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#334766',
+                                   border_width=2, border_color='#6EA0FF')
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading', width=160, command=set_force_stop_loading,
-                                                text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                text_color='#FF8A8A', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#55383A',
+                                                border_width=2, border_color='#FF8A8A')
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache,
                                           fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_show_cache)
 
-        # ── Blur Gradient Color ──
-        blur_gradient_name_label = ctk.CTkLabel(advanced_frame, text='Blur Gradient Color', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
-        blur_gradient_value_label = ctk.CTkLabel(advanced_frame, textvariable=blur_hexColor, font=('Arial', 12, 'bold'), text_color='#C8C8C8',
+        # ── Background ──
+        advanced_blur_frame = ctk.CTkFrame(advanced_frame, fg_color='#242424', corner_radius=6,
+                                            border_width=1, border_color='#3A3A3A')
+        advanced_blur_frame.grid_columnconfigure(0, weight=1)
+        advanced_blur_frame.grid_columnconfigure(1, weight=1)
+        advanced_blur_title = ctk.CTkLabel(advanced_blur_frame, text='  ▸ Background', font=('Arial', 13, 'bold'),
+                                            text_color='#C0A0E0', anchor='w')
+        blurbtn = ctk.CTkCheckBox(advanced_blur_frame, text='Acrylic blur effect', variable=blur_window,
+                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
+        blur_gradient_name_label = ctk.CTkLabel(advanced_blur_frame, text='Blur Gradient Color', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
+        blur_gradient_value_label = ctk.CTkLabel(advanced_blur_frame, textvariable=blur_hexColor, font=('Arial', 12, 'bold'), text_color='#C8C8C8',
                                                   fg_color='#1a1a1a', corner_radius=6, anchor='w', padx=8)
-        blur_gradient_choose_btn = ctk.CTkButton(advanced_frame, text='Choose Color', width=140,
+        blur_gradient_choose_btn = ctk.CTkButton(advanced_blur_frame, text='Choose Color', width=140,
                                                   command=lambda: set_gradient_color(), 
                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        blur_gradient_default_btn = ctk.CTkButton(advanced_frame, text='Set Default', width=140,
+        blur_gradient_default_btn = ctk.CTkButton(advanced_blur_frame, text='Set Default', width=140,
                                                    command=lambda: set_gradient_color(default=True),  
                                                    text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
@@ -2192,25 +2217,22 @@ def setting_frame():
 
         # ══════════ Layout: Advanced Player Settings Tab ══════════
 
-        # ── General Card ──
+        # ── General Card (includes Speed & Subtitle) ──
         general_frame.grid(row=0, column=0, columnspan=2, padx=16, pady=(10, 4), sticky="ew")
-        general_header.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        maxresolutionlabel.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        maxresolutioncombobox.grid(row=1, column=1, padx=8, pady=5, sticky="w")
-        autoretry_btn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
-        audio_only_checkbtn.grid(row=2, column=1, padx=8, pady=(5, 12), sticky="w")
-
-        # ── Speed & Subtitle Card ──
-        speed_subtitle_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
-        speed_subtitle_header.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
-        playerspeed_title_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        playerspeed_slider.grid(row=1, column=1, padx=8, pady=5, sticky="ew")
-        playerspeed_speed_label.grid(row=1, column=2, padx=(4, 14), pady=5, sticky="w")
-        subtitle_label.grid(row=2, column=0, padx=(24, 8), pady=(5, 12), sticky="w")
-        subtitlecombobox.grid(row=2, column=1, padx=8, pady=(5, 12), sticky="w")
+        general_header.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
+        maxresolutionlabel.grid(row=1, column=0, padx=(24, 8), pady=(6, 8), sticky="w")
+        maxresolutioncombobox.grid(row=1, column=1, columnspan=2, padx=(8, 24), pady=(6, 8), sticky="ew")
+        general_playback_divider.grid(row=2, column=0, columnspan=3, padx=20, pady=(4, 8), sticky="ew")
+        playerspeed_title_label.grid(row=3, column=0, padx=(24, 8), pady=6, sticky="w")
+        playerspeed_slider.grid(row=3, column=1, padx=8, pady=6, sticky="ew")
+        playerspeed_speed_label.grid(row=3, column=2, padx=(4, 24), pady=6, sticky="e")
+        subtitle_label.grid(row=4, column=0, padx=(24, 8), pady=6, sticky="w")
+        subtitlecombobox.grid(row=4, column=1, columnspan=2, padx=(8, 24), pady=6, sticky="ew")
+        autoretry_btn.grid(row=5, column=0, padx=(24, 8), pady=(10, 14), sticky="w")
+        audio_only_checkbtn.grid(row=5, column=1, columnspan=2, padx=(8, 24), pady=(10, 14), sticky="w")
 
         # ── Cache & Buffer Card ──
-        cache_buffer_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        cache_buffer_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
         cache_buffer_header.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
         cache_buffer_note.grid(row=1, column=0, columnspan=3, padx=16, pady=(0, 8), sticky="ew")
         demuxer_max_bytes_label.grid(row=2, column=0, padx=(24, 8), pady=4, sticky="w")
@@ -2227,7 +2249,7 @@ def setting_frame():
         audio_wait_open_value_label.grid(row=5, column=2, padx=(4, 14), pady=(4, 12), sticky="w")
 
         # ── Fullscreen Card ──
-        fullscreen_frame.grid(row=3, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        fullscreen_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
         fullscreen_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
         openwith_fullscreen_btn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
         hover_fullscreen_btn.grid(row=1, column=1, padx=8, pady=5, sticky="w")
@@ -2237,16 +2259,19 @@ def setting_frame():
         fullscreen_mode_window_btn.grid(row=3, column=2, padx=8, pady=(2, 12), sticky="w")
 
         # ── Advanced Card ──
-        advanced_frame.grid(row=4, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
+        advanced_frame.grid(row=3, column=0, columnspan=2, padx=16, pady=(4, 10), sticky="ew")
         advanced_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
-        blurbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        mpvlogbtn.grid(row=2, column=0, padx=(24, 8), pady=5, sticky="w")
-        force_stop_loading_btn.grid(row=3, column=0, padx=(24, 8), pady=5, sticky="w")
-        show_cache_btn.grid(row=3, column=1, padx=8, pady=5, sticky="w")
-        blur_gradient_name_label.grid(row=4, column=0, padx=(24, 8), pady=(8, 2), sticky="w")
-        blur_gradient_value_label.grid(row=4, column=1, padx=(8, 24), pady=(8, 2), sticky="ew")
-        blur_gradient_choose_btn.grid(row=5, column=0, padx=(24, 8), pady=(2, 12), sticky="w")
-        blur_gradient_default_btn.grid(row=5, column=1, padx=8, pady=(2, 12), sticky="w")
+        show_cache_btn.grid(row=1, column=0, columnspan=2, padx=(24, 8), pady=(4, 8), sticky="w")
+        mpvlogbtn.grid(row=2, column=0, padx=(24, 6), pady=(4, 10), sticky="ew")
+        force_stop_loading_btn.grid(row=2, column=1, padx=(6, 24), pady=(4, 10), sticky="ew")
+
+        advanced_blur_frame.grid(row=3, column=0, columnspan=2, padx=12, pady=(4, 12), sticky="ew")
+        advanced_blur_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(8, 5), sticky="w")
+        blurbtn.grid(row=1, column=0, columnspan=2, padx=(16, 8), pady=(4, 8), sticky="w")
+        blur_gradient_name_label.grid(row=2, column=0, padx=(16, 8), pady=(5, 5), sticky="w")
+        blur_gradient_value_label.grid(row=2, column=1, padx=(8, 16), pady=(5, 5), sticky="ew")
+        blur_gradient_choose_btn.grid(row=3, column=0, padx=(16, 8), pady=(5, 10), sticky="ew")
+        blur_gradient_default_btn.grid(row=3, column=1, padx=(8, 16), pady=(5, 10), sticky="ew")
 
         # ══════════ Layout: External Services Tab ══════════
         chrome_extension_frame.grid(row=0, column=0, padx=8, pady=(8, 4), sticky="ew")
@@ -2361,7 +2386,7 @@ def setting_frame():
             value='yt_playlist',
             command=init_yt_playlist_select,
             text_color='#C8C8C8',
-            font=('Arial', 11),
+            font=('Arial', 12),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2375,7 +2400,7 @@ def setting_frame():
             value='like',
             command=init_playlist_like_select,
             text_color='#C8C8C8',
-            font=('Arial', 11),
+            font=('Arial', 12),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2389,7 +2414,7 @@ def setting_frame():
             value='sub',
             command=init_playlist_sub_select,
             text_color='#C8C8C8',
-            font=('Arial', 11),
+            font=('Arial', 12),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2403,7 +2428,7 @@ def setting_frame():
             value='recommendation',
             command=init_playlist_recommendation_select,
             text_color='#C8C8C8',
-            font=('Arial', 11),
+            font=('Arial', 12),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2881,14 +2906,21 @@ def update_playing_pos_local_and_chrome():
                     ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
             if player.eof_reached and length != -1: ## video ends
                 if selected_song_number != None:
-                    if playing_vid_mode == 2 or playing_vid_mode == 4:
+                    log_handle(
+                        content=f"playing_vid_mode {playing_vid_mode}",
+                        errtype="info",
+                        component="update pos local"
+                    )
+                    if playing_vid_mode in [1,2,4]:
                         if player_mode_selector.get() =='continue':
-                            playprevnext(1)()
-                            break
+                            if playing_vid_mode != 1:
+                                playprevnext(1)
+                                break
                             
                         elif player_mode_selector.get() =='replay':
                             player.seek(0.1,reference='absolute')
                             root.after(200, lambda: setattr(player, 'pause', False))
+
                         elif player_mode_selector.get() =='random':
                             player.stop()
                             media_idx = media_list_page_controller.random_media(selected_song_number)
@@ -2912,9 +2944,9 @@ def update_playing_pos_local_and_chrome():
                             ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
                         else:
                             ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-                        break
+                        
 
-                elif playing_vid_mode == 1 or playing_vid_mode == 3 or playing_vid_mode == 0:### MPV option keep_open
+                elif playing_vid_mode in [0,3]:### MPV option keep_open
                     
                     if player_mode_selector.get() =='replay':# =  3 chrome , =0 for chrome but added a video
                         player.seek(0.1,reference='absolute')
@@ -3387,7 +3419,8 @@ def load_thread():  ### add every try except to a new log system for next update
                     try:
                         final_url, playing_vid_info_dict = get_info(
                             target_url=direct_url,
-                            loader=get_info_loader
+                            loader=get_info_loader,
+                            twitch_handler=twitch_handler
                         )
 
                         if final_url:
@@ -3881,6 +3914,12 @@ def onclose():
     try:
         dnd_handle.close()
     except:pass
+    try:
+        twitch_handler.stop_twitch_streamlink()
+    except:pass
+    try:
+        log_handler.flush_log_locally(force_flush_log=True)
+    except:pass
     root.destroy()
 
     
@@ -4347,14 +4386,16 @@ def init_read_config():
 
 @check_internet_silent
 def init_ver_check():
-    if CONFIG['vercheck']:
-        latest_dlp = get_latest_dlp_version()
-        if ytdlpver.__version__ != latest_dlp:
-            ui_queue.put(lambda ld=latest_dlp: ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Your yt_dlp is not the newest!\nlatest: {ld}  yours: {ytdlpver.__version__}', duration='short', icon=icondir))
-        
-        latest_player = get_latest_player_version()
-        if ver!= latest_player:
-            ui_queue.put(lambda lp=latest_player: ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Your JaTubePlayer is not the newest!\nlatest: {lp}  yours: {ver}', duration='short', icon=icondir))
+    def _ver_check():
+        if CONFIG['vercheck']:
+            latest_dlp = get_latest_dlp_version()
+            if ytdlpver.__version__ != latest_dlp:
+                ui_queue.put(lambda ld=latest_dlp: ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Your yt_dlp is not the newest!\nlatest: {ld}  yours: {ytdlpver.__version__}', duration='short', icon=icondir))
+            
+            latest_player = get_latest_player_version()
+            if ver!= latest_player:
+                ui_queue.put(lambda lp=latest_player: ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Your JaTubePlayer is not the newest!\nlatest: {lp}  yours: {ver}', duration='short', icon=icondir))
+    threading.Thread(daemon=True,target=_ver_check).start()
 
 
 
@@ -4401,6 +4442,7 @@ def create_mpv_player():
 
     if player:
         player.terminate()
+        twitch_handler.stop_twitch_streamlink()
         try:
             smtc.destroy()
         except:
@@ -4460,18 +4502,27 @@ def _init_dnd_on_root_thread():
 def _init_load_extra_objs():
     global dnd_handle,discord_presence,google_control,get_info_loader,star_vid_handle,thumbnail_loader,media_list_page_controller
     global innertube_handler,playlist_retriever
-    global account_handler,account_info_handler,history_page_handler,account_innertube_handler
+    global account_handler,account_info_handler,history_page_handler,account_innertube_handler,twitch_handler
     global CONFIG
 
-
+    from utils.Account_token import account_token
+    account_token_handle = account_token(
+        current_dir=current_dir,
+        log_handle=log_handle
+    )
     from history_page.history_page import history_page
     history_page_handler = history_page(log_handle=log_handle,
                                         messagebox=messagebox)
 
     from account.Account import account_handle
     account_info_handler = AccountInfo()
+
+    from video_media_control.twitch_handle import twitch_handle
     
-    discord_presence=DiscordPresence(discord_status_run=discord_status_run,discord_status_close=discord_status_close)
+    discord_presence=DiscordPresence(discord_status_run=discord_status_run,
+                                     discord_status_close=discord_status_close,
+                                     log_handle=log_handle
+                                     )
     discord_presence.discord_idle_presence_wording = CONFIG['discord_idle_presence_wording']
 
     get_info_loader = get_info_loader_(yt_dlp = lambda:yt_dlp,
@@ -4500,7 +4551,8 @@ def _init_load_extra_objs():
     account_handler = account_handle(current_dir=current_dir,
                                             ctk_messagebox=messagebox,
                                             log_handle=log_handle,
-                                            account_info_handler=account_info_handler)
+                                            account_info_handler=account_info_handler,
+                                            account_token_handle=account_token_handle)
     
             
     innertube_handler = innertube_handle(account_handle=account_handler,
@@ -4524,11 +4576,13 @@ def _init_load_extra_objs():
         playlist_retriever=playlist_retriever,
         history_page_handler=history_page_handler,
         messagebox=messagebox,
+        dnd_ui_functions = dnd_ui_functions,
         Chrome_ext_server_ui_functions=Chrome_ext_server_ui_functions,
         get_cur_playing_url = lambda: playing_vid_info_dict.get("original_url", ''),
         get_cur_playlist_title= lambda: playlist_name_textbox.get(0.0, tk.END).strip()
         )
-    
+    twitch_handler = twitch_handle(log_handle,
+                                   _internal_dir)
     
     playlist_retriever.maxresults_recommendation = max_recommendation_result_count.get()
     playlist_retriever.maxresults_like = max_like_result_count.get()

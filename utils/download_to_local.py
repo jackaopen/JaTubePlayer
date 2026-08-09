@@ -6,6 +6,7 @@ import customtkinter as ctk
 import queue
 from pathlib import Path
 import ffmpeg
+import subprocess
 
 
 cancel_download = threading.Event()
@@ -209,14 +210,26 @@ def download_to_local(res:str,
                     download_frame.update()
 
                     
-                    ffmpeg_process = (
-                        ffmpeg
-                        .output(vid,aud,
-                                download_path,
-                                vcodec='copy', 
-                                acodec='aac',
-                                audio_bitrate='192k',
-                                ).run_async(cmd=ffmpeg_path, overwrite_output=True,pipe_stderr=True))
+                    stream = ffmpeg.output(
+                        vid,
+                        aud,
+                        download_path,
+                        vcodec="copy",
+                        acodec="aac",
+                        audio_bitrate="192k",
+                    )
+
+                    args = ffmpeg.compile(
+                        stream,
+                        cmd=ffmpeg_path,
+                        overwrite_output=True,
+                    )
+
+                    ffmpeg_process = subprocess.Popen(
+                        args,
+                        stderr=subprocess.PIPE,
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
 
                     for output in ffmpeg_process.stderr:
                         log_handle(

@@ -106,16 +106,20 @@ class URL_DropHandler(DesignatedWrapPolicy):
         
         for format, encode in self.formats:
             try:
+                fmt_tuple = (format,
+                            None,
+                            pythoncom.DVASPECT_CONTENT,
+                            self.lindexALL,
+                            pythoncom.TYMED_HGLOBAL)
+                
                 self.log_handle(
                     content=f"Trying format: {format}, encode: {encode}",
                     errtype='info',
                     component='drag_drop',
                 )
-                data = pDataObj.GetData((format,
-                                        None,
-                                        pythoncom.DVASPECT_CONTENT,
-                                        self.lindexALL,
-                                        pythoncom.TYMED_HGLOBAL))
+                pDataObj.QueryGetData(fmt_tuple)
+                data = pDataObj.GetData(fmt_tuple)
+
                 url = data.data.decode(encode, errors="ignore").replace("\x00", " ")
                 if url:
                     self.log_handle(
@@ -124,6 +128,13 @@ class URL_DropHandler(DesignatedWrapPolicy):
                         component='drag_drop',
                     )
                     return url
+            except pythoncom.com_error:
+                self.log_handle(
+                    content=f"Unsupported format, might be path",
+                    errtype='warning',
+                    component='drag_drop',
+                )
+
             except Exception as e:
                 self.log_handle(
                     content=f"Failed to get data for format {format}: {e}",
@@ -382,7 +393,7 @@ class DropHandler(object):
                                     errtype='warning',
                                     component='drag_drop',
                                 )
-                                self.media_list_page_control.handle_url_drop(dropped_url)
+                                self.media_list_page_control.handle_url_drop(dropped_url.strip())
                                 self.log_handle(
                                     content=f" see url : {dropped_url}",
                                     errtype='info',

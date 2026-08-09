@@ -1,6 +1,8 @@
 import time
 from loader.get_info_loader import get_info_loader_
 from utils.check_internet import *
+from video_media_control.twitch_handle import twitch_handle
+
 def _create_edl_url(video_url, audio_url, duration=None):
     """
     Creates an mpv EDL URL with correct duration syntax.
@@ -33,6 +35,7 @@ def _create_edl_url(video_url, audio_url, duration=None):
 def get_info(
              target_url:str,
              loader:get_info_loader_,
+             twitch_handler:twitch_handle=None
              )->tuple[str,dict]:
     '''
     Returns (final_url, info_dict)
@@ -143,22 +146,23 @@ def get_info(
                         vid_url = fmt[0]['url']
                         audio_only_url = fmt[1]['url']
                         log_handler.info(f"video formats:\n fps:{fmt[0].get('fps','N/A')}, res:{fmt[0].get('resolution','N/A')}, vcodec:{fmt[0].get('vcodec','N/A')}, tbr:{fmt[0].get('tbr','N/A')}\n audio format: acodec:{fmt[1].get('acodec','N/A')}, abr:{fmt[1].get('abr','N/A')}")
-                        final_url = _create_edl_url(vid_url, audio_only_url, info.get('duration',''))
-                    else:
-                        final_url = info['url']
+                        
                 else:
                     fmt = info.get('formats', [])
                     if fmt:
                         fmt = sorted(fmt,key = lambda x: x.get('height',0) or 0, reverse=True)
                         for f in fmt:
                             if f.get('height',0) <= maxres:
-                                final_url = f'edl://!new_stream;!no_clip;!no_chapters;%{len(f["url"])}%{f["url"]}'
                                 break
             
                 print('vid_url:', vid_url,'\n')
                 print('audio_only_url:', audio_only_url)
 
-            log_handler.info(f'get_info return { final_url}')
+            if twitch_handler:
+                streamlink_url = twitch_handler.start_twitch_streamlink(target_url)
+            else:
+                streamlink_url = target_url
+
             yt_like_info = {
                 'title': info.get('title'),
                 'uploader': info.get('uploader'),
@@ -172,7 +176,7 @@ def get_info(
                 'original_url': info.get('original_url'),
                 'description': info.get('description'),
             }
-            return final_url, yt_like_info
+            return streamlink_url, yt_like_info
         except Exception as e:
             log_handler.error(f'get_info error: {e}')
             return None, None

@@ -10,6 +10,7 @@ from notification.ctkmessagebox import ctk_messagebox
 from history_page.history_page import history_page
 from typing import Callable
 import copy
+import os
 
 class MediaType(enum.IntEnum):
     '''
@@ -52,6 +53,7 @@ class MediaList_PageControl_:
                  load_thread_queue:queue.Queue,
                  playlist_retriever:playlist_retriever_,
                  history_page_handler:history_page,
+                 dnd_ui_functions:object,
                  Chrome_ext_server_ui_functions:object,
                  messagebox:ctk_messagebox,
                  get_cur_playing_url:Callable,
@@ -76,6 +78,7 @@ class MediaList_PageControl_:
         self.page_num_label = page_num_label # for controling UI
         self.messagebox = messagebox
         self.loading_page = False
+        self.dnd_ui_functions = dnd_ui_functions
 
         self.user_playlist_dict = {"name":'',
                                     "url":''}
@@ -257,6 +260,7 @@ class MediaList_PageControl_:
                 return False
         else: # dnd called this, media_data_list is already filled
             self.media_data_list = media_data_list
+        
 
         self.media_data_list.current_media_page = 1  
         self.media_data_list.current_playing_idx_num = -1
@@ -269,6 +273,13 @@ class MediaList_PageControl_:
             errtype='info',
             component='page_control',
         )
+        if dnd_mode:
+            if len(self.media_data_list.vid_url) == 1 and os.path.isfile(self.media_data_list.vid_url[0]):
+                self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
+                self.dnd_ui_functions.single_file()
+                self.thumbnail_loader.select_item(0)
+            else:
+                self.dnd_ui_functions.folder_and_files()
     
 
 

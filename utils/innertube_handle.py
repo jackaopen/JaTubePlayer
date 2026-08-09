@@ -207,10 +207,9 @@ class innertube_handle:
         if use_matching_page:
             browse_id, referer = self._build_refer_and_browse_id(page, playlist_id)
         else:
-            self.log_handle("wadonajkwdobnwanoaknwoadkonianwoadknokwadonjkadwokn")
             referer = f"{self.ORIGIN}/"
             if page == "home":
-                playlist_id = 'RDCLAK5uy_nLkOG7ku-sA7GVAnStgGCwcF-KnWmnMDI'# The hit
+                playlist_id = 'PL4fGSI1pDJn6t3TXLGiiJdD-sZbrG3tG0'# The hit
                 browse_id, referer = self._build_refer_and_browse_id("playlist", playlist_id)
 
         response = self.request_session.get(referer, 

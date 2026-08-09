@@ -4,12 +4,15 @@ import threading,queue,time
 from typing import Callable
 
 class DiscordPresence():
-    def __init__(self,discord_status_run:Callable,discord_status_close:Callable):
+    def __init__(self,
+                 discord_status_run:Callable,
+                 discord_status_close:Callable,
+                 log_handle:Callable):
         '''
         discord_status_run:function - function to run when discord presence is active
         discord_status_close:function - function to run when discord presence is closed
         '''
-       
+        self.log_handle = log_handle
 
         self.is_connected = False
         self.is_enabled = False    
@@ -42,15 +45,10 @@ class DiscordPresence():
                         self.is_connected = True
                         self.is_enabled = True
                         
-                    except DiscordNotFound:
-                        ToastNotification().notify(
-                            title="Discord Not Found",
-                            msg="Discord client not found. Discord Rich Presence will be disabled.",
-                            duration='short'
-                        )
-
-                    except:pass
-
+                    except Exception as e:
+                        self.log_handle(content=f"Failed to initialize Discord presence: {e}",
+                                        errtype = "error",
+                                        component = "discord presence")
 
                 elif cmd == "update":
                     try:
@@ -74,7 +72,9 @@ class DiscordPresence():
                         self.discord_status_run() 
 
                     except Exception as e:
-                        print(f"Failed to update Discord presence: {e}")
+                        self.log_handle(content=f"Failed to update Discord presence: {e}",
+                                        errtype = "error",
+                                        component = "discord presence")
                         self.discord_status_close()
 
 
@@ -100,7 +100,9 @@ class DiscordPresence():
                         self.Presence.clear()
                         self.discord_status_close()
                     except Exception as e:
-                        print(f"Failed to clear Discord presence: {e}")
+                        self.log_handle(content=f"Failed to clear Discord presence: {e}",
+                                        errtype = "error",
+                                        component = "discord presence")
 
 
 
@@ -112,7 +114,9 @@ class DiscordPresence():
                         self.Presence.close()
                         break
                     except Exception as e:
-                        print(f"Failed to close Discord presence: {e}")
+                        self.log_handle(content=f"Failed to close Discord presence: {e}",
+                                        errtype = "error",
+                                        component = "discord presence")
                     finally:
                         break
 
@@ -143,19 +147,5 @@ class DiscordPresence():
         self.cmdqueue.put("close")
 
 
-if __name__=="__main__":
-    import time
-    t = time.time()
-    discord_presence = DiscordPresence()
-    print(f"timne spent {time.time()-t}")
-    discord_presence.update(song_title="some songs")
-    import time
-    while True:
-        time. sleep(2)
-        print("closing presence")
-        discord_presence.clear()
-        print("closed presence")
-        time. sleep(2)
-        print("updating presence again")
-        discord_presence.update(song_title="some songs")
+
         

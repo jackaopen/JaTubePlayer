@@ -3,10 +3,39 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
+using System.Reflection;
+using System.IO;
+using System.Linq;
 
 
 static class Helper
 {
+        public static HashSet<string> LoadGoogleAccountHosts()
+        {
+            using Stream? stream =
+                Assembly.GetExecutingAssembly()
+                    .GetManifestResourceStream("chrome_supported_domain.txt");
+
+            if (stream == null)
+                {
+                    ErrorLog("missing chrome_supported_domain");
+                    Environment.Exit(1);
+                }
+
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd()
+                .Split(
+                    (char[]?)null,
+                    StringSplitOptions.RemoveEmptyEntries |
+                    StringSplitOptions.TrimEntries
+                )
+                .Select(suffix => "accounts" + suffix)// .google.[localcode] -> accounts.google.[localcode]
+                .Append("accounts.youtube.com")
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }    
+    
+    
+    
     public static string BuildCookieHeader(IReadOnlyList<CoreWebView2Cookie> cookies)
     {
         StringBuilder builder = new StringBuilder();
@@ -30,7 +59,7 @@ static class Helper
     {
         try
         {
-            string[] values = JsonSerializer.Deserialize<string[]>(json);
+            string[]? values = JsonSerializer.Deserialize<string[]>(json);
             return values?.Length == 2 &&
                 !String.IsNullOrWhiteSpace(values[0]) &&
                 !String.IsNullOrWhiteSpace(values[1]);
@@ -49,17 +78,19 @@ static class Helper
     public static bool YoutubeHost(string url)
     {
         string host = Host(url);
+        if(!TryGetHttpsUri(url))return false;
         return host == "youtube.com" || host == "www.youtube.com" ;
     }
 
     public static bool AccountHost(string url)
     {
         string host = Host(url);
+        if(!TryGetHttpsUri(url))return false;
         return host == "accounts.google.com" || host == "accounts.youtube.com";
     }
 
     public static bool SuccessPage(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
+        Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) &&
         uri.IsFile &&
         (uri.LocalPath.EndsWith("google_login_suc_red_page.html", StringComparison.OrdinalIgnoreCase)||
         uri.LocalPath.EndsWith("google_login_waiting_page.html", StringComparison.OrdinalIgnoreCase)||
@@ -67,14 +98,30 @@ static class Helper
 
 
     static string Host(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri uri) ? uri.Host.ToLowerInvariant() : "";
+        Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ? uri.Host.ToLowerInvariant() : "";
 
     public static string LeftPartialToPath(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri uri) ? uri.GetLeftPart(UriPartial.Path) : "";
+        Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) ? uri.GetLeftPart(UriPartial.Path) : "";
+    static bool TryGetHttpsUri(string url)
+    {
+        Uri? uri;
+        return Uri.TryCreate(url, UriKind.Absolute, out uri) &&
+            uri.Scheme.Equals(
+                Uri.UriSchemeHttps,
+                StringComparison.OrdinalIgnoreCase
+            ) &&
+            uri.Port == 443;
+    }
 
     public static void Log(string message)
     {
-        Console.Error.WriteLine("[wv2] " + message);
+        Console.Out.WriteLine("[wv2] " + message);
+        Console.Out.Flush();
+    }
+    
+    public static void ErrorLog(string message)
+    {
+        Console.Error.Write("[wv2]" + message);
         Console.Error.Flush();
     }
 }

@@ -206,6 +206,16 @@ class innertube_parser:
     def _walk(self, node) -> Generator[dict, None, None]:
         """Walk through wrappers until a media card is found."""
         if isinstance(node, dict):
+
+            # remove the Recommended playlists
+            shelf = node.get("horizontalShelfViewModel")
+            if shelf and self._text(
+                    shelf.get("header", {})
+                    .get("sectionHeaderViewModel", {})
+                    .get("headline", {})
+                ) == "Recommended playlists":
+                    return
+            
             if "lockupViewModel" in node:
                 media = self._parse_lockup(node["lockupViewModel"])
                 if media:
