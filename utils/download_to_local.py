@@ -43,7 +43,8 @@ def download_to_local(res:str,
     except:pass
     ffmpeg_path = os.path.join(current_dir,'_internal','ffmpeg.exe')
     ffmpeg_process = None
-    def _pre_download_cleanup():
+
+    def _download_cleanup():
         if not os.path.exists(os.path.join(current_dir,'user_data','downloaded_file')):
             os.makedirs(os.path.join(current_dir,'user_data','downloaded_file'))
         try:
@@ -286,7 +287,7 @@ def download_to_local(res:str,
                 
                 if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                    
+
                 if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
             try:
@@ -297,8 +298,7 @@ def download_to_local(res:str,
             except:pass
             ctk_messagebox.showinfo(f'JaTubePlayer {ver}',f'Downloaded : {better_name}')
         except yt_dlp.utils.DownloadCancelled:
-
-            ctk_messagebox.showerror(f'JaTubePlayer {ver}',f'Download cancelled by user : {better_name}')
+            ctk_messagebox.showwarning(f'JaTubePlayer {ver}',f'Download cancelled by user : {better_name}')
         except yt_dlp.utils.DownloadError as de:
             log_handle(
                 content=de,
@@ -315,11 +315,10 @@ def download_to_local(res:str,
             ctk_messagebox.showerror(f'JaTubePlayer {ver}',f'Download failed : \n{e}')
 
         
-        time.sleep(1)
-        try:is_downloading.set(False)
-        except:pass
         try:
-            download_frame.destroy()
+            is_downloading.set(False)
+            if not cancel_download.is_set():
+                download_frame.destroy()
         except:pass
 
 
@@ -327,7 +326,9 @@ def download_to_local(res:str,
 
 
 
-    _pre_download_cleanup()
+
+
+    _download_cleanup()
     downloadthread = threading.Thread(target=_start_download,daemon=False)# daemon False to keep thread alive until done
 
     def _on_close():
@@ -346,8 +347,10 @@ def download_to_local(res:str,
                                       errtype='error',
                                       component="download",
                                   )
-            downloadthread.join()
             t1 = time.time()
+            
+            downloadthread.join()
+
             while ytdlp_killed.is_set() == False and time.time() - t1 < 5:
                 ytdlp_log_handle.info("Waiting for ytdlp thread is killed")
                 time.sleep(1)
@@ -359,6 +362,7 @@ def download_to_local(res:str,
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempaud.webm.part"))
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempvid.mp4.part"))
             file_deletion_queue.put(download_path)
+            
             
             retry_count = 0
             max_total_retries = 5
@@ -391,7 +395,7 @@ def download_to_local(res:str,
     # build download frame
     download_frame = ctk.CTkToplevel(root) 
     download_frame.title(f'JaTubePlayer {ver} Download')
-    download_frame.geometry(f"500x210+{root.winfo_screenwidth()/2}+{root.winfo_screenheight()/2}")
+    download_frame.geometry(f"500x210+{(root.winfo_screenwidth()-250)//2}+{(root.winfo_screenheight()-210)//2}")
     download_frame.resizable(False, False)
     download_frame.attributes("-topmost", True)
     download_frame.protocol("WM_DELETE_WINDOW", _on_close)  # Disable close button

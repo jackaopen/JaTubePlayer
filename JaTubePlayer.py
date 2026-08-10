@@ -93,7 +93,7 @@ print(f"Tkinter scaling factor: {tkinter_scaling}")
 
 BASE_WIDTH = 1320
 BASE_HEIGHT = 680
-root.geometry(f"{BASE_WIDTH}x{BASE_HEIGHT}")
+root.geometry(f"{BASE_WIDTH}x{BASE_HEIGHT}+{(root.winfo_screenwidth()-BASE_WIDTH)//2}+{(root.winfo_screenheight()-BASE_HEIGHT*1.2)//2}")
 ui_queue = queue.Queue()
 
 log_queue = deque(maxlen=5000)
