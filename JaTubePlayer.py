@@ -79,11 +79,15 @@ else:
 
 load_private_font(_internal_dir)
 
+BASE_WIDTH = 1320
+BASE_HEIGHT = 680
+
 
 os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH"]
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
+root.geometry(f"{BASE_WIDTH}x{BASE_HEIGHT}")
 ver='3.0'
 root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
@@ -91,9 +95,10 @@ hwnd = win32gui.FindWindow(None, root.title())
 tkinter_scaling = get_window_dpi(hwnd) 
 print(f"Tkinter scaling factor: {tkinter_scaling}")
 
-BASE_WIDTH = 1320
-BASE_HEIGHT = 680
-root.geometry(f"{BASE_WIDTH}x{BASE_HEIGHT}+{(root.winfo_screenwidth()-BASE_WIDTH)//2}+{(root.winfo_screenheight()-BASE_HEIGHT*1.2)//2}")
+effective_scaling = get_effective_scaling(hwnd,root)
+ctk.set_widget_scaling(effective_scaling)
+
+
 ui_queue = queue.Queue()
 
 log_queue = deque(maxlen=5000)
@@ -847,8 +852,7 @@ def setting_frame():
         @check_internet
         def updateplaylists():
             updateuserplaylists_btn.configure(text='⏳ loading...')
-            userplaylistcombobox.configure(values=[])
-            get_user_playlists()
+            get_user_playlists(forcereload=True)
             updateuserplaylists_btn.configure(text='update Playlist ')
 
         def remove_selected_from_playlist_setting():
@@ -856,8 +860,12 @@ def setting_frame():
             if selected_song_number is None:
                 messagebox.showerror(f'JaTubePlayer {ver}', 'No item selected in the playlist!')
                 return
+            if selected_song_number == media_list_page_controller.media_data_list.current_playing_idx_num:
+                messagebox.showerror(f"JatubePlayer {ver}",
+                                      "You cannot remove the current playing item!")
+                return
             try:
-                item_id = playlisttreebox.get_children()[selected_song_number]
+                item_id = playlisttreebox.get_children()[selected_song_number%50]
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                           selected_tree_ID=item_id)
                 
@@ -1034,7 +1042,7 @@ def setting_frame():
                 case "sub":
                     selected_playlist_id = 'sub'
                     selected_playlist_name = 'Subscriptions'
-                case "recommendation":
+                case "home":
                     selected_playlist_id = 'home'
                     selected_playlist_name = 'Recommendations'
                 case _:
@@ -1042,7 +1050,7 @@ def setting_frame():
                     return
             CONFIG["quickstartup_init"]['mode'] = 2
             CONFIG["quickstartup_init"]['playlistmode_playlist_ID'] = selected_playlist_id
-            CONFIG["quickstartup_init"]['playlistmode_playlist_NAME'] = selected_playlist_name
+            CONFIG["quickstartup_init"]['playlistmode_playlist_Name'] = selected_playlist_name
             save_config()
             messagebox.showinfo(f'JaTubePlayer {ver}',f'Quick startup init playlist set to: {selected_playlist_name}')
 
@@ -2038,7 +2046,7 @@ def setting_frame():
                     
                     
                     if quickstartconfig['playlistmode_playlist_Name']:
-                        if quickstartconfig['playlistmode_playlist_ID'] not in ['sub','like','recommendation']:
+                        if quickstartconfig['playlistmode_playlist_ID'] not in ['sub','like','home']:
                             init_playlist_combobox.set(quickstartconfig['playlistmode_playlist_Name'])
                             init_quickstartup_playlist_mode.set('yt_playlist')
                         else:
@@ -2117,7 +2125,7 @@ def setting_frame():
                         if mode == 0:insert_textbox(init_quick_startup_mode_text, 'Not selected')
                         elif mode == 1:insert_textbox(init_quick_startup_mode_text, f'search : {CONFIG["quickstartup_init"]["searchmode_keyword"]}')
                         elif mode == 2:
-                            insert_textbox(init_quick_startup_mode_text, f'playlist : {CONFIG["quickstartup_init"]["playlistmode_playlist_NAME"]}')
+                            insert_textbox(init_quick_startup_mode_text, f'playlist : {CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]}')
                         elif mode == 3:insert_textbox(init_quick_startup_mode_text, f'Local folder : {CONFIG["quickstartup_init"]["localfoldermode_folder_Path"]}')
 
 
@@ -2431,7 +2439,7 @@ def setting_frame():
             playlist_options_frame,
             text='Recommendation',
             variable=init_quickstartup_playlist_mode,
-            value='recommendation',
+            value='home',
             command=init_playlist_recommendation_select,
             text_color='#C8C8C8',
             font=('Arial', 12),
@@ -2602,7 +2610,7 @@ def history_control(mode:int):
 
 
 @check_internet
-def get_user_playlists():
+def get_user_playlists(forcereload:bool=False):
     '''
     will get the user playlists and update the userplaylistcombobox with the playlist names
     '''
@@ -2627,7 +2635,7 @@ def get_user_playlists():
         ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
         ui_queue.put(lambda: playlistlabel.configure(text='📁'))
     
-    if (user_playlists_selected_name := userplaylistcombobox.get()) == '':
+    if (user_playlists_selected_name := userplaylistcombobox.get()) == '' or forcereload:
 
         ui_queue.put(lambda: playlistlabel.configure(text='⏳'))
         ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
@@ -3946,13 +3954,11 @@ def fullscreen_widget_change(mode:int=0):
     global fullscreen_status, stream, tkinter_scaling,current_ctk_scaling,fullscreen_loading
    
     try:
-        effective_scaling = get_effective_scaling(hwnd,root)
+        
         window_width = round(BASE_WIDTH * effective_scaling)
         window_height = round(BASE_HEIGHT * effective_scaling)
+                    
         
-        if abs(effective_scaling-current_ctk_scaling) > 0.001:
-            ctk.set_widget_scaling(effective_scaling)
-        # Force geometry update before making changes
         root.update_idletasks()
         if not fullscreen_loading:
             fullscreen_loading = True
@@ -3965,8 +3971,8 @@ def fullscreen_widget_change(mode:int=0):
             
             # Tkinter widgets need DPI scaling
             playlisttreebox.configure(height=int(20*effective_scaling))
-            if playing_vid_mode == 0 or playing_vid_mode == 4:
-                playlisttreebox.column("#0", width=180, anchor='center')
+            if playing_vid_mode in [0,4]:
+                playlisttreebox.column("#0", width=int(160*tkinter_scaling), anchor='center')
             else:
                 playlisttreebox.column("#0", width=0, anchor='center')
             playlisttreebox.column("title", width=int(1000))
@@ -4208,9 +4214,15 @@ def init_quick_startup(iter:int=0):
                     searchentry.insert(tk.END,CONFIG['quickstartup_init']['searchmode_keyword'])
                     youtube_search()
                 elif mode == 2:
-                    insert_textbox(playlist_name_textbox, f'Playlist {CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]}')
-                    get_youtube_playlists(CONFIG["quickstartup_init"]["playlistmode_playlist_ID"].split("?list=")[1],
-                                          playlist_name=CONFIG["quickstartup_init"]["playlistmode_playlist_NAME"])
+                    try:
+                        playlistID = CONFIG["quickstartup_init"]["playlistmode_playlist_ID"].split("?list=")[1]
+                    except IndexError:
+                        playlistID = CONFIG["quickstartup_init"]["playlistmode_playlist_ID"]
+                    playlistname = CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]
+                    insert_textbox(playlist_name_textbox, playlistname)
+                    
+                    get_youtube_playlists(playlistID=playlistID,
+                                          playlist_name=playlistname)
                 elif mode == 3:
                     load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
                 
@@ -4892,6 +4904,7 @@ def _start_up():
         errtype='info',
         component='startup',
     )
+    root.deiconify()
     
     
     
@@ -4916,7 +4929,7 @@ sv_ttk.use_dark_theme() ### must be here or will overrider the style
 playlisttree_style = ttk.Style()
 playlisttree_style.configure("Treeview",
                 rowheight=int(75*tkinter_scaling),
-                font=("Arial", 12),
+                font=("Arial", int(12*tkinter_scaling)),
                 fieldbackground="#1e1e1e",
                 background="#1e1e1e",
                 foreground="#c5c5c5")
@@ -5080,15 +5093,24 @@ current_playlist_caption = ctk.CTkLabel(
 current_playlist_caption.place(relx=0.025, rely=0.00, relwidth=0.4, relheight=0.32)
 
 
-playlist_name_textbox = tk.Text(current_playlist_frame, font=('Segoe UI', 11), fg='#c5c5c5',
-                      bg='#252525', relief='flat', height=2, wrap='word', borderwidth=0)
-playlist_name_textbox.place(relx=0.025, rely=0.35, relwidth=0.95, relheight=0.64)
+playlist_name_textbox = ctk.CTkTextbox(
+    current_playlist_frame,
+    font=('Segoe UI', 13.5,"bold"),
+    text_color='#c5c5c5',
+    fg_color='#252525',
+    border_spacing=0,
+    border_width=0,
+    corner_radius=0,
+    wrap='word',
+    activate_scrollbars=False,
+)
+playlist_name_textbox.place(relx=0.01, rely=0.3, relwidth=0.97, relheight=0.7)
 insert_textbox(playlist_name_textbox,"Hey! Search, Login or see Recommended")
 
 playlist_history_separator = ctk.CTkLabel(
     mode_header_frame,
     text='│',
-    font=('Segoe UI', 28),
+    font=('Segoe UI', 26),
     text_color='#444444'
 )
 playlist_history_separator.place(relx=0.630, rely=0.50, anchor='center', relheight=0.96)
@@ -5144,7 +5166,7 @@ playlisttreebox = ttk.Treeview(right_panel_frame, columns=("title"), height=4,
                                selectmode="browse", show='tree')
 playlisttreebox.heading("#0", text="")
 playlisttreebox.heading("title", text="")
-playlisttreebox.column("#0", width=180, anchor="w", stretch=False)
+playlisttreebox.column("#0", width=int(160*tkinter_scaling), anchor="w", stretch=False)
 playlisttreebox.column("title", width=1000, anchor="w", stretch=False)
 playlisttreebox.place(relx=0.020, rely=0.135, relwidth=0.925, relheight=0.828)
 playlisttreebox.bind('<Double-1>', download_and_play)
@@ -5248,10 +5270,19 @@ now_playing_frame.place(relx=0.008, rely=0.102, relwidth=0.984, relheight=0.240)
 np_icon = ctk.CTkLabel(now_playing_frame, text='🎶', font=('Segoe UI', 16))
 np_icon.place(relx=0.008, rely=0.14)
 
-playing_title_textbox = tk.Text(now_playing_frame, font=('Segoe UI Semibold', 14), width=130, fg='#c5c5c5',
-                                bg='#1c1c1c', relief='flat', wrap='word', state='disabled',
-                                height=1, borderwidth=0)
-playing_title_textbox.place(relx=0.035, rely=0.15)
+playing_title_textbox = ctk.CTkTextbox(
+    now_playing_frame,
+    font=('Segoe UI', 17, "bold"),
+    text_color='#c5c5c5',
+    fg_color='#1c1c1c',
+    corner_radius=0,
+    border_width=0,
+    border_spacing=0,
+    wrap='word',
+    state='disabled',
+    activate_scrollbars=False,
+)
+playing_title_textbox.place(relx=0.035, rely=0.15, relwidth=0.95, relheight=0.9)
 
 # ── Progress Bar ──
 progress_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")

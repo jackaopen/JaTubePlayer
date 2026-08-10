@@ -280,6 +280,9 @@ class MediaList_PageControl_:
                 self.thumbnail_loader.select_item(0)
             else:
                 self.dnd_ui_functions.folder_and_files()
+        elif mode_for_local_files == 0:
+            self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
+            self.thumbnail_loader.select_item(0)
     
 
 

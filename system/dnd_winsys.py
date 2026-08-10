@@ -363,6 +363,7 @@ class DropHandler(object):
                                                 self.media_data_list.playlisttitles.append(file)
                                                 self.media_data_list.playlist_channel.append("local file")
                                                 self.media_data_list.playlist_thumbnails.append("")
+                                        break
                                     self.selected_song_number_status_changer(2)
                                     self.media_list_page_control.local_files_init_and_reload(media_data_list=self.media_data_list,
                                                                                             dnd_mode=True)

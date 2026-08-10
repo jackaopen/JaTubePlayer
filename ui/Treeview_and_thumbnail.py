@@ -121,7 +121,7 @@ class ThumbnailLoader:
                     self.async_task.append(self.load_thumbnail_task(self.asyncio_session, id, thumb))
 
                 if self.playing_vid_mode == 0 or self.playing_vid_mode == 4:
-                    self.playlisttreebox.column("#0", width=180, anchor='center')
+                    self.playlisttreebox.column("#0", width=int(160*self.tkinter_scaling), anchor='center')
                 else:
                     self.playlisttreebox.column("#0", width=0, anchor='center')
         except Exception as e:
