@@ -483,6 +483,7 @@ class AccountInfo:
                 avator_pic = asyncio.run(self._get_avator_pic())
                 ui_queue.put(lambda: google_status_profile_pic_label.configure(image=avator_pic))
                 insert_textbox(google_status_text, self.account_name)
+                google_status_text.configure(text_color = "#d4d4d4")
         except Exception as e:
             log_handle(
                 content=f"Failed to get account avator: {e}",
@@ -497,6 +498,7 @@ class AccountInfo:
         self.account_avator_url = ''
         ui_queue.put(lambda: google_status_profile_pic_label.configure(image=None))
         insert_textbox(google_status_text, "No login yet!")
+        google_status_text.configure(text_color = "#777777")
                 
 def insert_textbox(widget:ctk.CTkTextbox,
                    text:str,
@@ -4983,7 +4985,7 @@ chrome_ext_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 14),
 chrome_ext_dot.place(relx=0.031, rely=0.168, relheigh = 0.7)
 
 chrome_ext_text = ctk.CTkLabel(status_panel, text='Chrome Link', 
-                                font=('Segoe UI', 12), text_color='#777777', anchor="w")
+                                font=('Segoe UI', 13), text_color='#777777', anchor="w")
 chrome_ext_text.place(relx=0.083, rely=0.158, relheigh = 0.7)
 
 
@@ -4996,7 +4998,7 @@ discord_status_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 14),
 discord_status_dot.place(relx=0.345, rely=0.168, relheigh = 0.7)
 
 discord_status_text = ctk.CTkLabel(status_panel, text='Discord', 
-                                    font=('Segoe UI', 12), text_color='#777777', anchor="w")
+                                    font=('Segoe UI', 13), text_color='#777777', anchor="w")
 discord_status_text.place(relx=0.397, rely=0.158, relheigh = 0.7)
 
 
@@ -5009,12 +5011,11 @@ separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
 google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 14),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
-google_status_profile_pic_label.place(relx=0.66, rely=0.5, anchor="center", relheigh = 0.85)
-
+google_status_profile_pic_label.place(relx=0.63, rely=0.5, anchor="center", relheigh = 0.85)
 google_status_text = ctk.CTkTextbox(status_panel, 
-                                   font=('Segoe UI', 12), text_color="#CEB31A", wrap="none",
+                                   font=('Segoe UI', 13), text_color="#777777", wrap="none",
                                    border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
-google_status_text.place(relx=0.715, rely=0.05, relwidth=0.27, relheigh = 0.85)
+google_status_text.place(relx=0.67, rely=0.05, relwidth=0.30, relheigh = 0.9)
 google_status_text.configure(state='disabled')
 
 def chrome_ext_status_run():

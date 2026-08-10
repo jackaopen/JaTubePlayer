@@ -37,8 +37,8 @@ class ThumbnailLoader:
         threading.Thread(target=self.start_async_eventloop, daemon=True).start()
 
 
-        playlisttreebox.tag_configure("normal", background="#1e1e1e", foreground="white")
-        playlisttreebox.tag_configure("playing", background="#ffa200", foreground="#000000")
+        playlisttreebox.tag_configure("normal", background="#1e1e1e", foreground="#c5c5c5")
+        playlisttreebox.tag_configure("playing", background="#CA7E28", foreground="#000000")
     
     @property
     def playing_vid_mode(self):

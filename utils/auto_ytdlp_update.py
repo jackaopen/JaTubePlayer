@@ -3,7 +3,9 @@ from typing import Callable
 import tarfile,requests,os,shutil,time,customtkinter as ctk
 from utils.get_latest_version import get_latest_dlp_version
 from notification.wintoast_notify import ToastNotification
+import hashlib
 
+CHUNK_SIZE = 256*1024
 class ytdlp_update:
     def __init__(self,
                 _internal_dir:str,
@@ -15,6 +17,7 @@ class ytdlp_update:
         self.root = root
         self.icondir = icondir
         self.log_handle = log_handle
+        self.file_hash_dict = {}
 
         self.new_ytdlpgz_path = os.path.join(self._internal_dir, 'new_yt-dlp.tar.gz')
         self.new_ytdlp_path = os.path.join(self._internal_dir,"new_yt-dlp")
@@ -121,13 +124,32 @@ class ytdlp_update:
                 component='download_ytdlp'
             )
 
+    def _verify_hash(self)->None:
+        self.log_handle(content=f"verifying hash...",
+                        errtype='info',
+                        component='download_ytdlp')
+        with open(self.new_ytdlpexe_path, "rb") as file:
+            exe_hash = hashlib.file_digest(file, "sha256").hexdigest()
+
+        with open(self.new_ytdlpgz_path, "rb") as file:
+            tar_hash = hashlib.file_digest(file, "sha256").hexdigest()
+
+        if exe_hash != self.file_hash_dict["yt-dlp.exe"]:
+            raise ValueError("yt-dlp.exe hash mismatch")
+
+        if tar_hash != self.file_hash_dict["yt-dlp.tar.gz"]:
+            raise ValueError("yt-dlp.tar.gz hash mismatch")
+        self.log_handle(content=f"hash are correct",
+                        errtype='info',
+                        component='download_ytdlp')
 
 
     def _process_downloaded_files(self)->bool:
         try:
             
-            
-            
+            self.label.configure(text="verifying hash...")
+            self._verify_hash()
+            self.label.configure(text="processing files...")
             with tarfile.open(self.new_ytdlpgz_path, 'r:gz') as tar:
                 tar.extractall(path=self.new_ytdlp_path)
                 shutil.rmtree(self.ytdlp_path)
@@ -140,8 +162,18 @@ class ytdlp_update:
             self._remove_old_files()
             self._remove_downloaded_files()
             return True
+
+        
+        except ValueError:
+            self.log_handle(content=f"Invalid downloaded file !",
+                            errtype='error',
+                            component='download_ytdlp')
+            return False
+
         except Exception as e:
-            self.log_handle(f"Error removing file: {e}")
+            self.log_handle(content=f"error removing file {e}",
+                            errtype='warning',
+                            component='download_ytdlp')
             return False
 
 
@@ -155,7 +187,27 @@ class ytdlp_update:
             try:
                 self._remove_downloaded_files()
                 self._copy_old_files()
-           
+
+
+
+                # ytdlp folder
+                
+                url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS'
+
+                response = requests.get(url, stream=True,timeout=10)
+                self.label.configure(text=f"Downloading SHA2-256 - version {latest_version}")
+
+                
+                if response.status_code == 200:
+                    self.file_hash_dict = {}
+                    for line in response.text.splitlines():
+                        hash_code, filename = line.split()
+                        self.file_hash_dict[filename] = hash_code.lower()
+                        
+                else:
+                    raise ConnectionError
+                
+                # ytdlp folder
                 url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.tar.gz'
                 response = requests.get(url, stream=True,timeout=10)
                 self.label.configure(text=f"Downloading yt-dlp.tar.gz - version {latest_version}")
@@ -165,7 +217,7 @@ class ytdlp_update:
                 
                 if response.status_code == 200:
                     with open(self.new_ytdlpgz_path, 'wb') as file:
-                        for chunk in response.iter_content(chunk_size=8192):
+                        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
                             if self.is_canceled.is_set():
                                 self.sizelabel.configure(text="cancelled")
                                 raise InterruptedError
@@ -179,7 +231,7 @@ class ytdlp_update:
                 else:
                     raise ConnectionError
                  
-                #--------------------------------------------------------
+                #ytdlp_exe
   
                 self.label.configure(text=f"Downloading yt-dlp.exe - version {latest_version}")
                 downloader_popup.update()
@@ -189,7 +241,7 @@ class ytdlp_update:
                 
                 if response.status_code == 200:
                     with open(self.new_ytdlpexe_path,'wb') as file:
-                        for chunk in response.iter_content(chunk_size=8192):
+                        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
                             if chunk:
                                 if self.is_canceled.is_set():
                                     self.sizelabel.configure(text="cancelled")
@@ -207,7 +259,7 @@ class ytdlp_update:
                 if self.is_canceled.is_set():
                     raise InterruptedError
                 
-                self.label.configure(text="processing files...")
+                
                 self.cancel_btn.configure(state="disabled")
 
                 if self._process_downloaded_files():
@@ -252,6 +304,7 @@ class ytdlp_update:
                 self._download_stoped.set()
                 self._remove_old_files()
                 self._remove_downloaded_files()
+                downloader_popup.destroy()
 
         
         download_thread = threading.Thread(target=_download,daemon=False)
