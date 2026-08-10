@@ -158,7 +158,7 @@ def get_info(
                 print('vid_url:', vid_url,'\n')
                 print('audio_only_url:', audio_only_url)
 
-            if twitch_handler:
+            if twitch_handler and "videos" not in target_url:
                 streamlink_url = twitch_handler.start_twitch_streamlink(target_url)
             else:
                 streamlink_url = target_url
@@ -176,10 +176,12 @@ def get_info(
                 'original_url': info.get('original_url'),
                 'description': info.get('description'),
             }
+            cookie = None
             return streamlink_url, yt_like_info
         except Exception as e:
             log_handler.error(f'get_info error: {e}')
             return None, None
+        
 
 
 

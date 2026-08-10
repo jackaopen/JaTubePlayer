@@ -246,7 +246,8 @@ discord_presence_show_playing = tk.BooleanVar()
 discord_idle_presence_wording = tk.StringVar()
 fullscreenmode = tk.IntVar()
 ytdlp_use_cookie = tk.BooleanVar()
-
+current_ctk_scaling = 1.0
+fullscreen_loading = False
 '''
 0 = normal 
 1 = fullscreen with all widget
@@ -583,7 +584,9 @@ def setting_frame():
         
         setting = ctk.CTkToplevel(root,fg_color='#242424')
         setting.title('settings')
-        setting.geometry('720x500')
+        setting_frame_wdith = 720*current_ctk_scaling
+        setting_frame_height = 500*current_ctk_scaling
+        setting.geometry(f"{setting_frame_wdith}x{setting_frame_height}")
         setting.resizable(False, False)
         formats = tk.IntVar()
         formats.set(-1)
@@ -805,7 +808,6 @@ def setting_frame():
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
                             is_downloading.set(False)
                             return
-                    print(f'title = {title},{_playlisttitles}')
                     ui_queue.put(lambda: downloadselectedsong.configure(state = "disabled"))
 
 
@@ -1499,7 +1501,7 @@ def setting_frame():
         account_playlist_scroll_frame = ctk.CTkScrollableFrame(
             account_playlist_tab,
             width=680,
-            height=400,
+            height=380,
             fg_color='#242424',
         )
         account_playlist_scroll_frame.grid(row=0, column=0, columnspan=2, sticky='nsew')
@@ -2026,8 +2028,10 @@ def setting_frame():
                 setting_init_toggle_quickstartup()
                 if mode == 1:
                     init_quickstartup_mode.set('search')
+                    init_search_select()
+
                     init_search_entry.delete(0,tk.END)
-                    init_search_entry.insert(tk.END,quickstartconfig['entrymode_entry_content'])
+                    init_search_entry.insert(tk.END,quickstartconfig['searchmode_keyword'])
                     init_search_select()
                 elif mode == 2:
                     init_quickstartup_mode.set('playlist')
@@ -2111,7 +2115,7 @@ def setting_frame():
                         quickstartconfig = CONFIG['quickstartup_init']
                         mode = quickstartconfig['mode']
                         if mode == 0:insert_textbox(init_quick_startup_mode_text, 'Not selected')
-                        elif mode == 1:insert_textbox(init_quick_startup_mode_text, f'search : {CONFIG["quickstartup_init"]["entrymode_entry_content"]}')
+                        elif mode == 1:insert_textbox(init_quick_startup_mode_text, f'search : {CONFIG["quickstartup_init"]["searchmode_keyword"]}')
                         elif mode == 2:
                             insert_textbox(init_quick_startup_mode_text, f'playlist : {CONFIG["quickstartup_init"]["playlistmode_playlist_NAME"]}')
                         elif mode == 3:insert_textbox(init_quick_startup_mode_text, f'Local folder : {CONFIG["quickstartup_init"]["localfoldermode_folder_Path"]}')
@@ -3866,7 +3870,6 @@ def download_and_play(event=None):### button and double click event
     elif playing_vid_mode == 1 or playing_vid_mode == 2:       
         # load local file/folder
         if selected_song_number is not None:
-            print(f"Loading local file: {media_data_list.vid_url}")
             load_thread_queue.put((media_data_list.vid_url[selected_song_number],None))
             if playing_vid_mode ==2 :
                 media_data_list.current_media_page = media_list_page_controller.current_page
@@ -3936,22 +3939,26 @@ def fullscreen_widget_change(mode:int=0):
     mode = 0, go normal
     mode = 1 go fullscreen , will check [tk.IntVar] fullscreenmode
     '''
-    global fullscreen_status, stream, tkinter_scaling
+    global fullscreen_status, stream, tkinter_scaling,current_ctk_scaling,fullscreen_loading
    
     try:
         effective_scaling = get_effective_scaling(hwnd,root)
         window_width = round(BASE_WIDTH * effective_scaling)
         window_height = round(BASE_HEIGHT * effective_scaling)
         
-        
+        if abs(effective_scaling-current_ctk_scaling) > 0.001:
+            ctk.set_widget_scaling(effective_scaling)
         # Force geometry update before making changes
         root.update_idletasks()
+        if not fullscreen_loading:
+            fullscreen_loading = True
+        else:
+            return
         
         if mode == 0:
 
             root.geometry(f"{window_width}x{window_height}")
-            ctk.set_widget_scaling(effective_scaling)
-
+            
             # Tkinter widgets need DPI scaling
             playlisttreebox.configure(height=int(20*effective_scaling))
             if playing_vid_mode == 0 or playing_vid_mode == 4:
@@ -4099,7 +4106,7 @@ def fullscreen_widget_change(mode:int=0):
                     component='fullscreen',
                 )
         
-        root.update_idletasks()
+        
         
         # Refresh sliders after layout is stable
         try:
@@ -4116,6 +4123,8 @@ def fullscreen_widget_change(mode:int=0):
             errtype='error',
             component='fullscreen',
         )
+    finally:
+        fullscreen_loading = False
        
 def full_screen_contorl_hover_thread():
     global hover_fullscreen_last_statue
@@ -4192,7 +4201,7 @@ def init_quick_startup(iter:int=0):
         if check_internet_socket():
             if yt_dlp:
                 if mode == 1:
-                    searchentry.insert(tk.END,CONFIG['quickstartup_init']['entrymode_entry_content'])
+                    searchentry.insert(tk.END,CONFIG['quickstartup_init']['searchmode_keyword'])
                     youtube_search()
                 elif mode == 2:
                     insert_textbox(playlist_name_textbox, f'Playlist {CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]}')
@@ -5015,7 +5024,7 @@ google_status_profile_pic_label.place(relx=0.63, rely=0.5, anchor="center", relh
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 13), text_color="#777777", wrap="none",
                                    border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
-google_status_text.place(relx=0.67, rely=0.05, relwidth=0.30, relheigh = 0.9)
+google_status_text.place(relx=0.67, rely=0.02, relwidth=0.30, relheigh = 0.9)
 google_status_text.configure(state='disabled')
 
 def chrome_ext_status_run():

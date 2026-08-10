@@ -112,6 +112,16 @@ def download_to_local(res:str,
 
         
         try:
+            if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):
+                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+            if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):
+                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+
+            aud = None
+            vid = None
+            ffmpeg_stream = []
+            skip_ffmpeg_process = False
+
             better_name = re.sub(r'[\\/:*?"<>|#]', ' ', title)
             main_label.configure(state='normal')
             main_label.delete('0.0', 'end')
@@ -119,38 +129,40 @@ def download_to_local(res:str,
             main_label.configure(state='disabled')
             if mode == 0:
                 if download_path == '[player]/user_data/downloaded_file':
-                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}')
-                else:download_path = os.path.join(download_path,f'{better_name}')
+                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp3')
+                else:
+                    download_path = os.path.join(download_path,f'{better_name}.mp3')
+
                 down_tdl_opt = {
-                            'outtmpl':download_path,
+                            'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
                             'format' : 'bestaudio/best',
                             'progress_hooks': [progress_hook],
                             'logger': ytdlp_log_handle,
-                            'postprocessors': [{
-                            'key': 'FFmpegExtractAudio',  # Extract audio after download
-                            'preferredcodec': 'mp3',  
-                            'preferredquality': '192'  
-                            }],'ignore_no_formats_error': True,
-                            'js-runtimes':f'deno:{deno_path}'    
-    
-                            }  
+                            'ignore_no_formats_error': True,
+                            'js-runtimes':f'deno:{deno_path}'}  
+                 
                 if cookie:
                     down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
+
+                if cancel_download.is_set():
+                    return
+
                 with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
 
                 main_label.configure(state='normal')
                 main_label.delete('0.0', 'end')
                 main_label.insert('0.0', f"processing video and audio...")
                 main_label.configure(state='disabled')
+                cancel_btn.configure(state="disabled")
                 
             else:
                 
 
-                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                
                 
                 if download_path == '[player]/user_data/downloaded_file':
-                            download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4')
+                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4')
                 else:
                     download_path = os.path.join(download_path,f'{better_name}.mp4')
 
@@ -167,6 +179,9 @@ def download_to_local(res:str,
                     if cookie:
                         down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
                     with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+
+                    skip_ffmpeg_process = True
+                    
 
                     
                 else:
@@ -194,7 +209,8 @@ def download_to_local(res:str,
                                 }    
                     if cookie:
                         down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
-                    if cancel_download.is_set():return
+                    if cancel_download.is_set():
+                        return
                     with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
                     vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                     aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
@@ -209,47 +225,68 @@ def download_to_local(res:str,
 
                     download_frame.update()
 
-                    
-                    stream = ffmpeg.output(
-                        vid,
-                        aud,
-                        download_path,
-                        vcodec="copy",
-                        acodec="aac",
-                        audio_bitrate="192k",
-                    )
+            if not skip_ffmpeg_process:
+                if vid is not None:
+                    ffmpeg_stream.append(vid.video)
 
-                    args = ffmpeg.compile(
-                        stream,
-                        cmd=ffmpeg_path,
-                        overwrite_output=True,
-                    )
+                if aud is not None:
+                    ffmpeg_stream.append(aud.audio)
 
-                    ffmpeg_process = subprocess.Popen(
-                        args,
-                        stderr=subprocess.PIPE,
-                        creationflags=subprocess.CREATE_NO_WINDOW,
-                    )
+                if not ffmpeg_stream:
+                    raise ValueError("No output")
 
-                    for output in ffmpeg_process.stderr:
-                        log_handle(
-                            content=output.decode(),
-                            errtype='info',
-                            component="download",
-                        )
-                    returncode = ffmpeg_process.wait()
-                    if returncode != 0:
-                        log_handle(
-                            content=output.decode(),
-                            errtype='error',
-                            component="download",
-                        )
-                        if not cancel_download.is_set():
-                            raise(output.decode())
-                        else:
-                            raise(yt_dlp.utils.DownloadCancelled)
-                    
+                if mode == 0:
+                    options = {
+                        "acodec": "libmp3lame",
+                        "audio_bitrate": "192k",
+                    }
+                else:
+                    options = {
+                        "vcodec": "copy",
+                        "acodec": "aac",
+                        "audio_bitrate": "192k",
+                    }
+
+
+                stream = ffmpeg.output(
+                    *ffmpeg_stream,
+                    download_path,
+                    **options
+                )
+
+                args = ffmpeg.compile(
+                    stream,
+                    cmd=ffmpeg_path,
+                    overwrite_output=True,
+                )
+
+                ffmpeg_process = subprocess.Popen(
+                    args,
+                    stderr=subprocess.PIPE,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+
+                for output in ffmpeg_process.stderr:
+                    log_handle(
+                        content=output.decode(),
+                        errtype='info',
+                        component="download",
+                    )
+                returncode = ffmpeg_process.wait()
+                if returncode != 0:
+                    log_handle(
+                        content=output.decode(),
+                        errtype='error',
+                        component="download",
+                    )
+                    if not cancel_download.is_set():
+                        raise RuntimeError(output.decode())
+                    else:
+                        raise RuntimeError("Download Cancelled")
+                
+                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                if os.path.exists(os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))):
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
             try:
                 main_label.configure(state='normal')
@@ -276,13 +313,14 @@ def download_to_local(res:str,
             )
             ctk_messagebox.showerror(f'JaTubePlayer {ver}',f'Download failed : \n{e}')
 
-    
+        
         time.sleep(1)
         try:is_downloading.set(False)
         except:pass
         try:
             download_frame.destroy()
         except:pass
+
 
 
 
@@ -307,12 +345,13 @@ def download_to_local(res:str,
                                       errtype='error',
                                       component="download",
                                   )
-            
+            downloadthread.join()
             t1 = time.time()
             while ytdlp_killed.is_set() == False and time.time() - t1 < 5:
-                ytdlp_log_handle.info("Waiting for yt-dlp to acknowledge cancellation...")
+                ytdlp_log_handle.info("Waiting for ytdlp thread is killed")
                 time.sleep(1)
-                if ffmpeg_process and ffmpeg_process.poll():ffmpeg_process.kill()
+                if ffmpeg_process and ffmpeg_process.poll() is None:
+                    ffmpeg_process.kill()
             
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
@@ -320,7 +359,6 @@ def download_to_local(res:str,
             file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempvid.mp4.part"))
             file_deletion_queue.put(download_path)
             
-            # Prevent infinite loop - max 10 retries per file
             retry_count = 0
             max_total_retries = 5
             
@@ -342,6 +380,7 @@ def download_to_local(res:str,
                         ytdlp_log_handle.error(f"Could not remove {file_path}: Still locked after {max_total_retries} retries")
                 except Exception as e:
                     ytdlp_log_handle.error(f"Could not remove {file_path}: {e}")
+
             is_downloading.set(False)
             try:download_frame.destroy()
             except:pass

@@ -62,7 +62,7 @@ class DiscordPresence():
                         state = self.update_info_dict.get("state","Listening, or maybe watching")
                         song_title = self.update_info_dict.get("song_title","")
                         self.Presence.update(state=state,
-                                        details=f'JaTubePlayer - {song_title}' if song_title else "JaTubePlayer",
+                                        details=f'{song_title}' if song_title else "JaTubePlayer",
                                         name="JaTubePlayer",
                                         activity_type=ActivityType.LISTENING,
                                         status_display_type=StatusDisplayType.DETAILS,#wat field(detail,name,or state) to show in user status
