@@ -286,7 +286,8 @@ def download_to_local(res:str,
                 
                 if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                if os.path.exists(os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))):
+                    
+                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):
                     os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
             try:
                 main_label.configure(state='normal')
