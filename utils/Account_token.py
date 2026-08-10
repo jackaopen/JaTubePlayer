@@ -2,7 +2,6 @@ import os
 import win32crypt
 import secrets
 import hashlib
-import pywintypes
 import win32file
 import win32con
 
@@ -46,7 +45,7 @@ class account_token:
             )
 
     def verify_WV_hash(self,
-                       target_path:str)->tuple[bool,pywintypes.PyHANDLE]:
+                       target_path:str)->tuple[bool,object]:
         lock_handle = None
         try:
             lock_handle = win32file.CreateFile(
