@@ -93,7 +93,9 @@ class account_handle:
                 message="Another login/refresh operation is in progress. Please wait."
             )
             return False
-            
+
+        command = ""
+        WV_handle = None
         try:
 
             if option not in [0, 1,2]:
@@ -103,7 +105,9 @@ class account_handle:
                     component='account',
                 )
                 return False
-            if not self.account_token_handle.verify_WV_hash(self.host_exe_path):
+
+            WV_hash_result,WV_handle = self.account_token_handle.verify_WV_hash(self.host_exe_path)
+            if not WV_hash_result:
                 self.ctk_messagebox.showerror_and_wait(
                     title="JaTubePlayer",
                     message="The account handling executable is incorrect, please check the file!"
@@ -179,9 +183,12 @@ class account_handle:
             WV_host_result.stdin.flush()
             self._start_process_log_reader(WV_host_result)
             
+            
 
             exit_code = WV_host_result.wait()
-            self.process_log_reader_thread.join()  
+            self.process_log_reader_thread.join() 
+            
+
             if exit_code != 0:
                 self.log_handle(
                     content=f"WebView2 host exited with code {exit_code}",
@@ -213,6 +220,9 @@ class account_handle:
             if not _force_no_lock:
                 self._encfile_lock.release()
             self.account_token_handle.clear_token_file()
+
+            if WV_handle is not None:
+                WV_handle.Close()
         
     
     def get_cookie(self,force:bool=False)->str|None:
