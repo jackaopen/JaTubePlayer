@@ -2663,6 +2663,10 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
     global insert_treeview_quene,selected_song_number,playing_vid_mode,loadingplaylist,media_data_list,playlist_type
     selected_song_number = None
     playing_vid_mode = 0
+    if loadingplaylist:
+        if not messagebox.askokcancel(f'JaTubePlayer {ver}','player is still loading, sure to load again?'):
+            return
+        
     loadingplaylist = True
     log_handle(
         content=f"start to get playlist videos with playlistID: {playlistID}",
