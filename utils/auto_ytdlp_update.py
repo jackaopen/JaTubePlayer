@@ -46,6 +46,7 @@ class ytdlp_update:
 
         def _close():
             self.is_canceled.set()
+            self.cancel_btn.configure(state="disabled")
             while not self._download_stoped.is_set(): 
                 root.update()
                 popup.update()

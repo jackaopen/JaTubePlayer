@@ -797,11 +797,12 @@ def setting_frame():
                             return
                     
                     elif playing_vid_mode == 3:
-                        if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:pass
-                        else:
-                            ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
-                            is_downloading.set(False)
-                            return
+                        if formats.get() == 1 :
+                            if resoltion_combox.get() != '' and resoltion_combox.get().isdigit() and int(resoltion_combox.get()) >=144:pass
+                            else:
+                                ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
+                                is_downloading.set(False)
+                                return
                         if _dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
                             is_downloading.set(False)

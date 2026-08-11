@@ -10,7 +10,7 @@ class twitch_handle:
                  ):
         self.twitch_streamlink_process = None
         self.log_handle = log_handle
-        self.streamlink_path = os.path.join(_internal_dir,"streamlink.exe")
+        self.streamlink_path = os.path.join(_internal_dir,"streamlink","bin","streamlink.exe")
 
 
     def stop_twitch_streamlink(self):

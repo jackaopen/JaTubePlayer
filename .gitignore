@@ -11,6 +11,7 @@ _internal/yt_dlp
 _internal/*.exe
 _internal/*.dll
 _internal/bgutil/
+_internal/streamlink/
 *.dll
 
 # User data

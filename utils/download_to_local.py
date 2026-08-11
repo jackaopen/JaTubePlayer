@@ -122,12 +122,20 @@ def download_to_local(res:str,
             vid = None
             ffmpeg_stream = []
             skip_ffmpeg_process = False
-
+            scoped_cookie = None
+ 
             better_name = re.sub(r'[\\/:*?"<>|#]', ' ', title)
             main_label.configure(state='normal')
             main_label.delete('0.0', 'end')
             main_label.insert('0.0', f"Downloading: {title}")
             main_label.configure(state='disabled')
+            
+            if cookie:
+                scoped_cookie = "; ".join(
+                    f"{part.strip()}; Domain=.youtube.com; Path=/; Secure"
+                    for part in cookie.split(";") if "=" in part
+                )
+
             if mode == 0:
                 if download_path == '[player]/user_data/downloaded_file':
                     download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp3')
@@ -141,21 +149,21 @@ def download_to_local(res:str,
                             'logger': ytdlp_log_handle,
                             'ignore_no_formats_error': True,
                             'js-runtimes':f'deno:{deno_path}'}  
-                 
-                if cookie:
-                    down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
 
                 if cancel_download.is_set():
                     return
 
-                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:
+                    if scoped_cookie:
+                        ydl._load_cookies(scoped_cookie, autoscope=False)
+                    ydl.download(target_vid_url)
                 aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-
+                if cancel_download.is_set():
+                    return
                 main_label.configure(state='normal')
                 main_label.delete('0.0', 'end')
                 main_label.insert('0.0', f"processing video and audio...")
                 main_label.configure(state='disabled')
-                cancel_btn.configure(state="disabled")
                 
             else:
                 
@@ -177,9 +185,11 @@ def download_to_local(res:str,
                                 'logger': ytdlp_log_handle,
                                 'js-runtimes':f'deno:{deno_path}'
                                 }
-                    if cookie:
-                        down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
-                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+
+                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:
+                        if scoped_cookie:
+                            ydl._load_cookies(scoped_cookie, autoscope=False)
+                        ydl.download(target_vid_url)
 
                     skip_ffmpeg_process = True
                     
@@ -197,9 +207,11 @@ def download_to_local(res:str,
 
                                 }
                     
-                    if cookie:
-                        down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
-                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+
+                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:
+                        if scoped_cookie:
+                            ydl._load_cookies(scoped_cookie, autoscope=False)
+                        ydl.download(target_vid_url)
                     down_tdl_opt = {
                                 'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
                                 'format' : 'bestaudio',
@@ -208,11 +220,13 @@ def download_to_local(res:str,
                                 'logger': ytdlp_log_handle,
                                 'js-runtimes':f'deno:{deno_path}'
                                 }    
-                    if cookie:
-                        down_tdl_opt.setdefault("http_headers", {})["Cookie"] = cookie
+
                     if cancel_download.is_set():
                         return
-                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:ydl.download(target_vid_url)
+                    with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:
+                        if scoped_cookie:
+                            ydl._load_cookies(scoped_cookie, autoscope=False)
+                        ydl.download(target_vid_url)
                     vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
                     aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
 
@@ -337,8 +351,19 @@ def download_to_local(res:str,
         if ctk_messagebox.askyesno(title="JaTubePlayer Download",
                                    message="Are you sure you want to cancel the download?"):
             ytdlp_log_handle.warning("Download cancelled by user.")
-            
-            cancel_download.set()
+            try:
+                cancel_download.set()
+                cancel_btn.configure(state = "disabled")
+            except:pass
+
+            try:
+                main_label.configure(state='normal')
+                main_label.delete('0.0', 'end')
+                main_label.insert('0.0', f"canceling ...")
+                main_label.configure(state='disabled')
+            except:
+                pass
+
             try:
                 ffmpeg_process.terminate()
             except AttributeError:pass
@@ -349,7 +374,10 @@ def download_to_local(res:str,
                                   )
             t1 = time.time()
             
-            downloadthread.join()
+            try:
+                downloadthread.join(timeout=5)
+            except:
+                pass
 
             while ytdlp_killed.is_set() == False and time.time() - t1 < 5:
                 ytdlp_log_handle.info("Waiting for ytdlp thread is killed")
