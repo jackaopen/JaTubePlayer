@@ -506,7 +506,7 @@ class AccountInfo:
         ui_queue.put(lambda: google_status_profile_pic_label.configure(image=None))
         insert_textbox(google_status_text, "No login yet!")
         google_status_text.configure(text_color = "#777777")
-                
+
 def insert_textbox(widget:ctk.CTkTextbox,
                    text:str,
                    disabled_widget:bool=True):
@@ -858,7 +858,7 @@ def setting_frame():
             updateuserplaylists_btn.configure(text='update Playlist ')
 
         def remove_selected_from_playlist_setting():
-            global selected_song_number
+            global selected_song_number,media_data_list
             if selected_song_number is None:
                 messagebox.showerror(f'JaTubePlayer {ver}', 'No item selected in the playlist!')
                 return
@@ -870,8 +870,9 @@ def setting_frame():
                 item_id = playlisttreebox.get_children()[selected_song_number%50]
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                           selected_tree_ID=item_id)
-                
+                media_data_list = media_list_page_controller.media_data_list
                 selected_song_number = None
+
             except Exception as e:
                 log_handle(
                     content=f"Failed to remove selected playlist item: {e}",
@@ -3412,6 +3413,10 @@ def load_thread():  ### add every try except to a new log system for next update
             and messagebox.askokcancel(f'JaTubePlayer {ver}', 'The Video is already loading, Sure to load again?')
             or loadingvideo == False
         ):
+            if "playlist" in direct_url:
+                messagebox.showerror(f"Jatubeplayer {ver}",
+                                     "this is a playlist, you cannot play it!")
+                continue
             create_mpv_player()
 
             ui_queue.put(lambda: media_list_page_controller.remove_playing_tag())
@@ -3425,7 +3430,7 @@ def load_thread():  ### add every try except to a new log system for next update
                 ui_queue.put(lambda: playing_title_textbox.delete(1.0, tk.END))
                 ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
                 player.volume = int(player_volume_scale.get())
-
+                
                 try:
                     if direct_url and playing_vid_mode == 3:
                         if check_internet_socket():
@@ -3828,6 +3833,7 @@ def load_local_files(mode:int,
         quick_start_folder_path=local_folder_path,
         mode_for_local_files=mode
     )
+    media_data_list = media_list_page_controller.media_data_list
         
     if result is None:
             selected_song_number = None

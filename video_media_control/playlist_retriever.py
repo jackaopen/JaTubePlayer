@@ -94,11 +94,12 @@ class playlist_retriever_:
                             ]
                             and page == playlist_type.PLAYLISTS 
                         ) or (page != playlist_type.PLAYLISTS):
-                            media_data_list.playlisttitles.append(media["title"])
-                            media_data_list.vid_url.append(media["url"])
-                            media_data_list.playlist_thumbnails.append(media["thumb"])
-                            media_data_list.playlist_channel.append(media["channel"])
-                        count += 1
+                            if page == playlist_type.PLAYLISTS or (page != playlist_type.PLAYLISTS and "playlist" not in media["url"]):
+                                media_data_list.playlisttitles.append(media["title"])
+                                media_data_list.vid_url.append(media["url"])
+                                media_data_list.playlist_thumbnails.append(media["thumb"])
+                                media_data_list.playlist_channel.append(media["channel"])
+                                count += 1
 
                 continuation_token = self.innertube_parser.get_continuation_token()
                 contiunation_page = True

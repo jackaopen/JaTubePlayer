@@ -79,6 +79,7 @@ class MediaList_PageControl_:
         self.messagebox = messagebox
         self.loading_page = False
         self.dnd_ui_functions = dnd_ui_functions
+        self._busy = False
 
         self.user_playlist_dict = {"name":'',
                                     "url":''}
@@ -163,53 +164,62 @@ class MediaList_PageControl_:
         if page is not playlist_type.PLAYLIST, the media_data_list will be filled with
         if page is playlist_type.PLAYLISTS, the user_playlist_dict_list will be filled with the playlist content, mdl and other var will not be modified\n
         '''
-        if page!= playlist_type.PLAYLISTS:
-            self.log_handle(
-                content=f'init reload media_type= youtube page={page} playlist_id={playlist_id} total_items={len(media_data_list.vid_url)}',
-                errtype='info',
-                component='page_control',
-            )
-            if page == playlist_type.PLAYLIST:
-                
-                self._record_history(self._prev_playlist_name if self._prev_playlist_name else None)
-                self._prev_playlist_name = ''
+        self._busy = True
+        try:
+            if page!= playlist_type.PLAYLISTS:
+                self.log_handle(
+                    content=f'init reload media_type= youtube page={page} playlist_id={playlist_id} total_items={len(media_data_list.vid_url)}',
+                    errtype='info',
+                    component='page_control',
+                )
+                if page == playlist_type.PLAYLIST:
+                    
+                    self._record_history(self._prev_playlist_name if self._prev_playlist_name else None)
+                    self._prev_playlist_name = ''
+                else:
+                    self._record_history()
+
+                self.current_page = 1
+                self.media_data_list = media_data_list
+                self.media_type = MediaType.YOUTUBE
+                self.media_data_list.clear()
             else:
-                self._record_history()
+                self._prev_playlist_name = self._get_cur_playlist_title()
+                self.log_handle(
+                    content=f'record prev playlist name={self._prev_playlist_name}',
+                    errtype='info',
+                    component='page_control',
+                )
+        
+            if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() == False:return 
+            if (self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False 
+                and page != playlist_type.HOME): return
+            
+            if page != playlist_type.PLAYLISTS:
+                self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
+                self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+                self._insert_to_ui_queue()
 
-            self.current_page = 1
-            self.media_data_list = media_data_list
-            self.media_type = MediaType.YOUTUBE
-            self.media_data_list.clear()
-        else:
-            self._prev_playlist_name = self._get_cur_playlist_title()
+            else:
+                self.user_playlist_dict_list.clear()
+                temp_mdl = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
+                for name,url in zip(temp_mdl.playlisttitles,temp_mdl.vid_url):
+                    self.user_playlist_dict = {"name":name,
+                                            "url":url}
+                    self.user_playlist_dict_list.append(self.user_playlist_dict)
+            
             self.log_handle(
-                content=f'record prev playlist name={self._prev_playlist_name}',
+                content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
                 errtype='info',
                 component='page_control',
             )
-    
-        if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() == False:return 
-        if (self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False 
-            and page != playlist_type.HOME): return
-        
-        if page != playlist_type.PLAYLISTS:
-            self.media_data_list = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
-            self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
-            self._insert_to_ui_queue()
-
-        else:
-            self.user_playlist_dict_list.clear()
-            temp_mdl = self.yt_playlist_retriever.get_playlist_content(page=page, playlist_id=playlist_id)
-            for name,url in zip(temp_mdl.playlisttitles,temp_mdl.vid_url):
-                self.user_playlist_dict = {"name":name,
-                                           "url":url}
-                self.user_playlist_dict_list.append(self.user_playlist_dict)
-        
-        self.log_handle(
-            content=f'init reload media_type= youtube total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
-            errtype='info',
-            component='page_control',
-        )
+        except Exception as e:
+            self.log_handle(
+                content=f'Failed to init reload youtube media list: {e}',
+                errtype='error',
+                component='page_control')
+        finally:
+            self._busy = False
 
     
 
@@ -314,62 +324,71 @@ class MediaList_PageControl_:
                                 yt_dlp:object,
                                 ytdlp_log_handle:object,
                                 cookie:str):
-        
-        self._record_history()
-        self.thumbnail_loader.clear_thumbnails()
-        self.media_data_list.clear()
-        self.current_page = 1
-        self.media_type = MediaType.YOUTUBE
+        try:
+            self._busy = True
+            self._record_history()
+            self.thumbnail_loader.clear_thumbnails()
+            self.media_data_list.clear()
+            self.current_page = 1
+            self.media_type = MediaType.YOUTUBE
 
 
-        search_url_vid = f"https://www.youtube.com/results?search_query={searchentry}&sp=EgIQAQ%253D%253D "  
-        search_url_stream = f"https://www.youtube.com/results?search_query={searchentry}&sp=EgJAAQ%253D%253D "  
-        ydl_opts = {
-            'quiet': True,        
-            'extract_flat': True,  # Get video list without downloading
-            'force_generic_extractor': True,
-            'skip_download':True,
-            'playlistend':int(int(self.max_search_result_count)*0.3)
-        }
+            search_url_vid = f"https://www.youtube.com/results?search_query={searchentry}&sp=EgIQAQ%253D%253D "  
+            search_url_stream = f"https://www.youtube.com/results?search_query={searchentry}&sp=EgJAAQ%253D%253D "  
+            ydl_opts = {
+                'quiet': True,        
+                'extract_flat': True,  # Get video list without downloading
+                'force_generic_extractor': True,
+                'skip_download':True,
+                'playlistend':int(int(self.max_search_result_count)*0.3)
+            }
 
-        if cookie:
-            ydl_opts.setdefault("http_headers", {})["Cookie"] = cookie
-        ydl_opts['logger'] = ytdlp_log_handle
+            if cookie:
+                ydl_opts.setdefault("http_headers", {})["Cookie"] = cookie
+            ydl_opts['logger'] = ytdlp_log_handle
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            vid_search_results = ydl.extract_info(search_url_vid, download=False)
-            ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.7)
-            stream_search_results = ydl.extract_info(search_url_stream, download=False)
-        
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                vid_search_results = ydl.extract_info(search_url_vid, download=False)
+                ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.7)
+                stream_search_results = ydl.extract_info(search_url_stream, download=False)
+            
 
-        for item in stream_search_results['entries']:
-            print(item)
-            if item and  'url' in item:
-                if item['url'].split('youtube.com/')[1].split('/')[0] != 'channel':
-                    
-                    media_data_list.vid_url.append(item['url'])
-                    media_data_list.playlisttitles.append(f"🛑LIVE {item['title']}")
-                    media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
-                    media_data_list.playlist_channel.append(item['channel'])
+            for item in stream_search_results['entries']:
+                print(item)
+                if item and  'url' in item:
+                    if item['url'].split('youtube.com/')[1].split('/')[0] != 'channel':
+                        
+                        media_data_list.vid_url.append(item['url'])
+                        media_data_list.playlisttitles.append(f"🛑LIVE {item['title']}")
+                        media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
+                        media_data_list.playlist_channel.append(item['channel'])
 
 
 
-        for item in vid_search_results['entries']:
-            print(item)
-            if item and  'url' in item:
-                if item['url'].split('youtube.com/')[1].split('/')[0] != 'channel':
+            for item in vid_search_results['entries']:
+                print(item)
+                if item and  'url' in item:
+                    if item['url'].split('youtube.com/')[1].split('/')[0] != 'channel':
 
-                    media_data_list.vid_url.append(item['url'])
-                    media_data_list.playlisttitles.append(item['title'])
-                    media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
-                    media_data_list.playlist_channel.append(item['channel'])
+                        media_data_list.vid_url.append(item['url'])
+                        media_data_list.playlisttitles.append(item['title'])
+                        media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
+                        media_data_list.playlist_channel.append(item['channel'])
 
-        self.media_data_list = media_data_list
-        self.media_data_list.current_media_page = 1  
-        self.media_data_list.current_playing_idx_num = -1 
-        self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+            self.media_data_list = media_data_list
+            self.media_data_list.current_media_page = 1  
+            self.media_data_list.current_playing_idx_num = -1 
+            self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
 
-        self._insert_to_ui_queue()
+            self._insert_to_ui_queue()
+        except Exception as e:
+            self.log_handle(
+                content=f'Failed to init reload search media list: {e}',
+                errtype='error',
+                component='page_control',
+            )
+        finally:
+            self._busy = False
 
 
     def history_page_init_and_reload(self,
@@ -391,10 +410,6 @@ class MediaList_PageControl_:
         )
         
 
-
-    def _other_loading(self):
-        #TODO
-        pass
     
     def add_to_page_end(self,
             video_url:str,
@@ -402,32 +417,36 @@ class MediaList_PageControl_:
             channel:str,
             thumbnail_url:str):
         '''
-        insert video wether there is page inited or not,
-        at the last current page, miaght exceed 50
+        insert video wether there is page inited or not
         '''
-
+        if self._busy:
+            self.messagebox.showerror(
+                "JatubePlayer",
+                "Please wait, the media list is busy loading. Try again later.",
+            )
+            return
         self.media_type = MediaType.YOUTUBE
         if self.total_page == 0:# mdl not inited
             self.total_page = 1
             self.current_page = 1
 
         try:
-            if self.current_page == self.total_page:
-                insert_idx = len(self.media_data_list.vid_url)
-            else:
-                insert_idx = (self.current_page-1) * 50
-
-            title = f"[Added] {title}"
-            self.media_data_list.vid_url.insert(insert_idx, video_url)
-            self.media_data_list.playlisttitles.insert(insert_idx, title)
-            self.media_data_list.playlist_channel.insert(insert_idx, channel)
-            self.media_data_list.playlist_thumbnails.insert(insert_idx, thumbnail_url)
+            
+            self.media_data_list.vid_url.append(video_url)
+            self.media_data_list.playlisttitles.append(title)
+            self.media_data_list.playlist_channel.append(channel)
+            self.media_data_list.playlist_thumbnails.append(thumbnail_url)
             self.Chrome_ext_server_ui_functions.add_to_end()
             self.tree_view_queue.put((thumbnail_url,
                                         title,
                                         channel))
+            self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+            self._insert_to_ui_queue()
+            if self.current_page == self.media_data_list.current_media_page:
+                self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+
             self.log_handle(
-                content=f'added video to media list, at index {insert_idx}, title={title} channel={channel} url={video_url} thumbnail={thumbnail_url}',
+                content=f'added video to media list, title={title} channel={channel} url={video_url} thumbnail={thumbnail_url}',
                 errtype='info',
                 component='page_control',
             )
@@ -453,7 +472,17 @@ class MediaList_PageControl_:
             self.media_data_list.playlist_thumbnails.pop(selected_idx)
             self.thumbnail_loader.clear_thumb(selected_tree_ID)
 
+            if self.media_data_list.current_playing_idx_num > selected_idx :
+                self.media_data_list.current_playing_idx_num -=1
+                
 
+            if self.total_page != (len(self.media_data_list.vid_url) + 49) // 50:
+                self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+                self.media_data_list.current_media_page -=1
+
+            self._insert_to_ui_queue()
+            if self.current_page == self.media_data_list.current_media_page:
+                self.set_playing_tag(self.media_data_list.current_playing_idx_num)
 
         except Exception as e:
             self.log_handle(
@@ -673,6 +702,7 @@ class MediaList_PageControl_:
             errtype='info',
             component='page_control',
         )
+
         
         
         
