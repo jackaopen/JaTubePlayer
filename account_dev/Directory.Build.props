@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <BaseOutputPath>cookie_test\bin\</BaseOutputPath>
-    <BaseIntermediateOutputPath>cookie_test\obj\</BaseIntermediateOutputPath>
-  </PropertyGroup>
-</Project>

@@ -2834,14 +2834,19 @@ def switch_starred_vid(event=None):
     if star_vid_handle.search(url_or_path):
         star_vid_handle.remove(url_or_path)
         ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+
         ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
 
         if playing_vid_mode == 4:
             try:
+                item_id = playlisttreebox.get_children()[selected_song_number%50]
+                media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
+                                                            selected_tree_ID=item_id)
                 media_data_list.vid_url.pop(selected_song_number)
                 media_data_list.playlisttitles.pop(selected_song_number)
                 media_data_list.playlist_thumbnails.pop(selected_song_number)
                 media_data_list.playlist_channel.pop(selected_song_number)
+                
             except Exception as e:
                 log_handle(
                     content=str(e),
