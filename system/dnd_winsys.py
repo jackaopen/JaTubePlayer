@@ -329,6 +329,19 @@ class DropHandler(object):
 
                             if len(file_paths) == 1:
                                 if os.path.isfile(file_paths[0]):
+                                    file_ext = os.path.splitext(os.path.basename(file_paths[0]))[1]
+
+                                    if not file_ext or file_ext not in FILE_TYPE_EXT:
+                                        self.log_handle(
+                                            content=f"Invalid file or file type:  {file_paths[0]}",
+                                            errtype='errir',
+                                            component='drag_drop',
+                                        )
+                                        self.messagebox.showerror(
+                                            "JatubePlayer",
+                                            f"Invalid file or file type:  {file_paths[0]} WITH {file_ext}"
+                                        )
+                                        continue
                                     self.log_handle(
                                         content=f"Single file dropped: {file_paths[0]}",
                                         errtype='info',
