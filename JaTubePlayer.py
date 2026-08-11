@@ -4391,8 +4391,6 @@ def init_read_config():
 
         if CONFIG['enable_discord_presence']:
             enable_discord_presence.set(True)
-            try:discord_presence.idle()
-            except:pass
         else:
             enable_discord_presence.set(False)
 
@@ -4564,6 +4562,14 @@ def _init_load_extra_objs():
                                      log_handle=log_handle
                                      )
     discord_presence.discord_idle_presence_wording = CONFIG['discord_idle_presence_wording']
+    if enable_discord_presence.get():
+        try:discord_presence.idle()
+        except Exception as e:
+            log_handle(
+                content=f"Error initializing Discord presence: {e}",
+                errtype='error',
+                component='startup',
+            )
 
     get_info_loader = get_info_loader_(yt_dlp = lambda:yt_dlp,
                                       maxresolution = lambda: maxresolution.get(),
