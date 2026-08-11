@@ -17,8 +17,8 @@ def get_window_dpi(hwnd):
 def get_effective_scaling(hwnd: int, root: Tk, 
                           base_width: float=1320, base_height: float=680)-> float:
     tkinter_scaling = get_window_dpi(hwnd)
-    available_width = int(root.winfo_screenwidth() / tkinter_scaling) - 32
-    available_height = int(root.winfo_screenheight() / tkinter_scaling) - 64
+    available_width = int((root.winfo_screenwidth()-32) / tkinter_scaling)*0.975 
+    available_height = int((root.winfo_screenheight()-64) / tkinter_scaling)*0.975
 
     # DO not oversize the real monitor 
     fit_ratio = min( 

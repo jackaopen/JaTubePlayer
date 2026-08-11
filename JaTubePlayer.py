@@ -87,12 +87,13 @@ os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH
 import mpv
 #### remember to add yt_dlp.exe from github to _iternal!!!
 root = ctk.CTk()
-root.geometry(f"{BASE_WIDTH}x{BASE_HEIGHT}")
+hwnd = win32gui.FindWindow(None, root.title())
+tkinter_scaling = get_window_dpi(hwnd)
+root.geometry(f"{int(BASE_WIDTH*tkinter_scaling)}x{int(BASE_HEIGHT*tkinter_scaling)}")
 ver='3.0'
 root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
-hwnd = win32gui.FindWindow(None, root.title())
-tkinter_scaling = get_window_dpi(hwnd) 
+ 
 print(f"Tkinter scaling factor: {tkinter_scaling}")
 
 effective_scaling = get_effective_scaling(hwnd,root)
