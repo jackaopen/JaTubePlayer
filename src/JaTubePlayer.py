@@ -2141,7 +2141,7 @@ def setting_frame():
                     ui_queue.put(lambda: ytdlp_ver_current_label.configure(text=f'{ytdlpver.__version__}'))
                     ui_queue.put(lambda: player_ver_current_label.configure(text=f'{ver}'))
                     ui_queue.put(lambda v=get_latest_player_version(): player_ver_latest_label.configure(text=f'{v}'))
-                    ui_queue.put(lambda v=get_latest_dlp_version(ytdlp_use_nightly_build.get()): ytdlp_ver_lastest_label.configure(text=f'{v}'))
+                    ui_queue.put(lambda v=get_latest_dlp_version(ytdlp_use_nightly_build.get()): ytdlp_ver_lastest_label.configure(text=f'{v}' if not ytdlp_use_nightly_build.get() else f'Nightly: {v}'))
                 else:
                     ui_queue.put(lambda: ytdlp_ver_lastest_label.configure(text=f'No internet'))
                     ui_queue.put(lambda: ytdlp_ver_current_label.configure(text=f'{ytdlpver.__version__}'))

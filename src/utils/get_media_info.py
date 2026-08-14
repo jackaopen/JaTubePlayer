@@ -65,6 +65,15 @@ def get_info(
         "extract_flat": False,
         "logger": log_handler,
         "format": fmt,
+        "extractor_args": {
+            "youtube": {
+                "player_client": [
+                    "visionos",
+                    "android_vr",
+                    "web",
+                    ],
+                },
+            },
         "js_runtimes": {
             "deno": {"path": deno_path},
         },
