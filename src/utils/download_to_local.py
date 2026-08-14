@@ -144,12 +144,19 @@ def download_to_local(res:str,
                     download_path = os.path.join(download_path,f'{better_name}.mp3')
 
                 down_tdl_opt = {
+                            "extractor_args": {
+                                "youtube": {
+                                    "player_client": ["default", "-android_vr", "web"],
+                                },
+                            },
                             'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'),
                             'format' : 'bestaudio/best',
                             'progress_hooks': [progress_hook],
                             'logger': ytdlp_log_handle,
                             'ignore_no_formats_error': True,
-                            'js-runtimes':f'deno:{deno_path}'}  
+                            "js_runtimes": {
+                                    "deno": {"path": deno_path},
+                                    }}  
 
                 if cancel_download.is_set():
                     return
@@ -179,12 +186,19 @@ def download_to_local(res:str,
 
                 if "twitch" in target_vid_url:
                     down_tdl_opt = {
+                                "extractor_args": {
+                                    "youtube": {
+                                        "player_client": ["default", "-android_vr", "web"],
+                                    },
+                                },
                                 'outtmpl':download_path,
                                 'format' : f'best[height<={res}]',
                                 'progress_hooks': [progress_hook],
                                 'ignore_no_formats_error': True,
                                 'logger': ytdlp_log_handle,
-                                'js-runtimes':f'deno:{deno_path}'
+                                "js_runtimes": {
+                                    "deno": {"path": deno_path},
+                                }
                                 }
 
                     with yt_dlp.YoutubeDL(down_tdl_opt) as ydl:
@@ -198,13 +212,19 @@ def download_to_local(res:str,
                     
                 else:
                     down_tdl_opt = {
+                                "extractor_args": {
+                                    "youtube": {
+                                        "player_client": ["default", "-android_vr", "web"],
+                                    },
+                                },
                                 'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'),
                                 'format' : f'bestvideo[height<={res}]',
                                 'progress_hooks': [progress_hook],
                                 'ignore_no_formats_error': True,
                                 'logger': ytdlp_log_handle,
-                                'js-runtimes':f'deno:{deno_path}'
-            
+                                "js_runtimes": {
+                                    "deno": {"path": deno_path},
+                                }
 
                                 }
                     
@@ -214,12 +234,19 @@ def download_to_local(res:str,
                             ydl._load_cookies(scoped_cookie, autoscope=False)
                         ydl.download(target_vid_url)
                     down_tdl_opt = {
+                                "extractor_args": {
+                                    "youtube": {
+                                        "player_client": ["default", "-android_vr", "web"],
+                                    },
+                                },
                                 'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'),
                                 'format' : 'bestaudio',
                                 'progress_hooks': [progress_hook],
                                 'ignore_no_formats_error': True,
                                 'logger': ytdlp_log_handle,
-                                'js-runtimes':f'deno:{deno_path}'
+                                "js_runtimes": {
+                                    "deno": {"path": deno_path},
+                                }
                                 }    
 
                     if cancel_download.is_set():
