@@ -10,12 +10,12 @@ using Microsoft.Web.WebView2.WinForms;
 static class Program
 {
     [STAThread]
-    static void Main(string[] args) // args: [cookie_test folder], ["login" or "refresh" or "clear"]
+    static void Main(string[] args) // args: [root folder],[appdata_dir], ["login" or "refresh" or "clear"]
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         
-        if (args.Length != 2 || (args[1] != "login" && args[1] != "refresh" && args[1] != "clear"))
+        if (args.Length != 3 || (args[2] != "login" && args[2] != "refresh" && args[2] != "clear"))
         {
             Helper.ErrorLog("invalid arg");
             Environment.Exit(1);
@@ -40,13 +40,13 @@ static class Program
             Environment.Exit(1);
         }
         byte[] InputToken = Convert.FromBase64String(encoded);
-        if (Verifier.verifyToken(args[0],InputToken) == false)
+        if (Verifier.verifyToken(args[1],InputToken) == false)
         {
             Helper.ErrorLog("invalid token");
             Environment.Exit(1);
         }
         
-        Application.Run(new CookieForm(args[0], args[1]));
+        Application.Run(new CookieForm(args[0], args[1] , args[2]));
     }
     
 }
@@ -83,13 +83,13 @@ public class CookieForm : Form
             return startTask ??= Start();
         }
 
-    public CookieForm(string rootDir, string mode)
+    public CookieForm(string rootDir, string appdataDir, string mode)
     {
         
-        profileDir = Path.Combine(rootDir, "account", "profile");
-        keyPath = Path.Combine(rootDir, "user_data", "AES_key.enc");
+        profileDir = Path.Combine(appdataDir, "JaTubePlayer", "profile");
+        keyPath = Path.Combine(appdataDir, "JaTubePlayer", "AES_key.enc");
 
-        EncryptedCookieKeyPath = Path.Combine(rootDir, "user_data", "cookie_key.enc");
+        EncryptedCookieKeyPath = Path.Combine(appdataDir, "JaTubePlayer", "cookie_key.enc");
         SuccessPagePath = Path.Combine(rootDir, "_internal", "google_login_suc_red_page.html");
         WaitingPagePath = Path.Combine(rootDir,"_internal", "google_login_waiting_page.html");
         ErrorPagePath = Path.Combine(rootDir,"_internal", "google_login_err_screen.html");
@@ -111,7 +111,7 @@ public class CookieForm : Form
         
         
         if (mode == "login") {
-            waitingForm = new CookieForm(rootDir, "process");
+            waitingForm = new CookieForm(rootDir, appdataDir, "process");
             waitingForm.FormClosed += (sender, args) =>
             {
                 {

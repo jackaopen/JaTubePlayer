@@ -65,12 +65,10 @@ def get_info(
         "extract_flat": False,
         "logger": log_handler,
         "format": fmt,
-
-
-    "js_runtimes": {
-        "deno": {"path": deno_path},
-    },
-    "remote_components": ["ejs:npm"],   
+        "js_runtimes": {
+            "deno": {"path": deno_path},
+        },
+        "remote_components": ["ejs:npm"],   
 
     }
     

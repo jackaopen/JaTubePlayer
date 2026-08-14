@@ -42,7 +42,7 @@
     "discord_presence_show_playing": true,
     "show_cache": true,
     "hover_fullscreen": true,
-    "download_path": "[player]/user_data/downloaded_file",
+    "download_path": "[appdata]/JaTubePlayer/saved_file",
     "fullscreenmode": 0,
     "blur_hexColor": "#101010",
     "chrome_ext_server_port": 5000,

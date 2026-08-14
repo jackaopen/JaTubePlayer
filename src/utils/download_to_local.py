@@ -22,7 +22,8 @@ def download_to_local(res:str,
                       target_vid_url:str,
                       title:str,
                       download_path:str,
-                      current_dir:str,
+                      _internal_dir:str,
+                      appdata_dir:str,
                       icondir:str,
                       ver:str,
                       root:ctk.CTkToplevel,
@@ -41,26 +42,26 @@ def download_to_local(res:str,
     '''
     try:is_downloading.set(True)
     except:pass
-    ffmpeg_path = os.path.join(current_dir,'_internal','ffmpeg.exe')
+    ffmpeg_path = os.path.join(_internal_dir,'ffmpeg.exe')
     ffmpeg_process = None
 
     def _download_cleanup():
-        if not os.path.exists(os.path.join(current_dir,'user_data','downloaded_file')):
-            os.makedirs(os.path.join(current_dir,'user_data','downloaded_file'))
+        if not os.path.exists(os.path.join(appdata_dir,'JaTubePlayer','saved_file')):
+            os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','saved_file'))
         try:
-            folder = Path(os.path.join(current_dir,'user_data','downloaded_file'))
+            folder = Path(os.path.join(appdata_dir,'JaTubePlayer','saved_file'))
             for pattern in ("*.mp4.ytdl", "*.mp4.part*"):
                 for f in folder.glob(pattern):
                     f.unlink(missing_ok=True)
         except :pass
 
-        try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+        try:os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'))
         except:pass
-        try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+        try:os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'))
         except:pass
-        try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm.part'))
+        try:os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm.part'))
         except:pass
-        try:os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4.part'))
+        try:os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4.part'))
         except:pass
 
     def progress_hook(d):
@@ -113,10 +114,10 @@ def download_to_local(res:str,
 
         
         try:
-            if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):
-                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-            if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):
-                os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+            if os.path.exists(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4')):
+                os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'))
+            if os.path.exists(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm')):
+                os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'))
 
             aud = None
             vid = None
@@ -137,13 +138,13 @@ def download_to_local(res:str,
                 )
 
             if mode == 0:
-                if download_path == '[player]/user_data/downloaded_file':
-                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp3')
+                if download_path == '[appdata]/JaTubePlayer/saved_file':
+                    download_path = os.path.join(appdata_dir,'JaTubePlayer','saved_file',f'{better_name}.mp3')
                 else:
                     download_path = os.path.join(download_path,f'{better_name}.mp3')
 
                 down_tdl_opt = {
-                            'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
+                            'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'),
                             'format' : 'bestaudio/best',
                             'progress_hooks': [progress_hook],
                             'logger': ytdlp_log_handle,
@@ -157,7 +158,7 @@ def download_to_local(res:str,
                     if scoped_cookie:
                         ydl._load_cookies(scoped_cookie, autoscope=False)
                     ydl.download(target_vid_url)
-                aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                aud = ffmpeg.input(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'))
                 if cancel_download.is_set():
                     return
                 main_label.configure(state='normal')
@@ -170,8 +171,8 @@ def download_to_local(res:str,
 
                 
                 
-                if download_path == '[player]/user_data/downloaded_file':
-                    download_path = os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4')
+                if download_path == '[appdata]/JaTubePlayer/saved_file':
+                    download_path = os.path.join(appdata_dir,'JaTubePlayer','saved_file',f'{better_name}.mp4')
                 else:
                     download_path = os.path.join(download_path,f'{better_name}.mp4')
 
@@ -197,7 +198,7 @@ def download_to_local(res:str,
                     
                 else:
                     down_tdl_opt = {
-                                'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'),
+                                'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'),
                                 'format' : f'bestvideo[height<={res}]',
                                 'progress_hooks': [progress_hook],
                                 'ignore_no_formats_error': True,
@@ -213,7 +214,7 @@ def download_to_local(res:str,
                             ydl._load_cookies(scoped_cookie, autoscope=False)
                         ydl.download(target_vid_url)
                     down_tdl_opt = {
-                                'outtmpl':os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'),
+                                'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'),
                                 'format' : 'bestaudio',
                                 'progress_hooks': [progress_hook],
                                 'ignore_no_formats_error': True,
@@ -227,10 +228,10 @@ def download_to_local(res:str,
                         if scoped_cookie:
                             ydl._load_cookies(scoped_cookie, autoscope=False)
                         ydl.download(target_vid_url)
-                    vid = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-                    aud = ffmpeg.input(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                    vid = ffmpeg.input(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'))
+                    aud = ffmpeg.input(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'))
 
-                    try:os.remove(os.path.join(current_dir,'user_data','downloaded_file',f'{better_name}.mp4'))
+                    try:os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file',f'{better_name}.mp4'))
                     except:pass
                     bar.place_forget()
                     main_label.configure(state='normal')
@@ -299,11 +300,11 @@ def download_to_local(res:str,
                     else:
                         raise RuntimeError("Download Cancelled")
                 
-                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4')):
-                    os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
+                if os.path.exists(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4')):
+                    os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'))
 
-                if os.path.exists(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm')):
-                    os.remove(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
+                if os.path.exists(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm')):
+                    os.remove(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'))
             try:
                 main_label.configure(state='normal')
                 main_label.delete('0.0', 'end')
@@ -385,10 +386,10 @@ def download_to_local(res:str,
                 if ffmpeg_process and ffmpeg_process.poll() is None:
                     ffmpeg_process.kill()
             
-            file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file','tempvid.mp4'))
-            file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file','tempaud.webm'))
-            file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempaud.webm.part"))
-            file_deletion_queue.put(os.path.join(current_dir,'user_data','downloaded_file',"tempvid.mp4.part"))
+            file_deletion_queue.put(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'))
+            file_deletion_queue.put(os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'))
+            file_deletion_queue.put(os.path.join(appdata_dir,'JaTubePlayer','saved_file',"tempaud.webm.part"))
+            file_deletion_queue.put(os.path.join(appdata_dir,'JaTubePlayer','saved_file',"tempvid.mp4.part"))
             file_deletion_queue.put(download_path)
             
             

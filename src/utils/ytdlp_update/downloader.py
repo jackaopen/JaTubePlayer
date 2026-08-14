@@ -1,36 +1,40 @@
 import threading
 from typing import Callable
-import tarfile,requests,os,shutil,time,customtkinter as ctk
+import requests,os,time,customtkinter as ctk
 from utils.get_latest_version import get_latest_dlp_version
 from notification.wintoast_notify import ToastNotification
 import hashlib
-
+from utils.ytdlp_update.run_updater import run_as_admin_and_wait
+import json
 CHUNK_SIZE = 256*1024
 class ytdlp_update:
     def __init__(self,
-                _internal_dir:str,
+                appdata_dir:str,
                 root:ctk.CTkToplevel|ctk.CTk,
+                _internal_dir:str,
                 icondir:str="",
                 log_handle:Callable=print):
-        
-        self._internal_dir = _internal_dir
+        '''
+        appdata_dir must be in the form of %APPDATA%
+        '''
+        self.appdata_dir = appdata_dir
+        self.ytdlp_update_dir = os.path.join(appdata_dir,'JaTubePlayer','ytdlp_update')
         self.root = root
+        self._internal_dir = _internal_dir
+        self.updater_path = os.path.join(self._internal_dir, 'JaTubePlayer_updater.exe')
         self.icondir = icondir
         self.log_handle = log_handle
         self.file_hash_dict = {}
+        self.start_updater = False
 
-        self.new_ytdlpgz_path = os.path.join(self._internal_dir, 'new_yt-dlp.tar.gz')
-        self.new_ytdlp_path = os.path.join(self._internal_dir,"new_yt-dlp")
-        self.ytdlp_path = os.path.join(self._internal_dir, 'yt_dlp')
-
-        self.new_ytdlpexe_path = os.path.join(self._internal_dir, 'new_yt-dlp.exe')
-        self.ytdlpexe_path = os.path.join(self._internal_dir, 'yt-dlp.exe')
-
-        self.old_ytdlpexe_path = os.path.join(self._internal_dir, 'yt-dlp_old.exe')
-        self.old_ytdlpfolder = os.path.join(self._internal_dir, 'yt-dlp_old')
+        self.ytdlpgz_path = os.path.join(self.ytdlp_update_dir, 'yt-dlp.tar.gz')
+        self.ytdlpexe_path = os.path.join(self.ytdlp_update_dir, 'new_yt-dlp.exe')
+        self.hash_sum_path = os.path.join(self.ytdlp_update_dir, 'SHA2-256SUMS')
+        self.hash_sig_path = os.path.join(self.ytdlp_update_dir, 'SHA2-256SUMS.sig')
+        self.result_json_path = os.path.join(self.ytdlp_update_dir, 'update_result.json')
 
 
-    def _build_popup(self,root:ctk.CTkToplevel|ctk.CTk,version:str,icondir:str="")->ctk.CTkToplevel:
+    def _build_popup(self,root:ctk.CTkToplevel|ctk.CTk,icondir:str="")->ctk.CTkToplevel:
         popup = ctk.CTkToplevel(root)
         popup.title("JaTubePlayer yt-dlp update")
         popup.attributes("-topmost", True)
@@ -45,6 +49,11 @@ class ytdlp_update:
         self.sizelabel.pack()
 
         def _close():
+            if self.start_updater:
+                self.log_handle(content="cannot cancel update, updater already started",
+                                errtype='err',
+                                component='download_ytdlp')
+                return
             self.is_canceled.set()
             self.cancel_btn.configure(state="disabled")
             while not self._download_stoped.is_set(): 
@@ -72,67 +81,15 @@ class ytdlp_update:
         popup.protocol("WM_DELETE_WINDOW", _close)
         return popup
 
-    def _remove_downloaded_files(self):
-        try:
-            if os.path.exists(self.new_ytdlpgz_path):
-                os.remove(self.new_ytdlpgz_path)
-            if os.path.exists(self.new_ytdlpexe_path):
-                os.remove(self.new_ytdlpexe_path)
-            if os.path.exists(self.new_ytdlp_path):
-                shutil.rmtree(self.new_ytdlp_path)
-            
-        except Exception as e:
-            self.log_handle(f"Error removing downloaded file: {e}")
-
-    def _restore_old_files(self):
-        
-        try:
-            if os.path.exists(self.ytdlp_path):
-                shutil.rmtree(self.ytdlp_path)
-            shutil.copytree(self.old_ytdlpfolder,self.ytdlp_path)
-            shutil.copy(self.old_ytdlpexe_path,self.ytdlpexe_path)
-        except Exception as e:
-            self.log_handle(
-                content=f"restore old file error : {e}",
-                errtype = "error",
-                component='download_ytdlp'
-            )
-
-
-    def _remove_old_files(self):
-
-        '''
-        as the name says, will not catch error
-        '''
-        if os.path.exists(self.old_ytdlpexe_path):
-            os.remove(self.old_ytdlpexe_path)
-        if os.path.exists(self.old_ytdlpfolder) and os.path.isdir(self.old_ytdlpfolder):
-            shutil.rmtree(self.old_ytdlpfolder)
-
-    def _copy_old_files(self):
-        '''
-        copy the current file to old_, to prevent from error/failure whole loss
-        '''
-        try:
-            self._remove_old_files()
-            shutil.copytree(self.ytdlp_path,self.old_ytdlpfolder)
-            shutil.copy(self.ytdlpexe_path,self.old_ytdlpexe_path)
-
-        except Exception as e:
-            self.log_handle(
-                content=f"restore copy to old file error : {e}",
-                errtype = "error",
-                component='download_ytdlp'
-            )
-
+    
     def _verify_hash(self)->None:
         self.log_handle(content=f"verifying hash...",
                         errtype='info',
-                        component='download_ytdlp')
-        with open(self.new_ytdlpexe_path, "rb") as file:
+                        component='download_ytdlp') 
+        with open(self.ytdlpexe_path, "rb") as file:
             exe_hash = hashlib.file_digest(file, "sha256").hexdigest()
 
-        with open(self.new_ytdlpgz_path, "rb") as file:
+        with open(self.ytdlpgz_path, "rb") as file:
             tar_hash = hashlib.file_digest(file, "sha256").hexdigest()
 
         if exe_hash != self.file_hash_dict["yt-dlp.exe"]:
@@ -144,53 +101,54 @@ class ytdlp_update:
                         errtype='info',
                         component='download_ytdlp')
 
-
     def _process_downloaded_files(self)->bool:
         try:
-            
-            self.label.configure(text="verifying hash...")
             self._verify_hash()
-            self.label.configure(text="processing files...")
-            with tarfile.open(self.new_ytdlpgz_path, 'r:gz') as tar:
-                tar.extractall(path=self.new_ytdlp_path)
-                shutil.rmtree(self.ytdlp_path)
-                shutil.copytree(os.path.join(self.new_ytdlp_path,'yt-dlp','yt_dlp'), self.ytdlp_path)
+            self.log_handle(content=f"hash are correct",
+                        errtype='info',
+                        component='download_ytdlp')
+            exit_code = run_as_admin_and_wait(
+                exe_path=self.updater_path,
+                app_data_dir=self.appdata_dir
+                    )
+            if exit_code != 0:
                 
-
-            if os.path.exists(self.new_ytdlpexe_path):
-                shutil.copy(self.new_ytdlpexe_path,self.ytdlpexe_path)
-
-            self._remove_old_files()
-            self._remove_downloaded_files()
+                return False
             return True
-
-        
-        except ValueError:
-            self.log_handle(content=f"Invalid downloaded file !",
-                            errtype='error',
-                            component='download_ytdlp')
-            return False
-
+    
         except Exception as e:
-            self.log_handle(content=f"error removing file {e}",
-                            errtype='warning',
-                            component='download_ytdlp')
+            self.log_handle(content=f"hash verification failed: {e}",
+                        errtype='error',
+                        component='download_ytdlp')
             return False
-
+        finally:              
+            with open(self.result_json_path, 'r') as f:
+                result_json = json.load(f)      
+                self.log_handle(content=f"updater result: {result_json.get('message','unknown error')}",
+                                errtype=result_json.get('status','error'),
+                                component='download_ytdlp-result')
+        
+    def clear_downloaded_files(self):
+        if os.path.exists(self.ytdlpgz_path):
+            os.remove(self.ytdlpgz_path)
+        if os.path.exists(self.ytdlpexe_path):
+            os.remove(self.ytdlpexe_path)
+        if os.path.exists(self.hash_sum_path):
+            os.remove(self.hash_sum_path)
+        if os.path.exists(self.hash_sig_path):
+            os.remove(self.hash_sig_path)
+        
 
     def download_and_extract_dlp(self)-> bool | str:
         latest_version = get_latest_dlp_version()
-        downloader_popup = self._build_popup(self.root,latest_version,self.icondir)
+        self.start_updater = False
+        downloader_popup = self._build_popup(self.root,self.icondir)
+        self.clear_downloaded_files()
     
         
         def _download():
             response = None
             try:
-                self._remove_downloaded_files()
-                self._copy_old_files()
-
-
-
                 # ytdlp folder
                 
                 url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS'
@@ -204,7 +162,25 @@ class ytdlp_update:
                     for line in response.text.splitlines():
                         hash_code, filename = line.split()
                         self.file_hash_dict[filename] = hash_code.lower()
+                    with open(self.hash_sum_path, 'wb') as file:
+                        file.write(response.content)
                         
+                else:
+                    raise ConnectionError
+
+
+
+                url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS.sig'
+                
+                response = requests.get(url, stream=True,timeout=10)
+                self.label.configure(text=f"Downloading SHA2-256 signature - version {latest_version}")
+
+                
+                if response.status_code == 200:
+                    with open(self.hash_sig_path, 'wb') as file:
+                        if not self.is_canceled.is_set():
+                            file.write(response.content)
+                            
                 else:
                     raise ConnectionError
                 
@@ -217,7 +193,7 @@ class ytdlp_update:
                 current_len = 0
                 
                 if response.status_code == 200:
-                    with open(self.new_ytdlpgz_path, 'wb') as file:
+                    with open(self.ytdlpgz_path, 'wb') as file:
                         for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
                             if self.is_canceled.is_set():
                                 self.sizelabel.configure(text="cancelled")
@@ -241,7 +217,7 @@ class ytdlp_update:
                 length = int(response.headers.get('content-length',1))
                 
                 if response.status_code == 200:
-                    with open(self.new_ytdlpexe_path,'wb') as file:
+                    with open(self.ytdlpexe_path,'wb') as file:
                         for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
                             if chunk:
                                 if self.is_canceled.is_set():
@@ -262,6 +238,7 @@ class ytdlp_update:
                 
                 
                 self.cancel_btn.configure(state="disabled")
+                self.start_updater = True
 
                 if self._process_downloaded_files():
                     self.label.configure(text="Done!")
@@ -285,7 +262,6 @@ class ytdlp_update:
                         duration='short', 
                         icon=self.icondir
                     )
-                    self._restore_old_files()
 
             except ConnectionError:
                 self.log_handle(content=f"connection failed {response.text}",
@@ -303,9 +279,8 @@ class ytdlp_update:
                             component='download_ytdlp')
             finally:
                 self._download_stoped.set()
-                self._remove_old_files()
-                self._remove_downloaded_files()
                 downloader_popup.destroy()
+                self.clear_downloaded_files()
 
         
         download_thread = threading.Thread(target=_download,daemon=False)
@@ -316,6 +291,6 @@ class ytdlp_update:
             time.sleep(0.05)
         if self._download_finished.is_set():
             downloader_popup.destroy()
-            return True
+            return latest_version
         else:
             return False

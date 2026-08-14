@@ -5,12 +5,12 @@ import hashlib
 import win32file
 import win32con
 
-EXPTECTED_HASH = "a3b3aeb0adb8ca93c6540c6035b27423a3ef851999ba48961a0d9cc8fb12ccc8"
+EXPTECTED_HASH = "c06c4defd4fc0a94501429d3132f1fc3a071ce575bba14bf005e5ba0f5a9809f"
 class account_token:
     def __init__(self,
-                 current_dir:str,
+                 appdata_dir:str,
                  log_handle:object):
-        self.token_dir = os.path.join(current_dir,"user_data","account_token.enc")
+        self.token_dir = os.path.join(appdata_dir,"JaTubePlayer","account_token.enc")
         self.log_handle = log_handle
         self.clear_token_file()
         

@@ -16,6 +16,7 @@ from notification.wintoast_notify import ToastNotification
 class account_handle:
     def __init__(self,
                  current_dir: str,
+                 app_data_dir: str,
                  ctk_messagebox: ctk_messagebox,
                  log_handle:object,
                  account_info_handler:object,
@@ -26,9 +27,11 @@ class account_handle:
         self.log_handle = log_handle
         self.account_info_handler = account_info_handler
         self.account_token_handle = account_token_handle
+        self.appdata_dir = app_data_dir
 
         self.account_dir = os.path.join(self.current_dir, "account")
-        self.user_data_dir = os.path.join(self.current_dir, "user_data")
+        print(f"account_dir: {self.account_dir}")
+        self.user_data_dir = os.path.join(app_data_dir, "JaTubePlayer")
         self.project_path = os.path.join(self.account_dir, "WebView2Host.csproj")
         self.host_exe_path = os.path.join(self.account_dir, "WebView2Host.exe")
 
@@ -167,7 +170,7 @@ class account_handle:
                 )                
 
             WV_host_result = subprocess.Popen(
-                [str(self.host_exe_path), str(self.current_dir), command],
+                [str(self.host_exe_path), str(os.path.dirname(self.current_dir)), str(self.appdata_dir), command],
                 text=True,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,

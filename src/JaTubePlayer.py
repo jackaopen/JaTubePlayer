@@ -66,15 +66,30 @@ def dnd_mode_change_status(sta:int):
     playing_vid_mode = sta
 
 
-
+current_dir = None
+'''
+current_dir is the path to /src
+'''
 if getattr(sys, 'frozen', False):
     current_dir = os.path.dirname(sys.executable)
-    icondir = os.path.join(current_dir, '_internal','jtp.ico')
-    _internal_dir = os.path.join(current_dir, '_internal')
+    _internal_dir = os.path.join(current_dir, "_internal")
 else:
-    icondir = os.path.join(os.path.dirname(__file__), '_internal','jtp.ico')
-    current_dir = os.path.dirname(__file__)
-    _internal_dir = os.path.join(os.path.dirname(__file__), '_internal')
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    _internal_dir = os.path.join(os.path.dirname(current_dir), "_internal")
+    
+
+'''
+_internal_dir is the path to the /_internal outside /src
+'''
+icondir = os.path.join(_internal_dir, "jtp.ico")
+appdata_dir = os.getenv('APPDATA')
+
+os.makedirs(os.path.join(appdata_dir,'JaTubePlayer'),exist_ok=True)
+os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','ytdlp_update'),exist_ok=True)
+
+
+
+
 
 
 load_private_font(_internal_dir)
@@ -89,7 +104,7 @@ import mpv
 root = ctk.CTk()
 hwnd = win32gui.FindWindow(None, root.title())
 tkinter_scaling = get_window_dpi(hwnd)
-root.geometry(f"{int(BASE_WIDTH*tkinter_scaling)}x{int(BASE_HEIGHT*tkinter_scaling)}")
+root.geometry(f"{int(BASE_WIDTH*tkinter_scaling)}x{int(BASE_HEIGHT*tkinter_scaling)}+0+0")
 ver='3.0'
 root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
@@ -112,7 +127,7 @@ log_handler = log_handler_(ui_queue=ui_queue,
                            root=root,
                            icondir=icondir,
                            blur_callable=lambda: (blur_hexColor.get(),blur_window.get()),
-                           current_dir=current_dir
+                           appdata_dir=appdata_dir
                            )
 log_handle = log_handler.log_handle
 ytdlp_log_handle = log_handler.ytdlp_log_handler
@@ -285,11 +300,11 @@ def save_config():
     This function saves the current configuration to the config.json file. It gathers the current values of all relevant configuration variables and writes them to the file in JSON format.
     '''
     global CONFIG
-    with open(os.path.join(current_dir,'user_data','config.json'),'w') as f:
+    with open(os.path.join(appdata_dir,'JaTubePlayer','config.json'),'w') as f:
         json.dump(CONFIG,f,indent=4)
 def load_config():
     global CONFIG
-    with open(os.path.join(current_dir,'user_data','config.json'),'r') as f:
+    with open(os.path.join(appdata_dir,'JaTubePlayer','config.json'),'r') as f:
         CONFIG = json.load(f)
 load_config()
 
@@ -335,40 +350,45 @@ def get_selected_vid(event=None):
     except:pass
     try:
         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
-            ui_queue.put(lambda: star_btn.configure(
-                text='★',
-                fg_color='#D4A017',
-                hover_color='#E8B820',
-                text_color='#FFFDE7',
-                font=('Segoe UI', 13, 'bold')
-            ))
+            star_btn_ui_functions.star_starred()
         else:
-            ui_queue.put(lambda: star_btn.configure(
-                text='☆',
-                fg_color='#3A3A3A',
-                hover_color='#505050',
-                text_color='#B0B0B0',
-                font=('Segoe UI', 13, 'bold')
-            ))
+            star_btn_ui_functions.star_regular()
     except:pass
 
-
+class star_btn_ui_functions:
+    @staticmethod
+    def star_regular():
+        ui_queue.put(lambda: star_btn.configure(
+            text='☆',
+            fg_color='#3A3A3A',
+            hover_color='#505050',
+            text_color='#B0B0B0',
+            font=('Segoe UI', 13, 'bold')
+        ))
+    @staticmethod
+    def star_starred():
+        ui_queue.put(lambda: star_btn.configure(
+            text='★',
+            fg_color='#D4A017',
+            hover_color='#E8B820',
+            text_color='#FFFDE7',
+            font=('Segoe UI', 13, 'bold')
+        ))
 
 class Chrome_ext_server_ui_functions:
     '''
     for both ChromeExtServer and dnd_winsys
     '''
     @staticmethod
-    def direct_url():
+    def direct_url(reset_star = True):
         global playing_vid_mode,selected_song_number
 
         playing_vid_mode = 3
         selected_song_number = None
-
         media_data_list.clear()
+        if reset_star:
+            star_btn_ui_functions.star_regular()
 
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-        
         insert_textbox(playlist_name_textbox, "Direct URL")
     @staticmethod
     def show_star_video():
@@ -425,7 +445,7 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 1
         selected_song_number = 0
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        star_btn_ui_functions.star_regular()
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Single file")
 
     @staticmethod
@@ -433,7 +453,7 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 2
         selected_song_number = None
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        star_btn_ui_functions.star_regular()
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Folder/Multiple Files")
     
 
@@ -506,6 +526,9 @@ class AccountInfo:
         ui_queue.put(lambda: google_status_profile_pic_label.configure(image=None))
         insert_textbox(google_status_text, "No login yet!")
         google_status_text.configure(text_color = "#777777")
+
+
+
 
 def insert_textbox(widget:ctk.CTkTextbox,
                    text:str,
@@ -614,6 +637,8 @@ def setting_frame():
                 googlelogin_btn.configure(state="disabled")
                 if not account_handler.Start_wv_process(0):
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to login, please check the log for more details'))
+                    ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','since login failed, we have logged out the previous account if logged in, please login again'))
+                    google_logout_setting()
                     return
             except Exception as e:
                 log_handle(
@@ -810,7 +835,7 @@ def setting_frame():
                         else:
                             url = _dict.get('original_url')
                             title = _dict.get('title','unknown_title')
-                    if download_path.get() != '[player]/user_data/downloaded_file':
+                    if download_path.get() != '[appdata]/JaTubePlayer/saved_file':
                         if not os.path.exists(download_path.get()):
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist'))
                             is_downloading.set(False)
@@ -826,10 +851,11 @@ def setting_frame():
                         target_vid_url=url,
                         title=title,
                         download_path=download_path.get(),
-                        current_dir=current_dir,
+                        _internal_dir=_internal_dir,
                         icondir=icondir,
                         ver=ver,
                         root=root,   
+                        appdata_dir=appdata_dir,
                         ytdlp_log_handle=ytdlp_log_handle,
                         is_downloading = is_downloading,
                         deno_path=deno_exe,
@@ -1387,8 +1413,8 @@ def setting_frame():
 
         def set_default_download_path():
             if messagebox.askyesno(f'JaTubePlayer {ver}','This will reset the download path to default\nProcceed?'):
-                CONFIG['download_path'] = "[player]/user_data/downloaded_file" 
-                download_path.set("[player]/user_data/downloaded_file")
+                CONFIG['download_path'] = "[appdata]/JaTubePlayer/saved_file" 
+                download_path.set("[appdata]/JaTubePlayer/saved_file")
                 save_config()
                 insert_textbox(download_path_textbox, download_path.get())
                 
@@ -1494,7 +1520,7 @@ def setting_frame():
 
         player_tab = setting_tab.add("Advanced Player setting")
         account_playlist_tab = setting_tab.add("Account & Playlist")
-        download_tab = setting_tab.add("Download")
+        download_tab = setting_tab.add("Saving")
         quick_init_tab = setting_tab.add("Quick Init")
         external_services_tab = setting_tab.add("External Services")
         version_info_tab = setting_tab.add("Version Info")
@@ -1704,7 +1730,7 @@ def setting_frame():
         download_path_frame.grid_columnconfigure(1, weight=1)
         download_path_frame.grid_columnconfigure(2, weight=0)
 
-        download_path_title = ctk.CTkLabel(download_path_frame, text='  IV. Download Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
+        download_path_title = ctk.CTkLabel(download_path_frame, text='  IV. Saving Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
         download_path_label = ctk.CTkLabel(download_path_frame, font=('Arial', 12), text='Save to:', text_color='#B0B0B0')
         download_path_textbox = ctk.CTkTextbox(download_path_frame, font=('Arial', 12), height=28, text_color='#C8C8C8',
                                                fg_color='#1a1a1a', corner_radius=6, wrap='none', activate_scrollbars=False)
@@ -1717,7 +1743,7 @@ def setting_frame():
                                                        text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # Download Action
-        downloadselectedsong = ctk.CTkButton(download_tab, text='Download Selected Video', width=400,
+        downloadselectedsong = ctk.CTkButton(download_tab, text='Save Selected Video', width=400,
                                               command=lambda:threading.Thread(daemon=True,target=download_to_loacl_setting).start(),
                                               text_color='#86C98A', font=('Arial', 14, 'bold'),
                                               fg_color='#3A3A3A', hover_color='#314735', corner_radius=8,
@@ -2592,7 +2618,15 @@ def history_control(mode:int):
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
                     selected_song_number = media_data_list.vid_url.index(playing_url)
+                    playlisttreebox.selection_set(selected_song_number)
                     playlisttreebox.see(selected_song_number)
+
+                    if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
+                        star_btn_ui_functions.star_starred()
+                    else:
+                        star_btn_ui_functions.star_regular()
+                            
+
         except Exception as e:
             log_handle(
                 content=f"Error in _history_thread: {e}",
@@ -2759,7 +2793,7 @@ def youtube_search_thread():
         media_data_list = media_list_page_controller.media_data_list
 
         insert_textbox(playlist_name_textbox, f"Search: {searchentry.get()}")
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        star_btn_ui_functions.star_regular()
 
 
 
@@ -2788,7 +2822,7 @@ def get_starred_vid(event=None):
         )
         insert_textbox(playlist_name_textbox, "Starred Videos")
         ui_queue.put(lambda: page_num_label.configure(text=''))
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        star_btn_ui_functions.star_regular()
         
         loadingplaylist = False
                 
@@ -2824,7 +2858,7 @@ def switch_starred_vid(event=None):
     elif playing_vid_mode == 3:
         url_or_path = playing_vid_info_dict['original_url']
         title = playing_vid_info_dict['title']
-        try:thumb = playing_vid_info_dict['thumbnails'][0]['url'] if playing_vid_info_dict['thumbnails'] else None
+        try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
         except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
         finally:thumb = thumb if thumb else None
         channel = playing_vid_info_dict['channel']
@@ -2833,7 +2867,7 @@ def switch_starred_vid(event=None):
 
     if star_vid_handle.search(url_or_path):
         star_vid_handle.remove(url_or_path)
-        ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+        star_btn_ui_functions.star_regular()
 
         ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
 
@@ -2871,7 +2905,7 @@ def switch_starred_vid(event=None):
                         channel=channel,
                         )
         if res:
-            ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+            star_btn_ui_functions.star_starred()
             ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
         else:
             ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
@@ -2932,11 +2966,7 @@ def update_playing_pos_local_and_chrome():
                     ui_queue.put(lambda: player_loading_label.configure(text="", text_color='#FF6B35'))
             if player.eof_reached and length != -1: ## video ends
                 if selected_song_number != None:
-                    log_handle(
-                        content=f"playing_vid_mode {playing_vid_mode}",
-                        errtype="info",
-                        component="update pos local"
-                    )
+
                     if playing_vid_mode in [1,2,4]:
                         if player_mode_selector.get() =='continue':
                             if playing_vid_mode != 1:
@@ -2967,10 +2997,9 @@ def update_playing_pos_local_and_chrome():
 
 
                         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
-                            ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                            ui_queue.put(lambda: star_btn_ui_functions.star_starred())
                         else:
-                            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
-                        
+                            ui_queue.put(lambda: star_btn_ui_functions.star_regular())
 
                 elif playing_vid_mode in [0,3]:### MPV option keep_open
                     
@@ -3062,9 +3091,9 @@ def update_playing_pos_yt():
 
 
                             if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
-                                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                                ui_queue.put(lambda: star_btn_ui_functions.star_starred())
                             else:
-                                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+                                ui_queue.put(lambda: star_btn_ui_functions.star_regular())
 
                     else:
                         stop_playing_video()
@@ -3339,9 +3368,9 @@ def playprevnext(direction:int)->None:
                 load_thread_queue.put((media_data_list.vid_url[media_data_list.current_playing_idx_num],None))
 
             if star_vid_handle.search(media_data_list.vid_url[media_data_list.current_playing_idx_num]):
-                ui_queue.put(lambda: star_btn.configure(text='★', fg_color='#D4A017', hover_color='#E8B820', text_color='#FFFDE7', font=('Segoe UI', 13, 'bold')))
+                ui_queue.put(lambda: star_btn_ui_functions.star_starred())
             else:
-                ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+                ui_queue.put(lambda: star_btn_ui_functions.star_regular())
 
             log_handle(
                 content=f"[next]current playing idx is {media_data_list.current_playing_idx_num}, selected song number is {selected_song_number}",
@@ -3418,7 +3447,7 @@ def load_thread():  ### add every try except to a new log system for next update
             and messagebox.askokcancel(f'JaTubePlayer {ver}', 'The Video is already loading, Sure to load again?')
             or loadingvideo == False
         ):
-            if "playlist" in direct_url:
+            if direct_url and "playlist" in direct_url:
                 messagebox.showerror(f"Jatubeplayer {ver}",
                                      "this is a playlist, you cannot play it!")
                 continue
@@ -3842,7 +3871,7 @@ def load_local_files(mode:int,
         
     if result is None:
             selected_song_number = None
-            ui_queue.put(lambda: star_btn.configure(text='☆', fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0', font=('Segoe UI', 13, 'bold')))
+            ui_queue.put(lambda: star_btn_ui_functions.star_regular())
             stop_playing_video()
 
             insert_textbox(playlist_name_textbox, "Local File")
@@ -4545,7 +4574,7 @@ def _init_load_extra_objs():
 
     from utils.Account_token import account_token
     account_token_handle = account_token(
-        current_dir=current_dir,
+        appdata_dir=appdata_dir,
         log_handle=log_handle
     )
     from history_page.history_page import history_page
@@ -4576,11 +4605,11 @@ def _init_load_extra_objs():
                                       deno_exe = lambda: deno_exe,
                                       ytdlp_log_handle = lambda: ytdlp_log_handle,
                                       cookie = lambda: account_handler.get_cookie(),
-                                      config_dir=(os.path.join(current_dir,'user_data','config.json'))
+                                      config_dir=(os.path.join(appdata_dir,'JaTubePlayer','config.json'))
                                       )
     
     media_data_list.vid_url = []
-    star_vid_handle = star_vid_handler(current_dir=current_dir,
+    star_vid_handle = star_vid_handler(appdata_dir=appdata_dir,
                                         get_info_loader=get_info_loader)
     
 
@@ -4595,10 +4624,11 @@ def _init_load_extra_objs():
     
     
     account_handler = account_handle(current_dir=current_dir,
-                                            ctk_messagebox=messagebox,
-                                            log_handle=log_handle,
-                                            account_info_handler=account_info_handler,
-                                            account_token_handle=account_token_handle)
+                                     app_data_dir=appdata_dir,
+                                    ctk_messagebox=messagebox,
+                                    log_handle=log_handle,
+                                    account_info_handler=account_info_handler,
+                                    account_token_handle=account_token_handle)
     
             
     innertube_handler = innertube_handle(account_handle=account_handler,
@@ -4621,6 +4651,8 @@ def _init_load_extra_objs():
         load_thread_queue=load_thread_queue,
         playlist_retriever=playlist_retriever,
         history_page_handler=history_page_handler,
+        star_vid_handler=star_vid_handle,
+        star_btn_ui_functions=star_btn_ui_functions,
         messagebox=messagebox,
         dnd_ui_functions = dnd_ui_functions,
         Chrome_ext_server_ui_functions=Chrome_ext_server_ui_functions,
@@ -4780,10 +4812,11 @@ def _extra_startup_imports():
     
     # YT-DLP Update
     t = time.time()
-    from utils.auto_ytdlp_update import ytdlp_update 
+    from utils.ytdlp_update.downloader import ytdlp_update 
     ytdlp_updater = ytdlp_update(
         _internal_dir = _internal_dir,
         root=root,
+        appdata_dir=appdata_dir,
         icondir=icondir,
         log_handle=log_handle
     )

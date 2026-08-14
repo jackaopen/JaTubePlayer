@@ -402,12 +402,8 @@ class DropHandler(object):
                                     errtype='info',
                                     component='drag_drop',
                                 )
-                                self.log_handle(
-                                    content=f"Invalid URL dropped: {dropped_url}",
-                                    errtype='warning',
-                                    component='drag_drop',
-                                )
-                                self.media_list_page_control.handle_url_drop(dropped_url.strip())
+                               
+                                self.media_list_page_control.handle_url_drop(dropped_url.strip().split("&")[0])
                                 self.log_handle(
                                     content=f" see url : {dropped_url}",
                                     errtype='info',
@@ -415,9 +411,14 @@ class DropHandler(object):
                                 )
                                 while not self.URL_DropHandler.url_queue.empty():
                                     self.URL_DropHandler.url_queue.get()
-                                self.ext_ui_functions.direct_url()
+                                self.ext_ui_functions.direct_url(reset_star = False)
                                 break
                         else:
+                            self.log_handle(
+                                content=f"Invalid URL dropped: {dropped_url}",
+                                errtype='warning',
+                                component='drag_drop',
+                            )
                             self.ui_queue.put(self.messagebox.showerror(f'JaTubePlayer ',f'Invalid URL dropped!'))
                             
                     time.sleep(0.5)

@@ -6,19 +6,19 @@ import queue
 
 class star_vid_handler:
     def __init__(self,
-                current_dir:str,
+                appdata_dir:str,
                 get_info_loader:get_info_loader_,
                 ):
-        self.current_dir = current_dir
+        self.appdata_dir = appdata_dir
         self.get_info_loader = get_info_loader
         self._reload()
         
     def _reload(self):
-        with open(os.path.join(self.current_dir,'user_data','starred_vid.json'),'rb') as f:
+        with open(os.path.join(self.appdata_dir,'JaTubePlayer','starred_vid.json'),'rb') as f:
             self.starred_vid_dict = json.load(f)
 
     def _save(self):
-        with open(os.path.join(self.current_dir,'user_data','starred_vid.json'),'w') as f:
+        with open(os.path.join(self.appdata_dir,'JaTubePlayer','starred_vid.json'),'w') as f:
             json.dump(self.starred_vid_dict,f,indent=4)
 
     def add(self,
@@ -98,27 +98,7 @@ class star_vid_handler:
         
 
 
-if __name__ == "__main__":
-    class ytdlp_log_handler():
-        def debug(self, msg):
-            print(msg)
-        def info(self, msg):
-            print(msg)
-        def warning(self, msg):
-            print(f"[WARN] {msg}")
-        def error(self, msg):
-            print(f"[ERROR] {msg}")
-    import yt_dlp
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    star_vid_handler = star_vid_handler(current_dir=current_dir,
-                                        yt_dlp=yt_dlp,
-                                        deno_path=os.path.join(current_dir,'_internal','deno'),
-                                        yt_dlp_log_handler=ytdlp_log_handler())
-    
-    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    star_vid_handler.add(url=url)
-    print(star_vid_handler.search(url=url))
-    star_vid_handler.remove(url=url)
+
             
 
 

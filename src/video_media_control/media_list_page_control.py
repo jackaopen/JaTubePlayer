@@ -6,6 +6,7 @@ from ui.Treeview_and_thumbnail import ThumbnailLoader
 from .playlist_retriever import playlist_retriever_,playlist_type
 from .star_vid import star_vid_handler
 from .local_media_handle import local_media_handle
+from .star_vid import star_vid_handler
 from notification.ctkmessagebox import ctk_messagebox
 from history_page.history_page import history_page
 from typing import Callable
@@ -53,6 +54,8 @@ class MediaList_PageControl_:
                  load_thread_queue:queue.Queue,
                  playlist_retriever:playlist_retriever_,
                  history_page_handler:history_page,
+                 star_vid_handler:star_vid_handler,
+                 star_btn_ui_functions:object,
                  dnd_ui_functions:object,
                  Chrome_ext_server_ui_functions:object,
                  messagebox:ctk_messagebox,
@@ -74,6 +77,8 @@ class MediaList_PageControl_:
         self.thumbnail_loader = thumbnail_loader
         self.yt_playlist_retriever = playlist_retriever
         self.history_page_handler = history_page_handler
+        self.star_vid_handler = star_vid_handler
+        self.star_btn_ui_functions = star_btn_ui_functions
         self.Chrome_ext_server_ui_functions = Chrome_ext_server_ui_functions
         self.page_num_label = page_num_label # for controling UI
         self.messagebox = messagebox
@@ -298,6 +303,18 @@ class MediaList_PageControl_:
 
     def handle_url_drop(self, url:str):
         self._record_history()
+        if self.star_vid_handler.search(url):
+            self.star_btn_ui_functions.star_starred()
+            self.log_handle(content=f"URL dropped: {url} is a starred video",
+                            errtype='info',
+                            component='page_control',
+            )
+        else:
+            self.star_btn_ui_functions.star_regular()
+            self.log_handle(content=f"URL dropped: {url} is not a starred video",
+                            errtype='info',
+                            component='page_control',
+            )
         self.media_type = MediaType.DIRECT_URL_DROP
         self.log_handle(
             content=f"URL dropped: {url}",
@@ -477,8 +494,9 @@ class MediaList_PageControl_:
                 
 
             if self.total_page != (len(self.media_data_list.vid_url) + 49) // 50:
+                if self.media_data_list.current_media_page == self.total_page:
+                    self.media_data_list.current_media_page -= 1
                 self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
-                self.media_data_list.current_media_page -=1
 
             self._insert_to_ui_queue()
             if self.current_page == self.media_data_list.current_media_page:

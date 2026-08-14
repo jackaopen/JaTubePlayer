@@ -33,13 +33,13 @@ class log_handler_:
                 force_stop_loading:Callable[[], None],
                 root:tk.Tk,
                 icondir:str,
-                current_dir:str,
+                appdata_dir:str,
                 blur_callable:Callable[[],tuple[str,bool]]
                 ):
         '''
         blur_callable should retrun tuple of (hexColor,blur_window:bool)
         '''
-        self.log_file_io = open(os.path.join(current_dir,"user_data", "JaTubePlayer_log.txt"), "w", encoding="utf-8")
+        self.log_file_io = open(os.path.join(appdata_dir,"JaTubePlayer", "JaTubePlayer_log.txt"), "w", encoding="utf-8")
         self.log_file_io_queue = queue.Queue()
         self.log_handle_frame = log_handle_frame(
             root=root,
@@ -95,7 +95,7 @@ class log_handler_:
         content = str(content)
 
         timestamp = datetime.now().strftime("%H:%M:%S")
-        line = f"{timestamp} | {level.upper():<7} | {component:<12} | {content}"
+        line = f"{timestamp} | {level.upper():<10} | {component:<25} | {content}"
 
         self.log_queue.append(line)
         self.log_file_io_queue.put(line)
