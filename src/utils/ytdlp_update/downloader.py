@@ -139,11 +139,18 @@ class ytdlp_update:
             os.remove(self.hash_sig_path)
         
 
-    def download_and_extract_dlp(self)-> bool | str:
-        latest_version = get_latest_dlp_version()
+    def download_and_extract_dlp(self,
+                                 using_nightly:bool=False)-> bool | str:
+        
         self.start_updater = False
         downloader_popup = self._build_popup(self.root,self.icondir)
         self.clear_downloaded_files()
+        domain = "yt-dlp"
+        if using_nightly:
+            domain = "yt-dlp-nightly-builds"
+            latest_version = get_latest_dlp_version(using_nightly=True)
+        else:
+            latest_version = get_latest_dlp_version()
     
         
         def _download():
@@ -151,7 +158,7 @@ class ytdlp_update:
             try:
                 # ytdlp folder
                 
-                url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS'
+                url = f'https://github.com/yt-dlp/{domain}/releases/latest/download/SHA2-256SUMS'
 
                 response = requests.get(url, stream=True,timeout=10)
                 self.label.configure(text=f"Downloading SHA2-256 - version {latest_version}")
@@ -170,7 +177,7 @@ class ytdlp_update:
 
 
 
-                url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS.sig'
+                url = f'https://github.com/yt-dlp/{domain}/releases/latest/download/SHA2-256SUMS.sig'
                 
                 response = requests.get(url, stream=True,timeout=10)
                 self.label.configure(text=f"Downloading SHA2-256 signature - version {latest_version}")
@@ -185,7 +192,7 @@ class ytdlp_update:
                     raise ConnectionError
                 
                 # ytdlp folder
-                url = f'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.tar.gz'
+                url = f'https://github.com/yt-dlp/{domain}/releases/latest/download/yt-dlp.tar.gz'
                 response = requests.get(url, stream=True,timeout=10)
                 self.label.configure(text=f"Downloading yt-dlp.tar.gz - version {latest_version}")
 
@@ -212,7 +219,7 @@ class ytdlp_update:
   
                 self.label.configure(text=f"Downloading yt-dlp.exe - version {latest_version}")
                 downloader_popup.update()
-                response = requests.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', stream=True,timeout=10)
+                response = requests.get(f'https://github.com/yt-dlp/{domain}/releases/latest/download/yt-dlp.exe', stream=True,timeout=10)
                 current_len = 0
                 length = int(response.headers.get('content-length',1))
                 

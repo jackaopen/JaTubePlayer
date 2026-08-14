@@ -267,6 +267,7 @@ discord_presence_show_playing = tk.BooleanVar()
 discord_idle_presence_wording = tk.StringVar()
 fullscreenmode = tk.IntVar()
 ytdlp_use_cookie = tk.BooleanVar()
+ytdlp_use_nightly_build = tk.BooleanVar()
 current_ctk_scaling = 1.0
 fullscreen_loading = False
 '''
@@ -1193,7 +1194,7 @@ def setting_frame():
             global yt_dlp,utils,ytdlpver
             ui_queue.put(lambda: auto_update_ytdlp_btn.configure(state='disabled'))
             ui_queue.put(lambda: auto_update_ytdlp_btn.configure(text='⏳ updating...'))
-            result = ytdlp_updater.download_and_extract_dlp()
+            result = ytdlp_updater.download_and_extract_dlp(using_nightly=ytdlp_use_nightly_build.get())
             if not result:
                 log_handle(
                     content="yt-dlp update failed or cancelled",
@@ -1516,6 +1517,18 @@ def setting_frame():
             playlist_retriever.maxresults_recommendation = new_values["Recommendations"]
             media_list_page_controller.max_search_result_count = new_values["search"]
 
+        def ytdlp_switch_use_nightly_build():
+            '''Refresh the displayed release for the selected yt-dlp channel.'''
+            use_nightly = ytdlp_use_nightly_build.get()
+            CONFIG['ytdlp_use_nightly_build'] = use_nightly
+            save_config()
+
+            def _get_selected_ver():
+                latest_version = get_latest_dlp_version(using_nightly=use_nightly)
+                label = f'Nightly: {latest_version}' if use_nightly else str(latest_version)
+                ui_queue.put(lambda value=label: ytdlp_ver_lastest_label.configure(text=value))
+
+            threading.Thread(target=_get_selected_ver, daemon=True).start()
 
 
         player_tab = setting_tab.add("Advanced Player setting")
@@ -1947,6 +1960,11 @@ def setting_frame():
                                                text_color='#86C98A', font=('Arial', 13, 'bold'),
                                                fg_color='#3A3A3A', hover_color='#314735',
                                                border_width=2, border_color='#4F8A55')
+        ytdlp_use_nightly_build_checkbtn = ctk.CTkCheckBox(ytdlp_frame, text='Nightly build',
+                                                            variable=ytdlp_use_nightly_build,
+                                                            command=ytdlp_switch_use_nightly_build,
+                                                            fg_color='#3A3A3A', hover_color='#505050',
+                                                            text_color='#C8C8C8', font=('Arial', 12))
 
         # JaTubePlayer Section
         player_title = ctk.CTkLabel(player_frame, text='  \u25b8 JaTubePlayer', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
@@ -1965,11 +1983,11 @@ def setting_frame():
         player_current_versions_frame_title = ctk.CTkLabel(player_current_versions_frame, text='Current', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
         player_latest_versions_frame_title = ctk.CTkLabel(player_latest_versions_frame, text='Latest', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
 
-        ytdlp_ver_current_label = ctk.CTkLabel(ytdlp_current_versions_frame, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
-        ytdlp_ver_lastest_label = ctk.CTkLabel(ytdlp_latest_versions_frame, font=('Arial', 14), text_color='#80C8E0', anchor='w')
+        ytdlp_ver_current_label = ctk.CTkLabel(ytdlp_current_versions_frame, width=220, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
+        ytdlp_ver_lastest_label = ctk.CTkLabel(ytdlp_latest_versions_frame, width=220, font=('Arial', 14), text_color='#80C8E0', anchor='w')
 
-        player_ver_current_label = ctk.CTkLabel(player_current_versions_frame, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
-        player_ver_latest_label = ctk.CTkLabel(player_latest_versions_frame, font=('Arial', 14), text_color='#80C8E0', anchor='w')
+        player_ver_current_label = ctk.CTkLabel(player_current_versions_frame, width=220, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
+        player_ver_latest_label = ctk.CTkLabel(player_latest_versions_frame, width=220, font=('Arial', 14), text_color='#80C8E0', anchor='w')
 
         # Settings
         auto_check_ver_btn = ctk.CTkCheckBox(version_info_tab, text='Check version at startup', variable=auto_check_ver, command=save_autovercheck_option_ver,
@@ -2123,7 +2141,7 @@ def setting_frame():
                     ui_queue.put(lambda: ytdlp_ver_current_label.configure(text=f'{ytdlpver.__version__}'))
                     ui_queue.put(lambda: player_ver_current_label.configure(text=f'{ver}'))
                     ui_queue.put(lambda v=get_latest_player_version(): player_ver_latest_label.configure(text=f'{v}'))
-                    ui_queue.put(lambda v=get_latest_dlp_version(): ytdlp_ver_lastest_label.configure(text=f'{v}'))
+                    ui_queue.put(lambda v=get_latest_dlp_version(ytdlp_use_nightly_build.get()): ytdlp_ver_lastest_label.configure(text=f'{v}'))
                 else:
                     ui_queue.put(lambda: ytdlp_ver_lastest_label.configure(text=f'No internet'))
                     ui_queue.put(lambda: ytdlp_ver_current_label.configure(text=f'{ytdlpver.__version__}'))
@@ -2341,6 +2359,7 @@ def setting_frame():
         ytdlp_latest_versions_frame.grid(row=1, column=1, padx=(4, 24), pady=5, sticky="ew")
         go_ytdlp_web.grid(row=2, column=1, padx=(4, 24), pady=(5, 12), sticky="e")
         auto_update_ytdlp_btn.grid(row=2, column=0, padx=(24, 4), pady=(5, 12), sticky="w")
+        ytdlp_use_nightly_build_checkbtn.grid(row=2, column=0, padx=(154, 4), pady=(5, 12), sticky="w")
         
         player_frame.grid(row=1, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
         player_title.grid(row=0, column=0, columnspan=2, padx=8, pady=(10, 6), sticky="w")
@@ -2350,14 +2369,14 @@ def setting_frame():
 
         # Version sub-frame layouts
         ytdlp_current_versions_frame_title.grid(row=0, column=0, padx=12, pady=(8, 2), sticky="w")
-        ytdlp_ver_current_label.grid(row=1, column=0, padx=12, pady=(0, 8), sticky="w")
+        ytdlp_ver_current_label.grid(row=1, column=0, padx=13, pady=(0, 8), sticky="w")
         ytdlp_latest_versions_frame_title.grid(row=0, column=0, padx=12, pady=(8, 2), sticky="w")
-        ytdlp_ver_lastest_label.grid(row=1, column=0, padx=12, pady=(0, 8), sticky="w")
+        ytdlp_ver_lastest_label.grid(row=1, column=0, padx=13, pady=(0, 8), sticky="w")
 
         player_current_versions_frame_title.grid(row=0, column=0, padx=12, pady=(8, 2), sticky="w")
-        player_ver_current_label.grid(row=1, column=0, padx=12, pady=(0, 8), sticky="w")
+        player_ver_current_label.grid(row=1, column=0, padx=13, pady=(0, 8), sticky="w")
         player_latest_versions_frame_title.grid(row=0, column=0, padx=12, pady=(8, 2), sticky="w")
-        player_ver_latest_label.grid(row=1, column=0, padx=12, pady=(0, 8), sticky="w")
+        player_ver_latest_label.grid(row=1, column=0, padx=13, pady=(0, 8), sticky="w")
 
         auto_check_ver_btn.grid(row=2, column=0, columnspan=2, padx=20, pady=(8, 10), sticky="w")
 
@@ -4407,7 +4426,10 @@ def init_read_config():
         if CONFIG['hover_fullscreen']:hover_fullscreen.set(True)
         else:hover_fullscreen.set(False)
 
-        
+        if CONFIG['ytdlp_use_nightly_build']:
+            ytdlp_use_nightly_build.set(True)
+        else:
+            ytdlp_use_nightly_build.set(False)
         download_path.set(CONFIG['download_path'])
         demuxer_max_bytes.set(CONFIG['cache']['demuxer_max_bytes'])
         demuxer_max_back_bytes.set(CONFIG['cache']['demuxer_max_back_bytes'])
@@ -4455,7 +4477,7 @@ def init_read_config():
 def init_ver_check():
     def _ver_check():
         if CONFIG['vercheck']:
-            latest_dlp = get_latest_dlp_version()
+            latest_dlp = get_latest_dlp_version(ytdlp_use_nightly_build.get())
             if ytdlpver.__version__ != latest_dlp:
                 ui_queue.put(lambda ld=latest_dlp: ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Your yt_dlp is not the newest!\nlatest: {ld}  yours: {ytdlpver.__version__}', duration='short', icon=icondir))
             

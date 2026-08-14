@@ -1,9 +1,12 @@
 import requests
 import re
-def get_latest_dlp_version():
+def get_latest_dlp_version(using_nightly=False):
     for _ in range(3):
         try:
-            response = requests.head('https://github.com/yt-dlp/yt-dlp/releases/latest', timeout=5, allow_redirects=True)
+            if using_nightly:
+                response = requests.head('https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest', timeout=5, allow_redirects=True)
+            else:
+                response = requests.head('https://github.com/yt-dlp/yt-dlp/releases/latest', timeout=5, allow_redirects=True)
             if response.status_code == 200:
                 version = response.url.split('/tag/')[-1]
                 return version
