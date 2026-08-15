@@ -387,7 +387,6 @@ class Chrome_ext_server_ui_functions:
 
         playing_vid_mode = 3
         selected_song_number = None
-        media_data_list.clear()
         if reset_star:
             star_btn_ui_functions.star_regular()
 
@@ -2868,6 +2867,7 @@ def get_starred_vid(event=None):
             errtype='info',
             component='playlist',
         )
+        _prev_playlistname = playlist_name_textbox.get(0.0,tk.END).strip()
         insert_textbox(playlist_name_textbox, "Starred Videos")
         ui_queue.put(lambda: page_num_label.configure(text=''))
         star_btn_ui_functions.star_regular()
@@ -2875,7 +2875,8 @@ def get_starred_vid(event=None):
         loadingplaylist = False
                 
         media_list_page_controller.star_video_init_and_reload(
-            star_vid_handle)
+            star_vid_handle,
+            prev_playlist_name=_prev_playlistname)
         media_data_list = media_list_page_controller.media_data_list
             
 

@@ -45,8 +45,9 @@ class ChromeExtensionServer:
             errtype='info',
             component='chrome_ext',
         )
-        self.ext_ui_functions.direct_url()
-        self.media_list_page_controller.handle_url_drop(url)
+        
+        if self.media_list_page_controller.handle_url_drop(url):
+            self.ext_ui_functions.direct_url()
 
 
 

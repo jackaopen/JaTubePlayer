@@ -64,6 +64,11 @@ class history_page:
                 component="history",
             )
             return True
+        self.log_handle(
+            content=f"Failed to record history: current_playing_url is empty, media_data length: {len(media_data.vid_url)}",
+            errtype='info',
+            component="history",
+        )
         return False
 
     def read_history_backward(self)->dict|None:

@@ -313,7 +313,11 @@ class DropHandler(object):
                     except queue.Empty:
                         dropped_url = None
 
-                
+                    if self.media_list_page_control._busy and (file_paths or dropped_url):
+                        self.messagebox.showinfo("Jatubeplayer", "Please wait until the current operation is finished before dropping files or URLs.")
+                        time.sleep(0.5)
+                        continue
+                        
                     if file_paths:
                         self.selected_song_number = None
                         self.media_data_list.clear()
@@ -402,17 +406,17 @@ class DropHandler(object):
                                     errtype='info',
                                     component='drag_drop',
                                 )
-                               
-                                self.media_list_page_control.handle_url_drop(dropped_url.strip().split("&")[0])
-                                self.log_handle(
-                                    content=f" see url : {dropped_url}",
-                                    errtype='info',
-                                    component='drag_drop',
-                                )
-                                while not self.URL_DropHandler.url_queue.empty():
-                                    self.URL_DropHandler.url_queue.get()
-                                self.ext_ui_functions.direct_url(reset_star = False)
-                                break
+                            
+                                if self.media_list_page_control.handle_url_drop(dropped_url.strip().split("&")[0]):
+                                    self.log_handle(
+                                        content=f" see url : {dropped_url}",
+                                        errtype='info',
+                                        component='drag_drop',
+                                    )
+                                    while not self.URL_DropHandler.url_queue.empty():
+                                        self.URL_DropHandler.url_queue.get()
+                                    self.ext_ui_functions.direct_url(reset_star = False)
+                                    break
                         else:
                             self.log_handle(
                                 content=f"Invalid URL dropped: {dropped_url}",
@@ -421,6 +425,7 @@ class DropHandler(object):
                             )
                             self.ui_queue.put(self.messagebox.showerror(f'JaTubePlayer ',f'Invalid URL dropped!'))
                             
+                    
                     time.sleep(0.5)
                 except Exception as err:
                     self.log_handle(

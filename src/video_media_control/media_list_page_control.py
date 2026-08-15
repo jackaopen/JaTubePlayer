@@ -136,7 +136,7 @@ class MediaList_PageControl_:
                 errtype='error',
                 component='page_control',
             )
-            
+        print(f"record history: current_playing_url={current_playing_url}, media_type={self.media_type}, playlistname={playlistname or self._get_cur_playlist_title()}, media_data length={len(self.media_data_list.vid_url)}")
         result = self.history_page_handler.record_history(current_playing_url=current_playing_url, 
                                                 media_data=self.media_data_list,
                                                 media_type=self.media_type,
@@ -231,8 +231,9 @@ class MediaList_PageControl_:
 
     def star_video_init_and_reload(self,
                                     star_vid_handler_:star_vid_handler,
+                                    prev_playlist_name:str=None
                                     ):
-        self._record_history()
+        self._record_history(playlistname=prev_playlist_name)
         self.current_page = 1
         self.media_type = MediaType.STARRED_VIDEO
         
@@ -275,7 +276,7 @@ class MediaList_PageControl_:
             else:
                 return False
         else: # dnd called this, media_data_list is already filled
-            self.media_data_list = media_data_list
+            self.media_data_list = copy.deepcopy(media_data_list)
         
 
         self.media_data_list.current_media_page = 1  
@@ -302,40 +303,53 @@ class MediaList_PageControl_:
     
 
 
-    def handle_url_drop(self, url:str):
-        self._record_history()
-        if self.star_vid_handler.search(url):
-            self.star_btn_ui_functions.star_starred()
-            self.log_handle(content=f"URL dropped: {url} is a starred video",
-                            errtype='info',
-                            component='page_control',
+    def handle_url_drop(self, url:str)->bool:
+        if not self._busy:
+            self._record_history()
+            if self.star_vid_handler.search(url):
+                self.star_btn_ui_functions.star_starred()
+                self.log_handle(content=f"URL dropped: {url} is a starred video",
+                                errtype='info',
+                                component='page_control',
+                )
+            else:
+                self.star_btn_ui_functions.star_regular()
+                self.log_handle(content=f"URL dropped: {url} is not a starred video",
+                                errtype='info',
+                                component='page_control',
+                )
+            self.media_type = MediaType.DIRECT_URL_DROP
+            self.log_handle(
+                content=f"URL dropped: {url}",
+                errtype='info',
+                component='page_control',
             )
+            self.media_data_list.clear()
+            self.thumbnail_loader.clear_thumbnails()
+            self.log_handle(
+                content=f'handle url drop, url={url}',
+                errtype='info',
+                component='page_control',
+            )
+            self.load_thread_queue.put((None,url))
+            self.log_handle(
+                content=f'put url drop to load_thread_queue, url={url}',
+                errtype='info',
+                component='page_control',
+            )
+            return True
         else:
-            self.star_btn_ui_functions.star_regular()
-            self.log_handle(content=f"URL dropped: {url} is not a starred video",
-                            errtype='info',
-                            component='page_control',
+            self.log_handle(
+                content=f"URL dropped: {url} but the media list is busy loading, please wait",
+                errtype='warning',
+                component='page_control',
             )
-        self.media_type = MediaType.DIRECT_URL_DROP
-        self.log_handle(
-            content=f"URL dropped: {url}",
-            errtype='info',
-            component='page_control',
-        )
-        self.media_data_list.clear()
-        self.thumbnail_loader.clear_thumbnails()
-        self.log_handle(
-            content=f'handle url drop, url={url}',
-            errtype='info',
-            component='page_control',
-        )
-        self.load_thread_queue.put((None,url))
-        self.log_handle(
-            content=f'put url drop to load_thread_queue, url={url}',
-            errtype='info',
-            component='page_control',
-        )
-        
+            self.messagebox.showerror(
+                "JatubePlayer",
+                "Please wait, the media list is busy loading. Try again later.",
+            )
+            return False
+            
 
     def search_init_and_reload(self,
                                 media_data_list:media_data_list_template,
