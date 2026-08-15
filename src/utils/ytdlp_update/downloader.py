@@ -4,7 +4,7 @@ import requests,os,time,customtkinter as ctk
 from utils.get_latest_version import get_latest_dlp_version
 from notification.wintoast_notify import ToastNotification
 import hashlib
-from utils.ytdlp_update.run_updater import run_as_admin_and_wait
+from utils.ytdlp_update.run_updater import run_as_admin_and_wait,UpdaterState
 import json
 CHUNK_SIZE = 256*1024
 class ytdlp_update:
@@ -31,7 +31,7 @@ class ytdlp_update:
         self.ytdlpexe_path = os.path.join(self.ytdlp_update_dir, 'new_yt-dlp.exe')
         self.hash_sum_path = os.path.join(self.ytdlp_update_dir, 'SHA2-256SUMS')
         self.hash_sig_path = os.path.join(self.ytdlp_update_dir, 'SHA2-256SUMS.sig')
-        self.result_json_path = os.path.join(self.ytdlp_update_dir, 'update_result.json')
+        self.result_json_path = os.path.join(self._internal_dir, 'update_result.json')
 
 
     def _build_popup(self,root:ctk.CTkToplevel|ctk.CTk,icondir:str="")->ctk.CTkToplevel:
@@ -107,26 +107,52 @@ class ytdlp_update:
             self.log_handle(content=f"hash are correct",
                         errtype='info',
                         component='download_ytdlp')
-            exit_code = run_as_admin_and_wait(
+            state, exit_code = run_as_admin_and_wait(
                 exe_path=self.updater_path,
-                app_data_dir=self.appdata_dir
-                    )
-            if exit_code != 0:
-                
+                app_data_dir=self.appdata_dir)
+
+            if state is UpdaterState.CANCELLED:
+                self.log_handle(
+                    content="Updater permission request cancelled",
+                    errtype="warning",
+                    component="download_ytdlp",
+                )
                 return False
-            return True
+
+            if state is UpdaterState.TIMED_OUT:
+                self.log_handle(
+                    content="Updater timed out and may still be running",
+                    errtype="error",
+                    component="download_ytdlp",
+                )
+                return False
+
+            with open(self.result_json_path, encoding="utf-8") as file:
+                result_json = json.load(file)
+
+                self.log_handle(
+                    content=f"updater result: {result_json.get('message', 'unknown error')}",
+                    errtype=result_json.get("status", "error"),
+                    component="download_ytdlp-result")
+
+            return (
+                exit_code == 0
+                and result_json.get("status") == "success"
+            )
     
-        except Exception as e:
+        except ValueError as e:
             self.log_handle(content=f"hash verification failed: {e}",
                         errtype='error',
                         component='download_ytdlp')
             return False
-        finally:              
-            with open(self.result_json_path, 'r') as f:
-                result_json = json.load(f)      
-                self.log_handle(content=f"updater result: {result_json.get('message','unknown error')}",
-                                errtype=result_json.get('status','error'),
-                                component='download_ytdlp-result')
+        
+        except Exception as e:
+            self.log_handle(content=f"Failed to process downloaded files: {e}",
+                        errtype='error',
+                        component='download_ytdlp')
+            return False
+    
+        
         
     def clear_downloaded_files(self):
         if os.path.exists(self.ytdlpgz_path):

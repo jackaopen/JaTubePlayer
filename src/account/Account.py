@@ -168,9 +168,14 @@ class account_handle:
                     title="JaTubePlayer",
                     msg="Refreshing login session...\nPlease wait.",
                 )                
+                
+            if getattr(sys, "frozen", False):
+                resource_root = self.current_dir
+            else:
+                resource_root = os.path.dirname(self.current_dir)
 
             WV_host_result = subprocess.Popen(
-                [str(self.host_exe_path), str(os.path.dirname(self.current_dir)), str(self.appdata_dir), command],
+                [str(self.host_exe_path), resource_root, str(self.appdata_dir), command],
                 text=True,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,

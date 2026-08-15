@@ -146,7 +146,7 @@ def download_to_local(res:str,
                 down_tdl_opt = {
                             "extractor_args": {
                                 "youtube": {
-                                    "player_client": ["default", "-android_vr", "web"],
+                                    "player_client": ["default", "-android_vr", "web_embedded"],
                                 },
                             },
                             'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'),
@@ -188,7 +188,7 @@ def download_to_local(res:str,
                     down_tdl_opt = {
                                 "extractor_args": {
                                     "youtube": {
-                                        "player_client": ["default", "-android_vr", "web"],
+                                        "player_client": ["default", "-android_vr", "web_embedded"],
                                     },
                                 },
                                 'outtmpl':download_path,
@@ -214,7 +214,7 @@ def download_to_local(res:str,
                     down_tdl_opt = {
                                 "extractor_args": {
                                     "youtube": {
-                                        "player_client": ["default", "-android_vr", "web"],
+                                        "player_client": ["default", "-android_vr", "web_embedded"],
                                     },
                                 },
                                 'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempvid.mp4'),
@@ -236,7 +236,7 @@ def download_to_local(res:str,
                     down_tdl_opt = {
                                 "extractor_args": {
                                     "youtube": {
-                                        "player_client": ["default", "-android_vr", "web"],
+                                        "player_client": ["default", "-android_vr", "web_embedded"],
                                     },
                                 },
                                 'outtmpl':os.path.join(appdata_dir,'JaTubePlayer','saved_file','tempaud.webm'),

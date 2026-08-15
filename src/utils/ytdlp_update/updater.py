@@ -57,6 +57,8 @@ class ytdlp_file_updater:
             "message": "",
         }
         internal_dir = Path(sys.executable).resolve().parent
+
+        self.internal_result_json_path = os.path.join(internal_dir, 'update_result.json')
         self.ytdlp_update_path = os.path.join(self.appdata_path, 'JatubePlayer', 'ytdlp_update')
         self.ytdlpgz_path = os.path.join(internal_dir, 'yt-dlp.tar.gz')
         self.new_ytdlp_path = os.path.join(internal_dir, "new_yt-dlp")
@@ -71,21 +73,20 @@ class ytdlp_file_updater:
         self.copy_ok = False
 
     def _dump_result(self):
-        with open(os.path.join(self.ytdlp_update_path, 'update_result.json'), 'w') as f:
+        with open(self.internal_result_json_path, 'w') as f:
             json.dump(self.result_json, f, indent=4)
 
 
-    def _verify_sig_and_hash(
-        self) -> None:
+    def _verify_and_process(self) -> None:
         '''
         Expects: All needed file under %appdata%/JatubePlayer/ytdlp_update
         '''
     
         hash_dict = {}
-        
         public_key, _ = SignedPublicKey.from_armor(str(YT_DLP_PUBLIC_KEY))
         signature = DetachedSignature.from_file(os.path.join(self.ytdlp_update_path, 'SHA2-256SUMS.sig'))
         sums_path = os.path.join(self.ytdlp_update_path, 'SHA2-256SUMS')
+       
 
         with open(sums_path, 'rb') as f:
             sums_bytes = f.read()
@@ -106,15 +107,35 @@ class ytdlp_file_updater:
             filename = filename.lstrip("*")
 
             hash_dict[filename] = expected_hash.lower()
-        if self._get_sha256(self.ytdlpgz_path) != hash_dict.get("yt-dlp.tar.gz"):
-            self.result_json["status"] = "error"
-            self.result_json["message"] = "yt-dlp.tar.gz hash mismatch"
-            raise Exception("yt-dlp.tar.gz hash mismatch")
 
-        if self._get_sha256(self.new_ytdlpexe_path) != hash_dict.get("yt-dlp.exe"):
-            self.result_json["status"] = "error"
-            self.result_json["message"] = "yt-dlp.exe hash mismatch"
-            raise Exception("yt-dlp.exe hash mismatch")
+        expected_tar_hash = hash_dict.get("yt-dlp.tar.gz")
+        expected_exe_hash = hash_dict.get("yt-dlp.exe")
+        
+
+        with (
+            open(self.ytdlpgz_path, "rb") as tar_file,
+            open(self.new_ytdlpexe_path, "rb") as exe_file):
+
+            tar_hash = hashlib.file_digest(tar_file, "sha256").hexdigest()
+            exe_hash = hashlib.file_digest(exe_file, "sha256").hexdigest()
+
+            if tar_hash != expected_tar_hash:
+                raise ValueError("yt-dlp.tar.gz hash mismatch")
+            if exe_hash != expected_exe_hash:
+                raise ValueError("yt-dlp.exe hash mismatch")
+
+            #seek back to the beginning of the files for extraction and copying
+            tar_file.seek(0)
+            exe_file.seek(0)
+
+            with tarfile.open(fileobj=tar_file, mode='r:gz') as tar:
+                tar.extractall(path=self.new_ytdlp_path,filter="data")
+                shutil.rmtree(self.ytdlp_path)
+                shutil.copytree(os.path.join(self.new_ytdlp_path,'yt-dlp','yt_dlp'), self.ytdlp_path)
+                
+
+            with open(self.ytdlpexe_path, "wb") as destination:
+                shutil.copyfileobj(exe_file, destination)
 
 
 
@@ -172,15 +193,7 @@ class ytdlp_file_updater:
 
 
 
-    def _process_downloaded_files(self)->None:
-        with tarfile.open(self.ytdlpgz_path, 'r:gz') as tar:
-            tar.extractall(path=self.new_ytdlp_path,filter="data")
-            shutil.rmtree(self.ytdlp_path)
-            shutil.copytree(os.path.join(self.new_ytdlp_path,'yt-dlp','yt_dlp'), self.ytdlp_path)
-            
-
-        if os.path.exists(self.new_ytdlpexe_path):
-            shutil.copy2(self.new_ytdlpexe_path,self.ytdlpexe_path)
+        
 
         
 
@@ -194,8 +207,7 @@ class ytdlp_file_updater:
         self._copy_old_files()
         self.copy_ok = True
         self._move_to_current_directory()
-        self._verify_sig_and_hash()
-        self._process_downloaded_files()
+        self._verify_and_process()
         self.copy_ok = False
         self.remove_old_files()
         self._remove_downloaded_files()
@@ -230,3 +242,4 @@ if __name__ == "__main__":
         updater._dump_result()
         raise SystemExit(1)
     raise SystemExit(0)
+    

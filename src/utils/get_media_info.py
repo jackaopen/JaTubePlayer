@@ -67,7 +67,7 @@ def get_info(
         "format": fmt,
         "extractor_args": {
             "youtube": {
-                "player_client": ["default", "-android_vr", "web"],
+                "player_client": ["default", "-android_vr","web_embedded"],
                 },
             },
         "js_runtimes": {
