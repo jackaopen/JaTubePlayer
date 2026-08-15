@@ -117,13 +117,12 @@ def get_info(
                     else:
                         final_url = info['url']
                 else:
-                    fmt = info.get('formats', [])
-                    if fmt:
-                        fmt = sorted(fmt,key = lambda x: x.get('height',0) or 0, reverse=True)
-                        for f in fmt:
-                            if f.get('height',0) <= maxres:
-                                final_url = f'edl://!new_stream;!no_clip;!no_chapters;%{len(f["url"])}%{f["url"]}'
-                                break
+                    selected_url = info["url"]
+
+                    final_url = (
+                        f"edl://!new_stream;!no_clip;!no_chapters;"
+                        f"%{len(selected_url)}%{selected_url}"
+                    )
             
                 print('vid_url:', vid_url,'\n')
                 print('audio_only_url:', audio_only_url)

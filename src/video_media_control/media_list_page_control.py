@@ -160,7 +160,8 @@ class MediaList_PageControl_:
     def youtube_init_and_reload(self,
                         media_data_list:media_data_list_template,
                         page:playlist_type,
-                        playlist_id:str=None
+                        playlist_id:str=None,
+                        prev_playlist_name:str=None
                         ):
         '''
         Follow the page type to init and reload the media_data_list for youtube playlist, liked videos, subscriptions, recommend videos\n
@@ -182,7 +183,7 @@ class MediaList_PageControl_:
                     self._record_history(self._prev_playlist_name if self._prev_playlist_name else None)
                     self._prev_playlist_name = ''
                 else:
-                    self._record_history()
+                    self._record_history(playlistname=prev_playlist_name)
 
                 self.current_page = 1
                 self.media_data_list = media_data_list
@@ -321,6 +322,7 @@ class MediaList_PageControl_:
             errtype='info',
             component='page_control',
         )
+        self.media_data_list.clear()
         self.thumbnail_loader.clear_thumbnails()
         self.log_handle(
             content=f'handle url drop, url={url}',

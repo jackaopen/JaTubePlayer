@@ -86,6 +86,7 @@ appdata_dir = os.getenv('APPDATA')
 
 os.makedirs(os.path.join(appdata_dir,'JaTubePlayer'),exist_ok=True)
 os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','ytdlp_update'),exist_ok=True)
+os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','saved_file'),exist_ok=True)
 
 
 
@@ -1412,6 +1413,26 @@ def setting_frame():
             else:messagebox.showinfo(f'JaTubePlayer {ver}','Cancelled!')
             setting.focus_force()
 
+        def reveal_download_path():
+            if (os.path.exists(download_path.get()) or 
+                download_path.get() == "[appdata]/JaTubePlayer/saved_file"):
+                
+                try:
+                    if download_path.get() == "[appdata]/JaTubePlayer/saved_file":
+                        os.startfile(os.path.join(appdata_dir,"JaTubePlayer","saved_file"))
+                    else:
+                        os.startfile(download_path.get())
+                except Exception as e:
+                    log_handle(
+                        content=str(e),
+                        errtype='error',
+                        component='settings',
+                    )
+                    messagebox.showerror(f'JaTubePlayer {ver}',f'Failed to open download path\n{e}')
+            else:
+                messagebox.showerror(f'JaTubePlayer {ver}','The specified download path does not exist')
+            setting.focus_force()
+
         def set_default_download_path():
             if messagebox.askyesno(f'JaTubePlayer {ver}','This will reset the download path to default\nProcceed?'):
                 CONFIG['download_path'] = "[appdata]/JaTubePlayer/saved_file" 
@@ -1742,6 +1763,7 @@ def setting_frame():
         download_path_frame.grid_columnconfigure(0, weight=0)
         download_path_frame.grid_columnconfigure(1, weight=1)
         download_path_frame.grid_columnconfigure(2, weight=0)
+        download_path_frame.grid_columnconfigure(3, weight=0)
 
         download_path_title = ctk.CTkLabel(download_path_frame, text='  IV. Saving Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
         download_path_label = ctk.CTkLabel(download_path_frame, font=('Arial', 12), text='Save to:', text_color='#B0B0B0')
@@ -1751,6 +1773,9 @@ def setting_frame():
         select_download_path_btn = ctk.CTkButton(download_path_frame, text='Select Path', width=130,
                                                   command=select_download_path,
                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+        open_download_path_btn = ctk.CTkButton(download_path_frame, text='Open Folder', width=130,
+                                                command=reveal_download_path,
+                                                text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         set_default_download_path_btn = ctk.CTkButton(download_path_frame, text='Set Default', width=130,
                                                        command=set_default_download_path,
                                                        text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
@@ -2267,11 +2292,12 @@ def setting_frame():
         get_resoltion_btn.grid(row=1, column=1, padx=(8, 12), pady=(5, 12), sticky="w")
         
         download_path_frame.grid(row=2, column=0, columnspan=2, padx=16, pady=4, sticky="ew")
-        download_path_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky="w")
+        download_path_title.grid(row=0, column=0, columnspan=4, padx=8, pady=(10, 6), sticky="w")
         download_path_label.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="e")
-        download_path_textbox.grid(row=1, column=1, padx=(8, 8), pady=5, sticky="ew")
+        download_path_textbox.grid(row=1, column=1, columnspan=3, padx=(8, 24), pady=5, sticky="ew")
         select_download_path_btn.grid(row=2, column=1, padx=(8, 4), pady=(4, 12), sticky="w")
-        set_default_download_path_btn.grid(row=2, column=2, padx=(4, 24), pady=(4, 12), sticky="e")
+        open_download_path_btn.grid(row=2, column=2, padx=4, pady=(4, 12))
+        set_default_download_path_btn.grid(row=2, column=3, padx=(4, 24), pady=(4, 12), sticky="e")
 
         downloadselectedsong.grid(row=3, column=0, columnspan=2, padx=20, pady=(16, 8))
         downloadhooklabel.grid(row=4, column=0, columnspan=2, padx=20, pady=(0, 10))
@@ -2635,15 +2661,15 @@ def history_control(mode:int):
                         load_thread_queue.put((None,playing_url))
                 insert_textbox(playlist_name_textbox, history_template_dict.get("playlistname",""))
                 if playing_url in media_data_list.vid_url:
+                    print(f"found playing_url in media_data_list.vid_url: {playing_url} adwiohiopadhwhdwiopahiopwadiophwadh;iowadiohwadhio;awoidhahwiodhiowahouida;uioswdhna;uiobg;ouiadwoual;bsgwd;oulajgbfwd;ouaghwsd;uoAHNWS;RODFULAHW;DPUOHA;/LUODH;OALUHWSDNUOAL;HNWSDOAL;UHS;DJLNA;LJWND\nDWAGUIWUIAGDGWUIADGLUIAWDGYUIWDGLIAGWIDAWUIDUIAWDUILAWUDAWGLUIDGALWIUDGWALIUDGLIAYUGWDLIAUSDIKAGFUIAGHWDUIOA;OWU;EIOFJ;PASJF;OSJEGHIL;ESJFGHI.")
                     global selected_song_number
                     selected_song_number = media_data_list.vid_url.index(playing_url)
-                    playlisttreebox.selection_set(selected_song_number)
-                    playlisttreebox.see(selected_song_number)
+                    thumbnail_loader.select_item(selected_song_number)
 
-                    if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
-                        star_btn_ui_functions.star_starred()
-                    else:
-                        star_btn_ui_functions.star_regular()
+                if star_vid_handle.search(playing_url):
+                    star_btn_ui_functions.star_starred()
+                else:
+                    star_btn_ui_functions.star_regular()
                             
 
         except Exception as e:
@@ -2753,6 +2779,7 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
 
 
     thumbnail_loader.clear_thumbnails()
+    _prev_playlistname = playlist_name_textbox.get(0.0,tk.END).strip()
 
     insert_textbox(playlist_name_textbox, f"⏳loading: {playlistname}")
     ui_queue.put(lambda: page_num_label.configure(text=''))
@@ -2768,11 +2795,13 @@ def get_youtube_playlists(playlistID: Literal["sub", "like","home"] | str,
                     'home': playlist_type.HOME
                 }
                 media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list,
-                                                                page=page_dict[playlistID])
+                                                                page=page_dict[playlistID],
+                                                                prev_playlist_name=_prev_playlistname)
             else:
                 media_list_page_controller.youtube_init_and_reload(media_data_list=media_data_list,
                                                                 page=playlist_type.PLAYLIST,
-                                                                playlist_id=playlistID)
+                                                                playlist_id=playlistID,
+                                                                prev_playlist_name=_prev_playlistname)
             media_data_list = media_list_page_controller.media_data_list
 
             insert_textbox(playlist_name_textbox, f"{playlistname}")
@@ -3249,7 +3278,7 @@ def set_volume(value,mode = 0):
     try:
         global volume
         volume = float(value)
-        player.volume =int(volume)
+        player.volume =int(max(volume,0))
     except AttributeError:pass
     except Exception as e:log_handle(
                               content=str(e),
@@ -3535,7 +3564,7 @@ def load_thread():  ### add every try except to a new log system for next update
                                     if len(sub) == 7:
                                         subtitle_namelist.append(sub[6]['name'])
                                         subtitle_urllist.append(sub[6]['url'])
-
+                                    
                                     ui_queue.put(lambda: subtitlecombobox.configure(values=subtitle_namelist))
                                     ui_queue.put(lambda: subtitlecombobox.set(subtitle_namelist[subtitle_selection_idx.get()]))
                                 except Exception as e:
@@ -5382,22 +5411,22 @@ player_song_length_label.place(relx=0.922, rely=0.03, relwidth=0.068)
 mode_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=10)
 mode_frame.place(relx=0.008, rely=0.585, relwidth=0.132, relheight=0.375)
 
-mode_label = ctk.CTkLabel(mode_frame, text='Mode', font=('Segoe UI', 12), text_color="#6A6969")
+mode_label = ctk.CTkLabel(mode_frame, text='Mode', font=('Segoe UI', 13), text_color="#6A6969")
 mode_label.place(relx=0.06, rely=0.07)
 
 player_mode_continue = ctk.CTkRadioButton(mode_frame, text='▶▶', variable=player_mode_selector,
                                            value='continue', 
-                                           font=('Segoe UI', 11), radiobutton_width=16, radiobutton_height=16)
+                                           font=('Segoe UI', 13), radiobutton_width=16, radiobutton_height=16)
 player_mode_continue.place(relx=0.06, rely=0.45)
 
 player_mode_replay = ctk.CTkRadioButton(mode_frame, text='🔁', variable=player_mode_selector,
                                          value='replay', 
-                                         font=('Segoe UI', 11), radiobutton_width=16, radiobutton_height=16)
+                                         font=('Segoe UI', 13), radiobutton_width=16, radiobutton_height=16)
 player_mode_replay.place(relx=0.39, rely=0.45)
 
 player_mode_random = ctk.CTkRadioButton(mode_frame, text='🔀', variable=player_mode_selector,
                                          value='random', 
-                                         font=('Segoe UI', 11), radiobutton_width=16, radiobutton_height=16)
+                                         font=('Segoe UI', 13), radiobutton_width=16, radiobutton_height=16)
 player_mode_random.place(relx=0.72, rely=0.45)
 
 playback_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=20)

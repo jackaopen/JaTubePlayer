@@ -451,7 +451,7 @@ def download_to_local(res:str,
     # build download frame
     download_frame = ctk.CTkToplevel(root) 
     download_frame.title(f'JaTubePlayer {ver} Download')
-    download_frame.geometry(f"500x210+{(root.winfo_screenwidth()-250)//2}+{(root.winfo_screenheight()-210)//2}")
+    download_frame.geometry(f"500x250+{(root.winfo_screenwidth()-250)//2}+{(root.winfo_screenheight()-210)//2}")
     download_frame.resizable(False, False)
     download_frame.attributes("-topmost", True)
     download_frame.protocol("WM_DELETE_WINDOW", _on_close)  # Disable close button
@@ -467,14 +467,14 @@ def download_to_local(res:str,
 
     
     bar = ctk.CTkProgressBar(download_frame, width=250)
-    bar.pack(pady=5)
+    bar.pack(pady=10)
     bar.set(0)
 
     sub_info_label = ctk.CTkLabel(download_frame, text=f"", font=('Arial', 12))
     sub_info_label.pack(pady=10)
 
     cancel_btn = ctk.CTkButton(download_frame, text="Cancel Download", command=lambda: threading.Thread(target=_on_close).start())
-    cancel_btn.pack(pady=5)
+    cancel_btn.pack(pady=10)
 
     download_frame.update()
     time.sleep(1)

@@ -39,14 +39,14 @@ class ytdlp_update:
         popup.title("JaTubePlayer yt-dlp update")
         popup.attributes("-topmost", True)
 
-        popup.geometry(f"350x150+{root.winfo_screenwidth()//2-350//2}+{root.winfo_screenheight()//2-150//2}")
+        popup.geometry(f"450x200+{root.winfo_screenwidth()//2-350//2}+{root.winfo_screenheight()//2-150//2}")
         popup.resizable(False, False)
         if icondir: root.after(200, lambda: popup.iconbitmap(icondir))
 
         self.label = ctk.CTkLabel(popup, text="Searching for latest version...", font=('Arial', 14))
         self.label.pack(pady=10)
         self.sizelabel = ctk.CTkLabel(popup, text="", font=('Arial', 12))
-        self.sizelabel.pack()
+        self.sizelabel.pack(pady=10)
 
         def _close():
             if self.start_updater:
@@ -67,7 +67,7 @@ class ytdlp_update:
         self.cancel_btn.pack(pady=10, side='bottom')
 
         bar = ctk.CTkProgressBar(popup, width=250)
-        bar.pack(pady=5)
+        bar.pack(pady=10)
         self.bar = bar
         bar.set(0)
         popup.update()
