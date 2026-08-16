@@ -15,7 +15,7 @@ def get_window_dpi(hwnd):
     return dpi_scaling
 
 def get_effective_scaling(hwnd: int, root: Tk, 
-                          base_width: float=1320, base_height: float=680)-> float:
+                          base_width: float=1452, base_height: float=748)-> float:
     tkinter_scaling = get_window_dpi(hwnd)
     available_width = int((root.winfo_screenwidth()-32) / tkinter_scaling)*0.975 
     available_height = int((root.winfo_screenheight()-64) / tkinter_scaling)*0.975

@@ -58,13 +58,13 @@ class ThumbnailLoader:
                     imgdata = await response.read()
                     img = Image.open(io.BytesIO(imgdata))
                     img = img.resize(
-                        (int(112 * self.tkinter_scaling ), int(68 * self.tkinter_scaling )),
+                        (int(121 * self.tkinter_scaling ), int(68 * self.tkinter_scaling )),
                         Image.LANCZOS
                     )
                     img1 = img.crop((
                         0,
                         int(5 * self.tkinter_scaling ),
-                        int(112 * self.tkinter_scaling ),
+                        int(121 * self.tkinter_scaling ),
                         int(68 * self.tkinter_scaling )
                     ))
                     thumbnailpic = ImageTk.PhotoImage(img1)
@@ -121,7 +121,7 @@ class ThumbnailLoader:
                     self.async_task.append(self.load_thumbnail_task(self.asyncio_session, id, thumb))
 
                 if self.playing_vid_mode == 0 or self.playing_vid_mode == 4:
-                    self.playlisttreebox.column("#0", width=int(160*self.tkinter_scaling), anchor='center')
+                    self.playlisttreebox.column("#0", width=int(170*self.tkinter_scaling), anchor='center')
                 else:
                     self.playlisttreebox.column("#0", width=0, anchor='center')
         except Exception as e:

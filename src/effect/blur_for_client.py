@@ -42,19 +42,25 @@ def blur(hwnd,
         disable: bool = False):
     
     accent = ACCENTPOLICY()
+    data = WINDOWCOMPOSITIONATTRIBDATA()
     if not disable:
         accent.AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND
         accent.AccentFlags = Luminosity_border_glow                
         accent.GradientColor = _HEXtoRGBAint(hexColor)
+
+        data.Attrib = WCA_ACCENT_POLICY
+        data.cbData = ctypes.sizeof(accent)
+        data.pvData = ctypes.cast(ctypes.pointer(accent), ctypes.c_void_p)
     else:
         accent.AccentState = ACCENT_DISABLED
-    
-    data = WINDOWCOMPOSITIONATTRIBDATA()
-    data.Attrib = WCA_ACCENT_POLICY
-    data.cbData = ctypes.sizeof(accent)
-    data.pvData = ctypes.cast(ctypes.pointer(accent), ctypes.c_void_p)
+        data.Attrib = WCA_ACCENT_POLICY
+        data.cbData = ctypes.sizeof(accent)
+        data.pvData = ctypes.cast(ctypes.pointer(accent), ctypes.c_void_p)
+        SetWindowCompositionAttribute(int(hwnd), ctypes.byref(data))
 
-    SetWindowCompositionAttribute(int(hwnd), ctypes.byref(data))#really call the api
+        dark = ctypes.c_int(1)
+        data.Attrib = WCA_USEDARKMODECOLORS
+        data.pvData = ctypes.cast(ctypes.pointer(dark), ctypes.c_void_p)
+        data.cbData = ctypes.sizeof(dark)
 
-    data.Attrib = WCA_USEDARKMODECOLORS # apply dark 
     SetWindowCompositionAttribute(int(hwnd), ctypes.byref(data))

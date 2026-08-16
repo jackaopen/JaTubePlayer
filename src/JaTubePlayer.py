@@ -95,8 +95,8 @@ os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','saved_file'),exist_ok=True)
 
 load_private_font(_internal_dir)
 
-BASE_WIDTH = 1320
-BASE_HEIGHT = 680
+BASE_WIDTH = 1452
+BASE_HEIGHT = 748
 
 
 os.environ["PATH"] = os.path.join(_internal_dir) + os.pathsep + os.environ["PATH"]
@@ -174,7 +174,7 @@ Frame_for_mpv.place(relx=0.011, rely=0.084, relwidth=0.595, relheight=0.664)
 Frame_for_mpv.bind('<Button-1>',lambda event :pause(1))
 motto_label = ctk.CTkLabel(Frame_for_mpv,
                            text="Uninterrupted,\njust how you like it",
-                           font=('Satisfy',50),
+                           font=('Satisfy',51.5),
                            text_color="#676767",
                            bg_color='transparent',
                            padx=20,
@@ -365,7 +365,7 @@ class star_btn_ui_functions:
             fg_color='#3A3A3A',
             hover_color='#505050',
             text_color='#B0B0B0',
-            font=('Segoe UI', 13, 'bold')
+            font=('Segoe UI', 14.5, 'bold')
         ))
     @staticmethod
     def star_starred():
@@ -374,7 +374,7 @@ class star_btn_ui_functions:
             fg_color='#D4A017',
             hover_color='#E8B820',
             text_color='#FFFDE7',
-            font=('Segoe UI', 13, 'bold')
+            font=('Segoe UI', 14.5, 'bold')
         ))
 
 class Chrome_ext_server_ui_functions:
@@ -475,7 +475,7 @@ class AccountInfo:
                     imgdata = await response.read()
                     img = Image.open(io.BytesIO(imgdata))
                     img = img.resize(
-                        (int(35 * tkinter_scaling / 1.25), int(35 * tkinter_scaling / 1.25)),
+                        (int(39 * tkinter_scaling / 1.25), int(39 * tkinter_scaling / 1.25)),
                         Image.LANCZOS
                 )
                 
@@ -1608,17 +1608,17 @@ def setting_frame():
         google_account_frame.grid_columnconfigure(2, weight=1)
         
         # YouTube Data Section
-        youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
+        youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 15, 'bold'), text_color='#FF6B8A', anchor='w')
         updateuserplaylists_btn = ctk.CTkButton(youtube_data_frame, text='Update Playlists', width=160, command=updateplaylists,
-                                                 text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                 text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         result_count_separator = ctk.CTkFrame(youtube_data_frame, height=1, fg_color='#4A4A4A')
-        result_count_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 Maximum Results', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
+        result_count_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 Maximum Results', font=('Arial', 15, 'bold'), text_color='#80C8E0', anchor='w')
         result_count_note = ctk.CTkLabel(
             youtube_data_frame,
             text='NOTE: Recommendations/subscriptions: 10–300  •  Search: 10-150 •  Liked videos: 10–5,000.\n'
                  'press [Enter] to apply.',
-            height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+            height=56, font=('Arial', 14), text_color='#AFAFAF', fg_color='#242424',
             corner_radius=6, anchor='w', justify='left', wraplength=610)
 
         result_count_controls_frame = ctk.CTkFrame(youtube_data_frame, fg_color='transparent')
@@ -1629,36 +1629,36 @@ def setting_frame():
             '%P',
         )
         recommendation_result_count_label = ctk.CTkLabel(
-            result_count_controls_frame, text='Recommendations', font=('Arial', 12), text_color='#B0B0B0')
+            result_count_controls_frame, text='Recommendations', font=('Arial', 13), text_color='#B0B0B0')
         
         recommendation_result_count_entry = ctk.CTkEntry(
             result_count_controls_frame, width=130, height=28,
             textvariable=max_recommendation_result_count, justify='center',
-            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            font=('Arial', 13), fg_color='#1a1a1a', corner_radius=6,
             validate='key', validatecommand=result_count_integer_validation)
 
         subscription_result_count_label = ctk.CTkLabel(
-            result_count_controls_frame, text='Subscriptions', font=('Arial', 12), text_color='#B0B0B0')
+            result_count_controls_frame, text='Subscriptions', font=('Arial', 13), text_color='#B0B0B0')
         subscription_result_count_entry = ctk.CTkEntry(
             result_count_controls_frame, width=130, height=28,
             textvariable=max_sub_result_count, justify='center',
-            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            font=('Arial', 13), fg_color='#1a1a1a', corner_radius=6,
             validate='key', validatecommand=result_count_integer_validation)
 
         search_result_count_label = ctk.CTkLabel(
-            result_count_controls_frame, text='Search', font=('Arial', 12), text_color='#B0B0B0')
+            result_count_controls_frame, text='Search', font=('Arial', 13), text_color='#B0B0B0')
         search_result_count_entry = ctk.CTkEntry(
             result_count_controls_frame, width=130, height=28,
             textvariable=max_search_result_count, justify='center',
-            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            font=('Arial', 13), fg_color='#1a1a1a', corner_radius=6,
             validate='key', validatecommand=result_count_integer_validation)
 
         liked_video_result_count_label = ctk.CTkLabel(
-            result_count_controls_frame, text='Liked videos', font=('Arial', 12), text_color='#B0B0B0')
+            result_count_controls_frame, text='Liked videos', font=('Arial', 13), text_color='#B0B0B0')
         liked_video_result_count_entry = ctk.CTkEntry(
             result_count_controls_frame, width=130, height=28,
             textvariable=max_like_result_count, justify='center',
-            font=('Arial', 12), fg_color='#1a1a1a', corner_radius=6,
+            font=('Arial', 13), fg_color='#1a1a1a', corner_radius=6,
             validate='key', validatecommand=result_count_integer_validation)
 
         recommendation_result_count_entry.bind('<FocusOut>', save_max_result_count_setting)
@@ -1685,36 +1685,36 @@ def setting_frame():
         playlist_remove_frame.grid_columnconfigure(0, weight=1)
         playlist_remove_frame.grid_columnconfigure(1, weight=1)
 
-        playlist_remove_title = ctk.CTkLabel(playlist_remove_frame, text='  \u25b8 Remove from Playlist', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
+        playlist_remove_title = ctk.CTkLabel(playlist_remove_frame, text='  \u25b8 Remove from Playlist', font=('Arial', 15, 'bold'), text_color='#E08080', anchor='w')
         playlist_remove_btn = ctk.CTkButton(playlist_remove_frame, text='Remove Selected', width=160,
                                              command=remove_selected_from_playlist_setting,
-                                             text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                             text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         playlist_remove_note = ctk.CTkLabel(playlist_remove_frame,
                                              text='NOTE: Removing an item only clears it from the current playlist view.\n'
                                                   'It does not affect the original source (YouTube, local folder, etc.).',
-                                             height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+                                             height=56, font=('Arial', 14), text_color='#AFAFAF', fg_color='#242424',
                                              corner_radius=6, anchor='w', justify='left', wraplength=610)
 
         # ── Google Account Card ──
-        google_title = ctk.CTkLabel(google_account_frame, text='  \u25b8 Google Account', font=('Arial', 14, 'bold'), text_color='#FFB347', anchor='w')
+        google_title = ctk.CTkLabel(google_account_frame, text='  \u25b8 Google Account', font=('Arial', 15, 'bold'), text_color='#FFB347', anchor='w')
         googlelogin_btn = ctk.CTkButton(google_account_frame, text='Login Google', width=200,
                                          command=lambda:threading.Thread(daemon=True,target=google_login_setting).start(),
-                                         text_color='white', font=('Arial', 13, 'bold'), fg_color='#3E62DC', hover_color='#4A70F0')
+                                         text_color='white', font=('Arial', 14, 'bold'), fg_color='#3E62DC', hover_color='#4A70F0')
         googlelogout_btn = ctk.CTkButton(google_account_frame, text='Logout Google', width=200, command=google_logout_setting,
-                                          text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                          text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         deletesyskey_btn = ctk.CTkButton(google_account_frame, text='Delete System Key', width=200, command=deletesyskey,
-                                          text_color='#D98C8C', font=('Arial', 13, 'bold'),
+                                          text_color='#D98C8C', font=('Arial', 14, 'bold'),
                                           fg_color='#3A3A3A', hover_color='#4A3030',
                                           border_width=2, border_color='#8A4A4A')
         ytdlp_use_cookie_checkbtn = ctk.CTkCheckBox(google_account_frame, text='Use account cookie with yt-dlp',
                                                     variable=ytdlp_use_cookie, command=setting_switch_ytdlp_use_cookie,
                                                     fg_color='#3A3A3A', hover_color='#505050',
-                                                    text_color='#C8C8C8', font=('Arial', 12))
+                                                    text_color='#C8C8C8', font=('Arial', 13))
         ytdlp_use_cookie_note = ctk.CTkLabel(
             google_account_frame,
             text='NOTE: Using account cookies may occasionally add a short wait and slightly increase\n'
                  'the chance of temporary account access restrictions.',
-            height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+            height=56, font=('Arial', 14), text_color='#AFAFAF', fg_color='#242424',
             corner_radius=6, anchor='w', justify='left', wraplength=610)
 
         google_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky='w')
@@ -1738,24 +1738,24 @@ def setting_frame():
         resolution_frame.grid_columnconfigure(1, weight=1)
         
         # Video Info Section
-        info_title = ctk.CTkLabel(download_info_frame, text='  I. Selected Video', font=('Arial', 14, 'bold'), text_color='#E0A07E', anchor='w')
-        download_seleted_title_text = ctk.CTkTextbox(download_info_frame, font=('Arial', 14), width=650, height=55, fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
+        info_title = ctk.CTkLabel(download_info_frame, text='  I. Selected Video', font=('Arial', 15, 'bold'), text_color='#E0A07E', anchor='w')
+        download_seleted_title_text = ctk.CTkTextbox(download_info_frame, font=('Arial', 15), width=650, height=55, fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
         download_seleted_title_text.configure(state='disabled')
         
         # Format Selection Section
-        format_title = ctk.CTkLabel(format_frame, text='  II. Format', font=('Arial', 14, 'bold'), text_color='#D4A0E0', anchor='w')
+        format_title = ctk.CTkLabel(format_frame, text='  II. Format', font=('Arial', 15, 'bold'), text_color='#D4A0E0', anchor='w')
         download_mp3 = ctk.CTkRadioButton(format_frame, text='Audio (MP3)', variable=formats, value=0, command=lambda:download_select_mode_setting(0),
-                                           font=('Arial', 12), text_color='#C8C8C8')
+                                           font=('Arial', 13), text_color='#C8C8C8')
         download_mp4 = ctk.CTkRadioButton(format_frame, text='Video (MP4)', variable=formats, value=1, command=lambda:download_select_mode_setting(1),
-                                           font=('Arial', 12), text_color='#C8C8C8')
+                                           font=('Arial', 13), text_color='#C8C8C8')
         
         # Resolution Section
-        resolution_title = ctk.CTkLabel(resolution_frame, text='  III. Resolution', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
-        resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 12), width=200, values=[],state='readonly',
+        resolution_title = ctk.CTkLabel(resolution_frame, text='  III. Resolution', font=('Arial', 15, 'bold'), text_color='#80C8E0', anchor='w')
+        resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 13), width=200, values=[],state='readonly',
                                             dropdown_fg_color='#333333', button_color='#444444')
         get_resoltion_btn = ctk.CTkButton(resolution_frame, text='Get Available', width=140,
                                            command=lambda:threading.Thread(daemon=True,target=get_resolution_setting).start(),
-                                           text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                           text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         
         # ── Download Path Card ──
         download_path_frame = ctk.CTkFrame(download_tab, fg_color='#2B2B2B', corner_radius=8)
@@ -1764,28 +1764,28 @@ def setting_frame():
         download_path_frame.grid_columnconfigure(2, weight=0)
         download_path_frame.grid_columnconfigure(3, weight=0)
 
-        download_path_title = ctk.CTkLabel(download_path_frame, text='  IV. Saving Path', font=('Arial', 14, 'bold'), text_color='#A8D8A8', anchor='w')
-        download_path_label = ctk.CTkLabel(download_path_frame, font=('Arial', 12), text='Save to:', text_color='#B0B0B0')
-        download_path_textbox = ctk.CTkTextbox(download_path_frame, font=('Arial', 12), height=28, text_color='#C8C8C8',
+        download_path_title = ctk.CTkLabel(download_path_frame, text='  IV. Saving Path', font=('Arial', 15, 'bold'), text_color='#A8D8A8', anchor='w')
+        download_path_label = ctk.CTkLabel(download_path_frame, font=('Arial', 13), text='Save to:', text_color='#B0B0B0')
+        download_path_textbox = ctk.CTkTextbox(download_path_frame, font=('Arial', 13), height=28, text_color='#C8C8C8',
                                                fg_color='#1a1a1a', corner_radius=6, wrap='none', activate_scrollbars=False)
         download_path_textbox.configure(state='disabled')
         select_download_path_btn = ctk.CTkButton(download_path_frame, text='Select Path', width=130,
                                                   command=select_download_path,
-                                                  text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                  text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         open_download_path_btn = ctk.CTkButton(download_path_frame, text='Open Folder', width=130,
                                                 command=reveal_download_path,
-                                                text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         set_default_download_path_btn = ctk.CTkButton(download_path_frame, text='Set Default', width=130,
                                                        command=set_default_download_path,
-                                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                       text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # Download Action
         downloadselectedsong = ctk.CTkButton(download_tab, text='Save Selected Video', width=400,
                                               command=lambda:threading.Thread(daemon=True,target=download_to_loacl_setting).start(),
-                                              text_color='#86C98A', font=('Arial', 14, 'bold'),
+                                              text_color='#86C98A', font=('Arial', 15, 'bold'),
                                               fg_color='#3A3A3A', hover_color='#314735', corner_radius=8,
                                               border_width=2, border_color='#4F8A55')
-        downloadhooklabel = ctk.CTkLabel(download_tab, font=('Arial', 12), textvariable=downloadhooktext, text_color='#80C8E0')
+        downloadhooklabel = ctk.CTkLabel(download_tab, font=('Arial', 13), textvariable=downloadhooktext, text_color='#80C8E0')
 
 
         # Create scrollable frame for player settings
@@ -1805,28 +1805,28 @@ def setting_frame():
         general_frame.grid_columnconfigure(1, weight=1)
         general_frame.grid_columnconfigure(2, weight=0, minsize=50)
 
-        general_header = ctk.CTkLabel(general_frame, text='  ▸ General', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
-        maxresolutionlabel = ctk.CTkLabel(general_frame, font=('Arial', 12), text='Max Resolution', text_color='#B0B0B0')
-        maxresolutioncombobox = ctk.CTkComboBox(general_frame, font=('Arial', 12), width=130, state='readonly',
+        general_header = ctk.CTkLabel(general_frame, text='  ▸ General', font=('Arial', 15, 'bold'), text_color='#7EB8E0', anchor='w')
+        maxresolutionlabel = ctk.CTkLabel(general_frame, font=('Arial', 13), text='Max Resolution', text_color='#B0B0B0')
+        maxresolutioncombobox = ctk.CTkComboBox(general_frame, font=('Arial', 13), width=130, state='readonly',
                                                  values=['480', '720', '1080', '1440', '2160', '4320'],
                                                  dropdown_fg_color='#333333', button_color='#444444')
         maxresolutioncombobox.set(str(maxresolution.get()))
         maxresolutioncombobox.configure(command=max_resolution_select)
         autoretry_btn = ctk.CTkCheckBox(general_frame, text='Auto retry on error', variable=autoretry,
-                                         fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
+                                         fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13))
         audio_only_checkbtn = ctk.CTkCheckBox(general_frame, text='Audio only mode', variable=audio_only,
-                                               fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_audio_only)
+                                               fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13), command=switch_audio_only)
 
         # ── Speed & Subtitle controls (directly inside General) ──
         general_playback_divider = ctk.CTkFrame(general_frame, height=1, fg_color='#444444', corner_radius=0)
-        playerspeed_title_label = ctk.CTkLabel(general_frame, font=('Arial', 12), text='Playback Speed', text_color='#B0B0B0')
+        playerspeed_title_label = ctk.CTkLabel(general_frame, font=('Arial', 13), text='Playback Speed', text_color='#B0B0B0')
         playerspeed_slider = ctk.CTkSlider(general_frame, variable=player_speed, from_=0.3, to=3.0, width=200,
                                             number_of_steps=27, command=set_player_speed_setting,
                                             progress_color='#4A9E6E', button_color='#7EE0A8', button_hover_color='#98F0C0')
         playerspeed_slider.bind('<ButtonRelease-1>', apply_player_speed_setting)
-        playerspeed_speed_label = ctk.CTkLabel(general_frame, font=('Arial', 12, 'bold'), text='1.0x', text_color='#7EE0A8')
-        subtitle_label = ctk.CTkLabel(general_frame, text='Subtitle', font=('Arial', 12), text_color='#B0B0B0')
-        subtitlecombobox = ctk.CTkComboBox(general_frame, font=('Arial', 12), width=220, state='readonly',
+        playerspeed_speed_label = ctk.CTkLabel(general_frame, font=('Arial', 13, 'bold'), text='1.0x', text_color='#7EE0A8')
+        subtitle_label = ctk.CTkLabel(general_frame, text='Subtitle', font=('Arial', 13), text_color='#B0B0B0')
+        subtitlecombobox = ctk.CTkComboBox(general_frame, font=('Arial', 13), width=220, state='readonly',
                                             values=subtitle_namelist, command=subtitle_combobox_callback,
                                             dropdown_fg_color='#333333', button_color='#444444')
 
@@ -1837,38 +1837,38 @@ def setting_frame():
         cache_buffer_frame.grid_columnconfigure(2, weight=0, minsize=50)
 
         _slider_kw = dict(progress_color='#8E7A4A', button_color='#E0C48C', button_hover_color='#F0D8A0')
-        cache_buffer_header = ctk.CTkLabel(cache_buffer_frame, text='  ▸ Cache & Buffer', font=('Arial', 14, 'bold'), text_color='#E0C48C', anchor='w')
+        cache_buffer_header = ctk.CTkLabel(cache_buffer_frame, text='  ▸ Cache & Buffer', font=('Arial', 15, 'bold'), text_color='#E0C48C', anchor='w')
 
         cache_buffer_note = ctk.CTkLabel(
             cache_buffer_frame,
             text='NOTE: Front and back buffer limits are added together as the total cache budget.\n'
                  'Unused front-buffer space may be shared with the back buffer, but not the reverse.',
-            height=56, font=('Arial', 13), text_color='#AFAFAF', fg_color='#242424',
+            height=56, font=('Arial', 14), text_color='#AFAFAF', fg_color='#242424',
             corner_radius=6, anchor='w', justify='left', wraplength=610)
 
-        demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max front Buffer Size', text_color='#B0B0B0')
+        demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Max front Buffer Size', text_color='#B0B0B0')
         demuxer_max_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_bytes, from_=16, to=2048, width=200,
                                                   number_of_steps=2032, command=_demuxer_max_bytes_slider_change, **_slider_kw)
         demuxer_max_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        demuxer_max_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{demuxer_max_bytes.get()}M', text_color='#E0C48C')
+        demuxer_max_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{demuxer_max_bytes.get()}M', text_color='#E0C48C')
 
-        demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Max Back Buffer Size', text_color='#B0B0B0')
+        demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Max Back Buffer Size', text_color='#B0B0B0')
         demuxer_max_back_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_back_bytes, from_=16, to=2048, width=200,
                                                        number_of_steps=2032, command=_demuxer_max_back_bytes_slider_change, **_slider_kw)
         demuxer_max_back_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        demuxer_max_back_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{demuxer_max_back_bytes.get()}M', text_color='#E0C48C')
+        demuxer_max_back_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{demuxer_max_back_bytes.get()}M', text_color='#E0C48C')
 
-        cache_pause_wait_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Cache Pause Wait', text_color='#B0B0B0')
+        cache_pause_wait_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Cache Pause Wait', text_color='#B0B0B0')
         cache_pause_wait_slider = ctk.CTkSlider(cache_buffer_frame, variable=cache_pause_wait, from_=0.1, to=20.0, width=200,
                                                        number_of_steps=199, command=_cache_pause_wait_slider_change, **_slider_kw)
         cache_pause_wait_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        cache_pause_wait_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{cache_pause_wait.get():.1f}s', text_color='#E0C48C')
+        cache_pause_wait_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{cache_pause_wait.get():.1f}s', text_color='#E0C48C')
 
-        audio_wait_open_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12), text='Audio Wait Open', text_color='#B0B0B0')
+        audio_wait_open_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Audio Wait Open', text_color='#B0B0B0')
         audio_wait_open_slider = ctk.CTkSlider(cache_buffer_frame, variable=audio_wait_open, from_=1, to=10, width=200,
                                                 number_of_steps=9, command=_audio_wait_open_slider_change, **_slider_kw)
         audio_wait_open_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
-        audio_wait_open_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 12, 'bold'), text=f'{audio_wait_open.get()}s', text_color='#E0C48C')
+        audio_wait_open_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{audio_wait_open.get()}s', text_color='#E0C48C')
 
         # ── Fullscreen Settings Card ──
         fullscreen_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
@@ -1876,53 +1876,53 @@ def setting_frame():
         fullscreen_frame.grid_columnconfigure(1, weight=1)
         fullscreen_frame.grid_columnconfigure(2, weight=1)
 
-        fullscreen_title = ctk.CTkLabel(fullscreen_frame, text='  ▸ Fullscreen', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
+        fullscreen_title = ctk.CTkLabel(fullscreen_frame, text='  ▸ Fullscreen', font=('Arial', 15, 'bold'), text_color='#C0A0E0', anchor='w')
         openwith_fullscreen_btn = ctk.CTkCheckBox(fullscreen_frame, text='Auto fullscreen on open', variable=open_with_fullscreen,
-                                                    fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=autofullscreen_setting)
+                                                    fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13), command=autofullscreen_setting)
         hover_fullscreen_btn = ctk.CTkCheckBox(fullscreen_frame, text='Hover Fullscreen', variable=hover_fullscreen,
-                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=lambda:switch_hover_fullscreen)
-        fullscreen_mode_label = ctk.CTkLabel(fullscreen_frame, text='Fullscreen Mode:', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
+                                                fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13), command=lambda:switch_hover_fullscreen)
+        fullscreen_mode_label = ctk.CTkLabel(fullscreen_frame, text='Fullscreen Mode:', font=('Arial', 13), text_color='#B0B0B0', anchor='w')
         fullscreen_mode_normal_btn = ctk.CTkRadioButton(fullscreen_frame, text='Normal', variable=fullscreenmode, value=0,
-                                                         text_color='#C8C8C8', font=('Arial', 12),command=SetFullscreenmode)
+                                                         text_color='#C8C8C8', font=('Arial', 13),command=SetFullscreenmode)
         fullscreen_mode_all_widget_btn = ctk.CTkRadioButton(fullscreen_frame, text='Fullscreen (all widgets)', variable=fullscreenmode, value=1,
-                                                              text_color='#C8C8C8', font=('Arial', 12),command=SetFullscreenmode)
+                                                              text_color='#C8C8C8', font=('Arial', 13),command=SetFullscreenmode)
         fullscreen_mode_window_btn = ctk.CTkRadioButton(fullscreen_frame, text='Fullscreen to window', variable=fullscreenmode, value=2,
-                                                         text_color='#C8C8C8', font=('Arial', 12),command=SetFullscreenmode )
+                                                         text_color='#C8C8C8', font=('Arial', 13),command=SetFullscreenmode )
 
         # ── Advanced Settings Card ──
         advanced_frame = ctk.CTkFrame(player_scrollable_frame, fg_color='#2B2B2B', corner_radius=8)
         advanced_frame.grid_columnconfigure(0, weight=1)
         advanced_frame.grid_columnconfigure(1, weight=1)
 
-        advanced_title = ctk.CTkLabel(advanced_frame, text='  ▸ Advanced', font=('Arial', 14, 'bold'), text_color='#E08080', anchor='w')
+        advanced_title = ctk.CTkLabel(advanced_frame, text='  ▸ Advanced', font=('Arial', 15, 'bold'), text_color='#E08080', anchor='w')
 
         mpvlogbtn = ctk.CTkButton(advanced_frame, text='Show MPV Log', width=160, command=log_handler.log_handle_frame.show_mpv_log,
-                                   text_color='#6EA0FF', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#334766',
+                                   text_color='#6EA0FF', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#334766',
                                    border_width=2, border_color='#6EA0FF')
         force_stop_loading_btn = ctk.CTkButton(advanced_frame, text='Force Stop Loading', width=160, command=set_force_stop_loading,
-                                                text_color='#FF8A8A', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#55383A',
+                                                text_color='#FF8A8A', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#55383A',
                                                 border_width=2, border_color='#FF8A8A')
         show_cache_btn = ctk.CTkCheckBox(advanced_frame, text='Show Cache Info', variable=show_cache,
-                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_show_cache)
+                                          fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13), command=switch_show_cache)
 
         # ── Background ──
         advanced_blur_frame = ctk.CTkFrame(advanced_frame, fg_color='#242424', corner_radius=6,
                                             border_width=1, border_color='#3A3A3A')
         advanced_blur_frame.grid_columnconfigure(0, weight=1)
         advanced_blur_frame.grid_columnconfigure(1, weight=1)
-        advanced_blur_title = ctk.CTkLabel(advanced_blur_frame, text='  ▸ Background', font=('Arial', 13, 'bold'),
+        advanced_blur_title = ctk.CTkLabel(advanced_blur_frame, text='  ▸ Background', font=('Arial', 14, 'bold'),
                                             text_color='#C0A0E0', anchor='w')
         blurbtn = ctk.CTkCheckBox(advanced_blur_frame, text='Acrylic blur effect', variable=blur_window,
-                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_blur_window)
-        blur_gradient_name_label = ctk.CTkLabel(advanced_blur_frame, text='Blur Gradient Color', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
-        blur_gradient_value_label = ctk.CTkLabel(advanced_blur_frame, textvariable=blur_hexColor, font=('Arial', 12, 'bold'), text_color='#C8C8C8',
+                                   fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13), command=switch_blur_window)
+        blur_gradient_name_label = ctk.CTkLabel(advanced_blur_frame, text='Blur Gradient Color', font=('Arial', 13), text_color='#B0B0B0', anchor='w')
+        blur_gradient_value_label = ctk.CTkLabel(advanced_blur_frame, textvariable=blur_hexColor, font=('Arial', 13, 'bold'), text_color='#C8C8C8',
                                                   fg_color='#1a1a1a', corner_radius=6, anchor='w', padx=8)
         blur_gradient_choose_btn = ctk.CTkButton(advanced_blur_frame, text='Choose Color', width=140,
                                                   command=lambda: set_gradient_color(), 
-                                                  text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                  text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         blur_gradient_default_btn = ctk.CTkButton(advanced_blur_frame, text='Set Default', width=140,
                                                    command=lambda: set_gradient_color(default=True),  
-                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                   text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # ══════════ External Services — Separate cards ══════════
         external_services_frame = ctk.CTkFrame(external_services_tab, fg_color='#242424', corner_radius=0)
@@ -1934,14 +1934,14 @@ def setting_frame():
         chrome_extension_frame.grid_columnconfigure(1, weight=1)
         chrome_extension_frame.grid_columnconfigure(2, weight=0)
 
-        chrome_extension_title = ctk.CTkLabel(chrome_extension_frame, text='  ▸ Chrome Extension', font=('Arial', 14, 'bold'), text_color='#80C0E0', anchor='w')
+        chrome_extension_title = ctk.CTkLabel(chrome_extension_frame, text='  ▸ Chrome Extension', font=('Arial', 15, 'bold'), text_color='#80C0E0', anchor='w')
         chrome_extension_server_checkbtn = ctk.CTkSwitch(chrome_extension_frame, text='Chrome extension server', variable=setting_run_chrome_extension_server,
-                                                          command=switch_flask_server, text_color='#C8C8C8', font=('Arial', 12))
-        chrome_extension_port_label = ctk.CTkLabel(chrome_extension_frame, text='Server port', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
-        chrome_extension_port_textbox = ctk.CTkEntry(chrome_extension_frame, textvariable=chrome_extension_port, font=('Arial', 12))
+                                                          command=switch_flask_server, text_color='#C8C8C8', font=('Arial', 13))
+        chrome_extension_port_label = ctk.CTkLabel(chrome_extension_frame, text='Server port', font=('Arial', 13), text_color='#B0B0B0', anchor='w')
+        chrome_extension_port_textbox = ctk.CTkEntry(chrome_extension_frame, textvariable=chrome_extension_port, font=('Arial', 13))
         chrome_extension_port_set_btn = ctk.CTkButton(chrome_extension_frame, text='Set Port', width=100,
                                                        command=save_chrome_extension_port_setting,
-                                                       text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         discord_presence_frame = ctk.CTkFrame(external_services_frame, fg_color='#2B2B2B', corner_radius=8)
         discord_presence_frame.grid_columnconfigure(0, weight=0)
@@ -1949,20 +1949,20 @@ def setting_frame():
         discord_presence_frame.grid_columnconfigure(2, weight=0)
         discord_presence_frame.grid_columnconfigure(3, weight=0)
 
-        discord_presence_title = ctk.CTkLabel(discord_presence_frame, text='  ▸ Discord Rich Presence', font=('Arial', 14, 'bold'), text_color='#B9A0E0', anchor='w')
+        discord_presence_title = ctk.CTkLabel(discord_presence_frame, text='  ▸ Discord Rich Presence', font=('Arial', 15, 'bold'), text_color='#B9A0E0', anchor='w')
         enable_discord_presence_btn = ctk.CTkSwitch(discord_presence_frame, text='Discord Rich Presence', variable=enable_discord_presence,
-                                                     text_color='#C8C8C8', font=('Arial', 12),
+                                                     text_color='#C8C8C8', font=('Arial', 13),
                                                      command=lambda:threading.Thread(daemon=True,target=switch_discord_presence).start())
         discord_presence_show_playing_btn = ctk.CTkCheckBox(discord_presence_frame, text='Show playing on Discord', variable=discord_presence_show_playing,
-                                                             fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12), command=switch_discord_presence_show_playing)
-        discord_idle_presence_wording_label = ctk.CTkLabel(discord_presence_frame, text='Idling presence wording', font=('Arial', 12), text_color='#B0B0B0', anchor='w')
-        discord_idle_presence_wording_textbox = ctk.CTkEntry(discord_presence_frame, textvariable=discord_idle_presence_wording, font=('Arial', 12))
+                                                             fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13), command=switch_discord_presence_show_playing)
+        discord_idle_presence_wording_label = ctk.CTkLabel(discord_presence_frame, text='Idling presence wording', font=('Arial', 13), text_color='#B0B0B0', anchor='w')
+        discord_idle_presence_wording_textbox = ctk.CTkEntry(discord_presence_frame, textvariable=discord_idle_presence_wording, font=('Arial', 13))
         discord_idle_presence_wording_set_btn = ctk.CTkButton(discord_presence_frame, text='Set Wording', width=100,
                                                                command=save_discord_idle_presence_wording_setting,
-                                                               text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         discord_idle_presence_wording_default_btn = ctk.CTkButton(discord_presence_frame, text='Set Default', width=100,
                                                                    command=lambda: save_discord_idle_presence_wording_setting(default=True),
-                                                                   text_color='white', font=('Arial', 12, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                                   text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
 
         # ══════════ Version Info — Card-style sections ══════════
@@ -1975,26 +1975,26 @@ def setting_frame():
         player_frame.grid_columnconfigure(1, weight=1)
 
         # YT-DLP Section
-        ytdlp_title = ctk.CTkLabel(ytdlp_frame, text='  \u25b8 YT-DLP', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
+        ytdlp_title = ctk.CTkLabel(ytdlp_frame, text='  \u25b8 YT-DLP', font=('Arial', 15, 'bold'), text_color='#7EE0A8', anchor='w')
         go_ytdlp_web = ctk.CTkButton(ytdlp_frame, text='Visit Website', width=120,
                                       command=lambda:webbrowser.open('https://github.com/yt-dlp/yt-dlp/releases'),
-                                      text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                      text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         auto_update_ytdlp_btn = ctk.CTkButton(ytdlp_frame, text='Update', width=120,
                                                command=lambda:threading.Thread(daemon=True,target=update_ytdlp).start(),
-                                               text_color='#86C98A', font=('Arial', 13, 'bold'),
+                                               text_color='#86C98A', font=('Arial', 14, 'bold'),
                                                fg_color='#3A3A3A', hover_color='#314735',
                                                border_width=2, border_color='#4F8A55')
         ytdlp_use_nightly_build_checkbtn = ctk.CTkCheckBox(ytdlp_frame, text='Nightly build',
                                                             variable=ytdlp_use_nightly_build,
                                                             command=ytdlp_switch_use_nightly_build,
                                                             fg_color='#3A3A3A', hover_color='#505050',
-                                                            text_color='#C8C8C8', font=('Arial', 12))
+                                                            text_color='#C8C8C8', font=('Arial', 13))
 
         # JaTubePlayer Section
-        player_title = ctk.CTkLabel(player_frame, text='  \u25b8 JaTubePlayer', font=('Arial', 14, 'bold'), text_color='#7EB8E0', anchor='w')
+        player_title = ctk.CTkLabel(player_frame, text='  \u25b8 JaTubePlayer', font=('Arial', 15, 'bold'), text_color='#7EB8E0', anchor='w')
         go_player_web = ctk.CTkButton(player_frame, text='Visit Website', width=120,
                                        command=lambda:webbrowser.open('https://github.com/jackaopen/JaTubePlayer/releases'),
-                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                       text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
 
         # Version Sub-frames
         ytdlp_current_versions_frame = ctk.CTkFrame(ytdlp_frame, fg_color='#1a1a1a', corner_radius=6)
@@ -2002,20 +2002,20 @@ def setting_frame():
         player_current_versions_frame = ctk.CTkFrame(player_frame, fg_color='#1a1a1a', corner_radius=6)
         player_latest_versions_frame = ctk.CTkFrame(player_frame, fg_color='#1a1a1a', corner_radius=6)
 
-        ytdlp_current_versions_frame_title = ctk.CTkLabel(ytdlp_current_versions_frame, text='Current', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
-        ytdlp_latest_versions_frame_title = ctk.CTkLabel(ytdlp_latest_versions_frame, text='Latest', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
-        player_current_versions_frame_title = ctk.CTkLabel(player_current_versions_frame, text='Current', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
-        player_latest_versions_frame_title = ctk.CTkLabel(player_latest_versions_frame, text='Latest', font=('Arial', 12, 'bold'), text_color='#B0B0B0')
+        ytdlp_current_versions_frame_title = ctk.CTkLabel(ytdlp_current_versions_frame, text='Current', font=('Arial', 13, 'bold'), text_color='#B0B0B0')
+        ytdlp_latest_versions_frame_title = ctk.CTkLabel(ytdlp_latest_versions_frame, text='Latest', font=('Arial', 13, 'bold'), text_color='#B0B0B0')
+        player_current_versions_frame_title = ctk.CTkLabel(player_current_versions_frame, text='Current', font=('Arial', 13, 'bold'), text_color='#B0B0B0')
+        player_latest_versions_frame_title = ctk.CTkLabel(player_latest_versions_frame, text='Latest', font=('Arial', 13, 'bold'), text_color='#B0B0B0')
 
-        ytdlp_ver_current_label = ctk.CTkLabel(ytdlp_current_versions_frame, width=220, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
-        ytdlp_ver_lastest_label = ctk.CTkLabel(ytdlp_latest_versions_frame, width=220, font=('Arial', 14), text_color='#80C8E0', anchor='w')
+        ytdlp_ver_current_label = ctk.CTkLabel(ytdlp_current_versions_frame, width=220, font=('Arial', 15), text_color='#7EE0A8', anchor='w')
+        ytdlp_ver_lastest_label = ctk.CTkLabel(ytdlp_latest_versions_frame, width=220, font=('Arial', 15), text_color='#80C8E0', anchor='w')
 
-        player_ver_current_label = ctk.CTkLabel(player_current_versions_frame, width=220, font=('Arial', 14), text_color='#7EE0A8', anchor='w')
-        player_ver_latest_label = ctk.CTkLabel(player_latest_versions_frame, width=220, font=('Arial', 14), text_color='#80C8E0', anchor='w')
+        player_ver_current_label = ctk.CTkLabel(player_current_versions_frame, width=220, font=('Arial', 15), text_color='#7EE0A8', anchor='w')
+        player_ver_latest_label = ctk.CTkLabel(player_latest_versions_frame, width=220, font=('Arial', 15), text_color='#80C8E0', anchor='w')
 
         # Settings
         auto_check_ver_btn = ctk.CTkCheckBox(version_info_tab, text='Check version at startup', variable=auto_check_ver, command=save_autovercheck_option_ver,
-                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
+                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13))
 
 
 
@@ -2027,7 +2027,7 @@ def setting_frame():
         hotkey_scrollable_frame.grid_columnconfigure(0, weight=1)
 
         _hk_card_kw = dict(fg_color='#2B2B2B', corner_radius=8)
-        _hk_textbox_kw = dict(font=('Arial', 12), width=200, height=1, state='disabled', fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
+        _hk_textbox_kw = dict(font=('Arial', 13), width=200, height=1, state='disabled', fg_color='#1a1a1a', text_color='#C8C8C8', corner_radius=6)
 
         hotkey_playback_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
         hotkey_mode_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
@@ -2035,34 +2035,34 @@ def setting_frame():
         hotkey_player_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
         hotkey_set_keymem_frame = ctk.CTkFrame(hotkey_scrollable_frame, **_hk_card_kw)
 
-        hotkey_set_keymem_title = ctk.CTkLabel(hotkey_set_keymem_frame, text='  \u25b8 Set Hotkey', font=('Arial', 14, 'bold'), text_color='#E0C48C', anchor='w')
-        hotkey_set_keymem_function_combobox = ctk.CTkComboBox(hotkey_set_keymem_frame, font=('Arial', 12), width=200, state='readonly',
+        hotkey_set_keymem_title = ctk.CTkLabel(hotkey_set_keymem_frame, text='  \u25b8 Set Hotkey', font=('Arial', 15, 'bold'), text_color='#E0C48C', anchor='w')
+        hotkey_set_keymem_function_combobox = ctk.CTkComboBox(hotkey_set_keymem_frame, font=('Arial', 13), width=200, state='readonly',
                                                                values=['play_pause','next','previous','stop', 'volume_up','volume_down','mode_random','mode_continuous','mode_repeat','toggle_minimize'],
                                                                dropdown_fg_color='#333333', button_color='#444444')
         hotkey_set_keymem_startlisten_btn = ctk.CTkButton(hotkey_set_keymem_frame, text='Set Hotkey', width=160, command=set_keymem_setting_thread,
-                                                            text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                            text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         hotkey_set_keymem_set_default_btn = ctk.CTkButton(hotkey_set_keymem_frame, text='Reset All to Default', width=160, command=set_keymem_default_setting,
-                                                            text_color='#D98C8C', font=('Arial', 13, 'bold'),
+                                                            text_color='#D98C8C', font=('Arial', 14, 'bold'),
                                                             fg_color='#3A3A3A', hover_color='#4A3030',
                                                             border_width=2, border_color='#8A4A4A')
 
-        hotkey_playback_frame_title = ctk.CTkLabel(hotkey_playback_frame, text='  \u25b8 Playback', font=('Arial', 14, 'bold'), text_color='#FF6B8A', anchor='w')
-        hotkey_mode_frame_title = ctk.CTkLabel(hotkey_mode_frame, text='  \u25b8 Playback Mode', font=('Arial', 14, 'bold'), text_color='#7EE0A8', anchor='w')
-        hotkey_volume_frame_title = ctk.CTkLabel(hotkey_volume_frame, text='  \u25b8 Volume', font=('Arial', 14, 'bold'), text_color='#80C8E0', anchor='w')
-        hotkey_player_frame_title = ctk.CTkLabel(hotkey_player_frame, text='  \u25b8 Player', font=('Arial', 14, 'bold'), text_color='#C0A0E0', anchor='w')
+        hotkey_playback_frame_title = ctk.CTkLabel(hotkey_playback_frame, text='  \u25b8 Playback', font=('Arial', 15, 'bold'), text_color='#FF6B8A', anchor='w')
+        hotkey_mode_frame_title = ctk.CTkLabel(hotkey_mode_frame, text='  \u25b8 Playback Mode', font=('Arial', 15, 'bold'), text_color='#7EE0A8', anchor='w')
+        hotkey_volume_frame_title = ctk.CTkLabel(hotkey_volume_frame, text='  \u25b8 Volume', font=('Arial', 15, 'bold'), text_color='#80C8E0', anchor='w')
+        hotkey_player_frame_title = ctk.CTkLabel(hotkey_player_frame, text='  \u25b8 Player', font=('Arial', 15, 'bold'), text_color='#C0A0E0', anchor='w')
 
-        hotkey_playback_play_pause_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Play / Pause', text_color='#B0B0B0')
-        hotkey_playback_stop_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Stop', text_color='#B0B0B0')
-        hotkey_playback_next_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Next Video', text_color='#B0B0B0')
-        hotkey_playback_prev_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 12), text='Previous Video', text_color='#B0B0B0')
+        hotkey_playback_play_pause_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 13), text='Play / Pause', text_color='#B0B0B0')
+        hotkey_playback_stop_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 13), text='Stop', text_color='#B0B0B0')
+        hotkey_playback_next_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 13), text='Next Video', text_color='#B0B0B0')
+        hotkey_playback_prev_label = ctk.CTkLabel(hotkey_playback_frame, font=('Arial', 13), text='Previous Video', text_color='#B0B0B0')
     
-        hotkey_mode_repeat_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 12), text='Repeat Mode', text_color='#B0B0B0')
-        hotkey_mode_random_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 12), text='Random Mode', text_color='#B0B0B0')
-        hotkey_mode_continuous_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 12), text='Continuous Play', text_color='#B0B0B0')
+        hotkey_mode_repeat_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 13), text='Repeat Mode', text_color='#B0B0B0')
+        hotkey_mode_random_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 13), text='Random Mode', text_color='#B0B0B0')
+        hotkey_mode_continuous_label = ctk.CTkLabel(hotkey_mode_frame, font=('Arial', 13), text='Continuous Play', text_color='#B0B0B0')
 
-        hotkey_volume_up_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 12), text='Volume Up', text_color='#B0B0B0')
-        hotkey_volume_down_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 12), text='Volume Down', text_color='#B0B0B0')
-        hotkey_toggle_minimize_label = ctk.CTkLabel(hotkey_player_frame, font=('Arial', 12), text='Toggle Minimize', text_color='#B0B0B0')
+        hotkey_volume_up_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 13), text='Volume Up', text_color='#B0B0B0')
+        hotkey_volume_down_label = ctk.CTkLabel(hotkey_volume_frame, font=('Arial', 13), text='Volume Down', text_color='#B0B0B0')
+        hotkey_toggle_minimize_label = ctk.CTkLabel(hotkey_player_frame, font=('Arial', 13), text='Toggle Minimize', text_color='#B0B0B0')
 
         hotkey_playback_play_pause_textbox = ctk.CTkTextbox(hotkey_playback_frame, **_hk_textbox_kw)
         hotkey_playback_stop_textbox = ctk.CTkTextbox(hotkey_playback_frame, **_hk_textbox_kw)
@@ -2411,12 +2411,12 @@ def setting_frame():
         # ── Quick Init Header Card ──
         header_frame = ctk.CTkFrame(quick_init_tab, fg_color='#2B2B2B', corner_radius=8)
         header_frame.grid_columnconfigure(0, weight=1)
-        header_title = ctk.CTkLabel(header_frame, text='  \u25b8 Quick Startup', font=('Arial', 14, 'bold'), text_color='#90D080', anchor='w')
+        header_title = ctk.CTkLabel(header_frame, text='  \u25b8 Quick Startup', font=('Arial', 15, 'bold'), text_color='#90D080', anchor='w')
         header_title.grid(row=0, column=0, padx=8, pady=(10, 6), sticky="w")
         init_toggle_quickstartup_checkbtn = ctk.CTkCheckBox(header_frame, text='Enable quick startup', variable=init_toggle_quickstartup, command=setting_init_toggle_quickstartup,
-                                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 12))
+                                                              fg_color='#3A3A3A', hover_color='#505050', text_color='#C8C8C8', font=('Arial', 13))
         init_toggle_quickstartup_checkbtn.grid(row=1, column=0, padx=(24, 8), pady=5, sticky="w")
-        init_quick_startup_mode_text = ctk.CTkTextbox(header_frame, font=('Arial', 13), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
+        init_quick_startup_mode_text = ctk.CTkTextbox(header_frame, font=('Arial', 14), height=25, text_color='#C8C8C8', fg_color='#1a1a1a', corner_radius=6)
         init_quick_startup_mode_text.grid(row=2, column=0, padx=12, pady=(4, 12), sticky="ew")
         init_quick_startup_mode_text.configure(state='disabled')
         header_frame.grid(row=0, column=0, columnspan=2, padx=16, pady=(10, 4), sticky="ew")
@@ -2427,12 +2427,12 @@ def setting_frame():
         init_search_btn = ctk.CTkRadioButton(search_frame, text='  \u25b8 Search', variable=init_quickstartup_mode, value='search', command=init_search_select,
                                               text_color='#E0C48C', text_color_disabled='#E0C48C',
                                               fg_color='#E0C48C', hover_color='#E0C48C', border_color='#E0C48C',
-                                              font=('Arial', 14, 'bold'))
+                                              font=('Arial', 15, 'bold'))
         init_search_btn.grid(row=0, column=0, columnspan=2, padx=8, pady=(7, 3), sticky="w")
-        init_search_entry = ctk.CTkEntry(search_frame, font=('Arial', 13), width=14, placeholder_text='Quick Startup search query')
+        init_search_entry = ctk.CTkEntry(search_frame, font=('Arial', 14), width=14, placeholder_text='Quick Startup search query')
         init_search_entry.grid(row=1, column=0, columnspan=2, padx=12, pady=3, sticky="ew")
         init_search_set_btn = ctk.CTkButton(search_frame, text='Set Init Search', command=init_search_set, width=160,
-                                              text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                              text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_search_set_btn.grid(row=2, column=0, columnspan=2, padx=12, pady=(2, 8), sticky="ew")
         search_frame.grid(row=1, column=0, padx=(16, 4), pady=4, sticky="nsew")
 
@@ -2442,10 +2442,10 @@ def setting_frame():
         init_local_folder_btn = ctk.CTkRadioButton(local_folder_frame, text='  \u25b8 Local Folder', variable=init_quickstartup_mode, value='local_playlist', command=init_local_playlist,
                                                      text_color='#C0A0E0', text_color_disabled='#C0A0E0',
                                                      fg_color='#C0A0E0', hover_color='#C0A0E0', border_color='#C0A0E0',
-                                                     font=('Arial', 14, 'bold'))
+                                                     font=('Arial', 15, 'bold'))
         init_local_folder_btn.grid(row=0, column=0, columnspan=2, padx=8, pady=(7, 3), sticky="w")
         init_select_local_folder_btn = ctk.CTkButton(local_folder_frame, text='Select Folder', command=init_select_local_folder, width=160,
-                                                       text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                                       text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_select_local_folder_btn.grid(row=1, column=0, columnspan=2, padx=12, pady=(3, 8), sticky="ew")
         local_folder_frame.grid(row=2, column=0, padx=(16, 4), pady=(4, 10), sticky="nsew")
 
@@ -2455,7 +2455,7 @@ def setting_frame():
         init_playlist_btn = ctk.CTkRadioButton(playlist_frame, text='  \u25b8 Playlist', variable=init_quickstartup_mode, value='playlist', command=init_playlist_select,
                                                 text_color='#80C8E0', text_color_disabled='#80C8E0',
                                                 fg_color='#80C8E0', hover_color='#80C8E0', border_color='#80C8E0',
-                                                font=('Arial', 14, 'bold'))
+                                                font=('Arial', 15, 'bold'))
         init_playlist_btn.grid(row=0, column=0, columnspan=2, padx=8, pady=(7, 3), sticky="w")
 
         playlist_options_frame = ctk.CTkFrame(
@@ -2474,7 +2474,7 @@ def setting_frame():
             value='yt_playlist',
             command=init_yt_playlist_select,
             text_color='#C8C8C8',
-            font=('Arial', 12),
+            font=('Arial', 13),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2488,7 +2488,7 @@ def setting_frame():
             value='like',
             command=init_playlist_like_select,
             text_color='#C8C8C8',
-            font=('Arial', 12),
+            font=('Arial', 13),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2502,7 +2502,7 @@ def setting_frame():
             value='sub',
             command=init_playlist_sub_select,
             text_color='#C8C8C8',
-            font=('Arial', 12),
+            font=('Arial', 13),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
@@ -2516,20 +2516,20 @@ def setting_frame():
             value='home',
             command=init_playlist_recommendation_select,
             text_color='#C8C8C8',
-            font=('Arial', 12),
+            font=('Arial', 13),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
         )
         init_playlist_recommendation_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=(3, 7), sticky="w")
 
-        init_playlist_combobox = ctk.CTkComboBox(playlist_options_frame, font=('Arial', 13), width=14, state='readonly')
+        init_playlist_combobox = ctk.CTkComboBox(playlist_options_frame, font=('Arial', 14), width=14, state='readonly')
         init_playlist_combobox.grid(row=0, column=1, padx=(4, 12), pady=(7, 3), sticky="ew")
         init_get_playlist_btn = ctk.CTkButton(playlist_options_frame, text='Get Playlist', command=init_playlist_get, width=100,
-                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                               text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_get_playlist_btn.grid(row=1, column=0, padx=(12, 4), pady=3, sticky="ew")
         init_playlist_set_btn = ctk.CTkButton(playlist_options_frame, text='Set Playlist', command=init_playlist_set, width=100,
-                                               text_color='white', font=('Arial', 13, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
+                                               text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
         init_playlist_set_btn.grid(row=1, column=1, padx=(4, 12), pady=3, sticky="ew")
         playlist_options_frame.grid(row=1, column=0, columnspan=2, padx=12, pady=(0, 8), sticky="nsew")
         playlist_frame.grid(row=1, column=1, rowspan=2, padx=(4, 16), pady=(4, 10), sticky="nsew")
@@ -4097,7 +4097,7 @@ def fullscreen_widget_change(mode:int=0):
                 
                 # Progress bar
                 player_pos_label.place_configure(relx=0, rely=0.03, relwidth=0.050)
-                player_position_scale.place_configure(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.50)
+                player_position_scale.place_configure(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.45)
                 player_song_length_label.place_configure(relx=0.922, rely=0.03, relwidth=0.068)
                 
                 # Playback controls
@@ -4110,7 +4110,7 @@ def fullscreen_widget_change(mode:int=0):
                 
                 # Volume
                 player_volume_label.place_configure(relx=0, rely=0.2, relwidth=0.120)
-                player_volume_scale.place_configure(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
+                player_volume_scale.place_configure(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.28)
                 
                 # Action buttons
                 setting_btn.place_configure(relx=0, rely=0.06, relwidth=0.290, relheight=0.88)
@@ -5031,8 +5031,8 @@ if __name__ == '__main__':
 sv_ttk.use_dark_theme() ### must be here or will overrider the style
 playlisttree_style = ttk.Style()
 playlisttree_style.configure("Treeview",
-                rowheight=int(75*tkinter_scaling),
-                font=("Arial", int(12*tkinter_scaling)),
+                rowheight=int(80*tkinter_scaling),
+                font=("Segoe UI", int(13.5*tkinter_scaling) ),
                 fieldbackground="#1e1e1e",
                 background="#1e1e1e",
                 foreground="#c5c5c5")
@@ -5054,34 +5054,38 @@ header_frame.place(relx=0, rely=0, relwidth=1, relheight=0.063)
 title_icon = ctk.CTkImage(light_image=title_icon_image,
                           dark_image=title_icon_image, size=(28,28))
 
-title_front = ctk.CTkLabel(header_frame, text=' JaTube', image=title_icon,
-                     compound='left', font=('Segoe UI', 20, 'bold','italic'),
-                     text_color='#FF6B35', anchor="w")
-title_front.place(relx=0.012, rely=0.19)
-title_back = ctk.CTkLabel(header_frame, text='Player',
-                     compound='left', font=('Segoe UI', 20.8, 'bold','italic'),
-                     text_color="#3e62dc", anchor="w")
-title_back.place(relx=0.09, rely=0.19)
+title_label = ctk.CTkFrame(header_frame,fg_color="transparent",corner_radius=0)
 
-searchlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 13), text='🔍',
+ctk.CTkLabel(title_label,text="",
+             image=title_icon,width=0).pack(side="left")
+
+ctk.CTkLabel(title_label,text=" JaTube",width=0,
+    font=("Segoe UI", 21.5, "bold", "italic"),text_color="#FF6B35").pack(side="left")
+
+ctk.CTkLabel(title_label,text="Player",width=0,
+    font=("Segoe UI", 22.3, "bold", "italic"),text_color="#3e62dc").pack(side="left")
+
+title_label.place(relx=0.012, rely=0.19)
+
+searchlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 14.5), text='🔍',
                                text_color='#888888', anchor="w", bg_color='transparent')
 searchlistlabel.place(relx=0.148, rely=0.18)
 
-searchentry = ctk.CTkEntry(header_frame, font=('Segoe UI', 13), corner_radius=8,
+searchentry = ctk.CTkEntry(header_frame, font=('Segoe UI', 14.5), corner_radius=8,
                            placeholder_text="Search...",
                            border_color="#3e62dc", border_width=1)
 searchentry.place(relx=0.170, rely=0.17, relwidth=0.215, relheight=0.66)
 
 search_btn = ctk.CTkButton(header_frame, text='🔎', corner_radius=8,
                            command=youtube_search, fg_color='#3e62dc', hover_color='#4a70f0',
-                           font=('Segoe UI', 14))
+                           font=('Segoe UI', 15.5))
 search_btn.place(relx=0.391, rely=0.17, relwidth=0.028, relheight=0.66)
 
-playlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 13), text='📁',
+playlistlabel = ctk.CTkLabel(header_frame, font=('Segoe UI', 14.5), text='📁',
                              text_color='#888888', anchor="w", bg_color='transparent')
 playlistlabel.place(relx=0.432, rely=0.18)
 
-userplaylistcombobox = ctk.CTkComboBox(header_frame, font=('Segoe UI', 13),
+userplaylistcombobox = ctk.CTkComboBox(header_frame, font=('Segoe UI', 14.5),
                                         values=user_playlists_name, state='readonly', corner_radius=8,
                                         fg_color="#363636", text_color="#c5c5c5",
                                         border_width=0,
@@ -5094,7 +5098,7 @@ userplaylistcombobox.place(relx=0.455, rely=0.17, relwidth=0.130, relheight=0.66
 
 enter_playlist_btn = ctk.CTkButton(header_frame, text='▶ Enter', 
                                    command=get_user_playlists, fg_color='#FF6B35', hover_color='#FF8555',
-                                   corner_radius=8, font=('Segoe UI', 12, 'bold'))
+                                   corner_radius=8, font=('Segoe UI', 13.5, 'bold'))
 enter_playlist_btn.place(relx=0.591, rely=0.17, relwidth=0.062, relheight=0.66)
 
 searchentry.bind("<Return>", youtube_search)
@@ -5109,40 +5113,40 @@ status_panel = ctk.CTkFrame(header_frame, fg_color="#151515", corner_radius=6,
                             border_width=1, border_color="#3e62dc")
 status_panel.place(relx=0.665, rely=0.09, relwidth=0.328, relheight=0.82)
 
-chrome_ext_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 14),
+chrome_ext_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 15.5),
                                text_color='#333333')
 chrome_ext_dot.place(relx=0.031, rely=0.168, relheigh = 0.7)
 
 chrome_ext_text = ctk.CTkLabel(status_panel, text='Chrome Link', 
-                                font=('Segoe UI', 13), text_color='#777777', anchor="w")
+                                font=('Segoe UI', 14.5), text_color='#777777', anchor="w")
 chrome_ext_text.place(relx=0.083, rely=0.158, relheigh = 0.7)
 
 
 
-separator = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 18), text_color='#444444')
+separator = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 19.5), text_color='#444444')
 separator.place(relx=0.296, rely=0.149, relheigh = 0.7)
 
-discord_status_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 14),
+discord_status_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 15.5),
                                    text_color='#333333')
 discord_status_dot.place(relx=0.345, rely=0.168, relheigh = 0.7)
 
 discord_status_text = ctk.CTkLabel(status_panel, text='Discord', 
-                                    font=('Segoe UI', 13), text_color='#777777', anchor="w")
+                                    font=('Segoe UI', 14.5), text_color='#777777', anchor="w")
 discord_status_text.place(relx=0.397, rely=0.158, relheigh = 0.7)
 
 
-separator2 = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 18), text_color='#444444')
+separator2 = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 19.5), text_color='#444444')
 separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
 
 # Google Profile Container - styled circular frame for profile picture
 
 
-google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 14),
+google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 15.5),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
 google_status_profile_pic_label.place(relx=0.63, rely=0.5, anchor="center", relheigh = 0.85)
 google_status_text = ctk.CTkTextbox(status_panel, 
-                                   font=('Segoe UI', 13), text_color="#777777", wrap="none",
+                                   font=('Segoe UI', 14.5), text_color="#777777", wrap="none",
                                    border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
 google_status_text.place(relx=0.67, rely=0.02, relwidth=0.30, relheigh = 0.9)
 google_status_text.configure(state='disabled')
@@ -5189,7 +5193,7 @@ current_playlist_frame.place(relx=0.010, rely=0.06, relwidth=0.615, relheight=0.
 current_playlist_caption = ctk.CTkLabel(
     current_playlist_frame,
     text='CURRENT PLAYLIST',
-    font=('Segoe UI', 9, 'bold'),
+    font=('Segoe UI', 10.5, 'bold'),
     text_color='#777777',
     anchor='w'
 )
@@ -5198,7 +5202,7 @@ current_playlist_caption.place(relx=0.025, rely=0.00, relwidth=0.4, relheight=0.
 
 playlist_name_textbox = ctk.CTkTextbox(
     current_playlist_frame,
-    font=('Segoe UI', 13.5,"bold"),
+    font=('Segoe UI', 15,"bold"),
     text_color='#c5c5c5',
     fg_color='#252525',
     border_spacing=0,
@@ -5213,7 +5217,7 @@ insert_textbox(playlist_name_textbox,"Hey! Search, Login or see Recommended")
 playlist_history_separator = ctk.CTkLabel(
     mode_header_frame,
     text='│',
-    font=('Segoe UI', 26),
+    font=('Segoe UI', 27.5),
     text_color='#444444'
 )
 playlist_history_separator.place(relx=0.630, rely=0.50, anchor='center', relheight=0.96)
@@ -5229,7 +5233,7 @@ history_nav_frame.place(relx=0.635, rely=0.06, relwidth=0.355, relheight=0.88)
 history_nav_caption = ctk.CTkLabel(
     history_nav_frame,
     text='PLAYLIST HISTORY',
-    font=('Segoe UI', 9, 'bold'),
+    font=('Segoe UI', 10.5, 'bold'),
     text_color='#777777'
 )
 history_nav_caption.place(relx=0.04, rely=0.04, relwidth=0.92, relheight=0.26)
@@ -5242,7 +5246,7 @@ history_back_btn = ctk.CTkButton(
     hover_color='#404040',
     text_color="#C2C1C1",
     corner_radius=6,
-    font=('Segoe UI', 11),
+    font=('Segoe UI', 12.5),
     border_width=1,
     border_color='#444444'
 )
@@ -5256,7 +5260,7 @@ history_forward_btn = ctk.CTkButton(
     hover_color='#404040',
     text_color="#C2C1C1",
     corner_radius=6,
-    font=('Segoe UI', 11),
+    font=('Segoe UI', 12.5),
     border_width=1,
     border_color='#444444'
 )
@@ -5269,7 +5273,7 @@ playlisttreebox = ttk.Treeview(right_panel_frame, columns=("title"), height=4,
                                selectmode="browse", show='tree')
 playlisttreebox.heading("#0", text="")
 playlisttreebox.heading("title", text="")
-playlisttreebox.column("#0", width=int(160*tkinter_scaling), anchor="w", stretch=False)
+playlisttreebox.column("#0", width=int(170*tkinter_scaling), anchor="w", stretch=False)
 playlisttreebox.column("title", width=1000, anchor="w", stretch=False)
 playlisttreebox.place(relx=0.020, rely=0.135, relwidth=0.925, relheight=0.828)
 playlisttreebox.bind('<Double-1>', download_and_play)
@@ -5290,7 +5294,7 @@ playlist_btn_frame.place(relx=0.618, rely=0.630, relwidth=0.377, relheight=0.130
 # Hero action button
 playselectedsong = ctk.CTkButton(playlist_btn_frame, text='▶ Play',
                                   command=lambda: download_and_play(), fg_color='#3e62dc',
-                                  hover_color='#4a70f0', corner_radius=8, font=('Segoe UI', 13, 'bold'))
+                                  hover_color='#4a70f0', corner_radius=8, font=('Segoe UI', 14.5, 'bold'))
 playselectedsong.place(relx=0.212, rely=0.54, relwidth=0.19, relheight=0.33)
 
 # Source buttons in a compact row
@@ -5299,33 +5303,33 @@ _src_gap = 0.008
 recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='🏠Recommend',
                                     command=lambda: threading.Thread(daemon=True, target=lambda: get_youtube_playlists("home")).start(),
                                     fg_color='#2E2E2E', hover_color='#404040', corner_radius=6,
-                                    font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
+                                    font=('Segoe UI', 13), border_width=1, border_color='#444444')
 recommendation_btn.place(relx=0.020, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 load_star_btn = ctk.CTkButton(playlist_btn_frame, text='★ Star',
                         command= lambda :threading.Thread(daemon=True, target=get_starred_vid).start(), fg_color='#2E2E2E', hover_color='#404040',
-                        corner_radius=6, font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
+                        corner_radius=6, font=('Segoe UI', 13), border_width=1, border_color='#444444')
 load_star_btn.place(relx=0.020, rely=0.54, relwidth=_src_w, relheight=0.33)
 
 sub_btn = ctk.CTkButton(playlist_btn_frame, text='🔔Subcription',
                         command=lambda: get_youtube_playlists("sub"), fg_color='#2E2E2E', hover_color='#404040',
-                        corner_radius=6, font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
+                        corner_radius=6, font=('Segoe UI', 13), border_width=1, border_color='#444444')
 sub_btn.place(relx=0.020+(_src_w+_src_gap)*1, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 like_btn = ctk.CTkButton(playlist_btn_frame, text='👍Like',
                          command=lambda: get_youtube_playlists("like"), fg_color='#2E2E2E', hover_color='#404040',
-                         corner_radius=6, font=('Segoe UI', 11.5), border_width=1, border_color='#444444')
+                         corner_radius=6, font=('Segoe UI', 13), border_width=1, border_color='#444444')
 like_btn.place(relx=0.020+(_src_w+_src_gap)*2, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 playselectedfile = ctk.CTkButton(playlist_btn_frame, text='📄 File',
                                   command=lambda: load_local_files(mode=0), fg_color='#2E2E2E',
-                                  hover_color='#404040', corner_radius=6, font=('Segoe UI', 11.5),
+                                  hover_color='#404040', corner_radius=6, font=('Segoe UI', 13),
                                   border_width=1, border_color='#444444')
 playselectedfile.place(relx=0.020+(_src_w+_src_gap)*3, rely=0.1, relwidth=_src_w, relheight=0.33)
 
 playselectedfolder = ctk.CTkButton(playlist_btn_frame, text='📁 Folder',
                                     command=lambda: load_local_files(mode=1), fg_color='#2E2E2E',
-                                    hover_color='#404040', corner_radius=6, font=('Segoe UI', 11.5),
+                                    hover_color='#404040', corner_radius=6, font=('Segoe UI', 13),
                                     border_width=1, border_color='#444444')
 playselectedfolder.place(relx=0.020+(_src_w+_src_gap)*4, rely=0.1, relwidth=_src_w, relheight=0.33)
 
@@ -5335,19 +5339,19 @@ page_nav_frame.place(relx=_src_w*2+_src_gap*2+0.02, rely=0.52, relwidth=_src_w*3
 
 prev_page_btn = ctk.CTkButton(page_nav_frame, text='◀ Prev',
                                command=lambda: page_control(2), fg_color='#2E2E2E', hover_color='#404040',
-                               corner_radius=8, font=('Segoe UI', 12), border_width=1, border_color='#444444')
+                               corner_radius=8, font=('Segoe UI', 13.5), border_width=1, border_color='#444444')
 prev_page_btn.place(relx=0.02, rely=0.116, relwidth=0.28, relheight=0.767)
 
 next_page_btn = ctk.CTkButton(page_nav_frame, text='Next ▶',
                                command=lambda: page_control(1), fg_color='#2E2E2E', hover_color='#404040',
-                               corner_radius=8, font=('Segoe UI', 12), border_width=1, border_color='#444444')
+                               corner_radius=8, font=('Segoe UI', 13.5), border_width=1, border_color='#444444')
 next_page_btn.place(relx=0.32, rely=0.116, relwidth=0.28, relheight=0.767)
 
-liked_page_label = ctk.CTkLabel(page_nav_frame, font=('Segoe UI', 13), text='📄',
+liked_page_label = ctk.CTkLabel(page_nav_frame, font=('Segoe UI', 14.5), text='📄',
                                 anchor="w", fg_color="transparent")
 liked_page_label.place(relx=0.630 ,rely=0.15)
 
-page_num_label = ctk.CTkLabel(page_nav_frame, font=('Segoe UI', 13), text='',
+page_num_label = ctk.CTkLabel(page_nav_frame, font=('Segoe UI', 14.5), text='',
                                      text_color='#888888', anchor="w", fg_color="transparent")
 page_num_label.place(relx=0.70, rely=0.15)
 
@@ -5370,12 +5374,12 @@ controls_frame.place(relx=0.005, rely=0.764, relwidth=0.990, relheight=0.230)
 now_playing_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=8)
 now_playing_frame.place(relx=0.008, rely=0.102, relwidth=0.984, relheight=0.240)
 
-np_icon = ctk.CTkLabel(now_playing_frame, text='🎶', font=('Segoe UI', 16))
+np_icon = ctk.CTkLabel(now_playing_frame, text='🎶', font=('Segoe UI', 17.5))
 np_icon.place(relx=0.008, rely=0.14)
 
 playing_title_textbox = ctk.CTkTextbox(
     now_playing_frame,
-    font=('Segoe UI', 17, "bold"),
+    font=('Segoe UI', 18.5, "bold"),
     text_color='#c5c5c5',
     fg_color='#1c1c1c',
     corner_radius=0,
@@ -5391,7 +5395,7 @@ playing_title_textbox.place(relx=0.035, rely=0.15, relwidth=0.95, relheight=0.9)
 progress_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
 progress_frame.place(relx=0.008, rely=0.405, relwidth=0.984, relheight=0.230)
 
-player_pos_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
+player_pos_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 15.5),
                                 textvariable=pos_for_label, text_color="#7d9bff", anchor="e")
 player_pos_label.place(relx=0, rely=0.03, relwidth=0.050)
 
@@ -5400,9 +5404,9 @@ player_position_scale = ctk.CTkSlider(progress_frame, from_=0, command=scaler_st
                                        button_hover_color='#6090ff', fg_color='#333333')
 player_position_scale.set(0)
 player_position_scale.bind('<ButtonRelease-1>', scaler_finish_seek)
-player_position_scale.place(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.50)
+player_position_scale.place(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.45)
 
-player_song_length_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 14),
+player_song_length_label = ctk.CTkLabel(progress_frame, font=('Segoe UI Variable Display Semib', 15.5),
                                          text_color="#9E9E9E", anchor="w", text='')
 player_song_length_label.place(relx=0.922, rely=0.03, relwidth=0.068)
 
@@ -5411,22 +5415,22 @@ player_song_length_label.place(relx=0.922, rely=0.03, relwidth=0.068)
 mode_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=10)
 mode_frame.place(relx=0.008, rely=0.585, relwidth=0.132, relheight=0.375)
 
-mode_label = ctk.CTkLabel(mode_frame, text='Mode', font=('Segoe UI', 13), text_color="#6A6969")
+mode_label = ctk.CTkLabel(mode_frame, text='Mode', font=('Segoe UI', 14.5), text_color="#6A6969")
 mode_label.place(relx=0.06, rely=0.07)
 
 player_mode_continue = ctk.CTkRadioButton(mode_frame, text='▶▶', variable=player_mode_selector,
                                            value='continue', 
-                                           font=('Segoe UI', 13), radiobutton_width=16, radiobutton_height=16)
+                                           font=('Segoe UI', 14.5), radiobutton_width=16, radiobutton_height=16)
 player_mode_continue.place(relx=0.06, rely=0.45)
 
 player_mode_replay = ctk.CTkRadioButton(mode_frame, text='🔁', variable=player_mode_selector,
                                          value='replay', 
-                                         font=('Segoe UI', 13), radiobutton_width=16, radiobutton_height=16)
+                                         font=('Segoe UI', 14.5), radiobutton_width=16, radiobutton_height=16)
 player_mode_replay.place(relx=0.39, rely=0.45)
 
 player_mode_random = ctk.CTkRadioButton(mode_frame, text='🔀', variable=player_mode_selector,
                                          value='random', 
-                                         font=('Segoe UI', 13), radiobutton_width=16, radiobutton_height=16)
+                                         font=('Segoe UI', 14.5), radiobutton_width=16, radiobutton_height=16)
 player_mode_random.place(relx=0.72, rely=0.45)
 
 playback_frame = ctk.CTkFrame(controls_frame, fg_color="#1c1c1c", corner_radius=20)
@@ -5434,33 +5438,33 @@ playback_frame.place(relx=0.150, rely=0.585, relwidth=0.43, relheight=0.375)
 
 prevsong = ctk.CTkButton(playback_frame, text='⏮', command=lambda: playprevnext(2),
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
-                         font=('Segoe UI', 17))
+                         font=('Segoe UI', 18.5))
 prevsong.place(relx=0.02, rely=0.08, relwidth=0.15, relheight=0.8)
 
 pausebutton = ctk.CTkButton(playback_frame, textvariable=pauseStr,
                             command=lambda: pause(1), fg_color='#3e62dc', hover_color='#4a70f0',
-                            corner_radius=20, font=('Segoe UI', 17, 'bold'))
+                            corner_radius=20, font=('Segoe UI', 18.5, 'bold'))
 pausebutton.place(relx=0.18, rely=0.08, relwidth=0.15, relheight=0.8)
 pauseStr.set('▶')
 
 stopbutton = ctk.CTkButton(playback_frame, text='⏹', command=stop_playing_video,
                            fg_color='transparent', hover_color='#333333', corner_radius=20,
-                           font=('Segoe UI', 17))
+                           font=('Segoe UI', 18.5))
 stopbutton.place(relx=0.34, rely=0.08, relwidth=0.15, relheight=0.8)
 
 nextsong = ctk.CTkButton(playback_frame, text='⏭', command=lambda: playprevnext(1),
                          fg_color='transparent', hover_color='#333333', corner_radius=20,
-                         font=('Segoe UI', 17))
+                         font=('Segoe UI', 18.5))
 nextsong.place(relx=0.50, rely=0.08, relwidth=0.15, relheight=0.8)
 
 # make fullscreen button match the other transport controls (transparent background, same corner radius/font)
 fullscreenbtn = ctk.CTkButton(playback_frame, text='⛶', command=fullscreen_change_state,
                                fg_color='transparent', hover_color='#333333', corner_radius=20,
-                               font=('Segoe UI', 17))
+                               font=('Segoe UI', 18.5))
 # slightly narrower so it doesn't crowd the playback buttons
 fullscreenbtn.place(relx=0.66, rely=0.08, relwidth=0.15, relheight=0.8)
 
-player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 12), text='',
+player_loading_label = ctk.CTkLabel(playback_frame, font=('Segoe UI', 13.5), text='',
                                      text_color='#FF6B35', anchor="center",
                                      fg_color="transparent")
 player_loading_label.place(relx=0.81, rely=0.25, relwidth=0.18)
@@ -5468,7 +5472,7 @@ player_loading_label.place(relx=0.81, rely=0.25, relwidth=0.18)
 volume_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
 volume_frame.place(relx=0.595, rely=0.605, relwidth=0.105, relheight=0.350)
 
-player_volume_label = ctk.CTkLabel(volume_frame, font=('Segoe UI', 16), text='🔊',
+player_volume_label = ctk.CTkLabel(volume_frame, font=('Segoe UI', 17.5), text='🔊',
                                    text_color='#888888', anchor="e")
 player_volume_label.place(relx=0, rely=0.2, relwidth=0.120)
 
@@ -5477,7 +5481,7 @@ player_volume_scale = ctk.CTkSlider(volume_frame, from_=0, to=120, command=set_v
                                     button_hover_color='#FFA575', fg_color='#333333')
 player_volume_scale.set(50)
 player_volume_scale.bind('<MouseWheel>', set_volume_wheel)
-player_volume_scale.place(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.3)
+player_volume_scale.place(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.28)
 
 Frame_for_mpv.bind('<MouseWheel>', set_volume_wheel)
 
@@ -5488,12 +5492,12 @@ action_btn_frame.place(relx=0.705, rely=0.585, relwidth=0.290, relheight=0.375)
 
 setting_btn = ctk.CTkButton(action_btn_frame, text='⚙️ Settings', command=setting_frame,
                             fg_color='#FF6B35', hover_color='#FF8555', corner_radius=8,
-                            font=('Segoe UI', 13, 'bold'))
+                            font=('Segoe UI', 14.5, 'bold'))
 setting_btn.place(relx=0, rely=0.06, relwidth=0.290, relheight=0.88)
 
 star_btn = ctk.CTkButton(action_btn_frame, text='☆', command=switch_starred_vid,
                             fg_color='#3A3A3A', hover_color='#505050', text_color='#B0B0B0',
-                            corner_radius=8, font=('Segoe UI', 13, 'bold'))
+                            corner_radius=8, font=('Segoe UI', 14.5, 'bold'))
 star_btn.place(relx=0.305, rely=0.06, relwidth=0.200, relheight=0.88)
 
 
@@ -5503,19 +5507,19 @@ video_info_btn_frame = ctk.CTkFrame(action_btn_frame, fg_color='#252525',
 video_info_btn_frame.place(relx=0.520, rely=0.06, relwidth=0.475, relheight=0.88)
 
 video_info_title = ctk.CTkLabel(video_info_btn_frame, text='ⓘ Video Info',
-                                font=('Segoe UI', 12, 'bold'), text_color='#D0D0D0',
+                                font=('Segoe UI', 13.5, 'bold'), text_color='#D0D0D0',
                                 anchor='center')
 video_info_title.place(relx=0.04, rely=0.04, relwidth=0.92, relheight=0.34)
 
 select_info_btn = ctk.CTkButton(video_info_btn_frame, text='Selected',
                                  command=lambda: video_info_frame_main(1), fg_color='#303030',
-                                 hover_color='#454545', corner_radius=6, font=('Segoe UI', 11.5),
+                                 hover_color='#454545', corner_radius=6, font=('Segoe UI', 13),
                                  border_width=1, border_color='#4A4A4A')
 select_info_btn.place(relx=0.04, rely=0.42, relwidth=0.44, relheight=0.47)
 
 playing_info_btn = ctk.CTkButton(video_info_btn_frame, text='Playing',
                                   command=lambda: video_info_frame_main(2), fg_color='#303030',
-                                  hover_color='#454545', corner_radius=6, font=('Segoe UI', 11.5),
+                                  hover_color='#454545', corner_radius=6, font=('Segoe UI', 13),
                                   border_width=1, border_color='#4A4A4A')
 playing_info_btn.place(relx=0.52, rely=0.42, relwidth=0.44, relheight=0.47)
 

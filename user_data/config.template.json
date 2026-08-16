@@ -31,7 +31,7 @@
         "like": 5000
     },
     "ytdlp_use_cookie": false,
-    "ytdlp_use_nightly_build": true,
+    "ytdlp_use_nightly_build": false,
     "vercheck": true,
     "max_resolution": 1080,
     "auto_sub_refresh": true,
@@ -41,7 +41,7 @@
     "open_with_fullscreen": false,
     "enable_discord_presence": true,
     "discord_presence_show_playing": true,
-    "show_cache": true,
+    "show_cache": false,
     "hover_fullscreen": true,
     "download_path": "[appdata]/JaTubePlayer/saved_file",
     "fullscreenmode": 0,

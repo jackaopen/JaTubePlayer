@@ -29,7 +29,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 
 Compression=lzma2/ultra64
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern polar includetitlebar
 CloseApplications=yes
 RestartApplications=no
 UsePreviousAppDir=yes
@@ -50,59 +50,34 @@ VersionInfoProductVersion={#MyAppVersion}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
-Name: "deleteuserdata"; Description: "Delete my JaTubePlayer settings, account data, WebView2 profile, and cache when uninstalling"; GroupDescription: "User data:"; Flags: unchecked
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:";
+Name: "deleteuserdata"; Description: "Delete my JaTubePlayer settings, account data, WebView2 profile, and cache when uninstalling";
 
 [Files]
-Source: "..\..\dist\JaTubePlayer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
+Source: "..\..\dist\JaTubePlayer\*"; DestDir: "{app}"; Excludes: "\chrome_ext_pack\*,\user_data\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\dist\JaTubePlayer\user_data\config.json"; DestDir: "{userappdata}\JaTubePlayer"; DestName: "config.json"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "..\..\dist\JaTubePlayer\user_data\starred_vid.json"; DestDir: "{userappdata}\JaTubePlayer"; DestName: "starred_vid.json"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "..\..\dist\JaTubePlayer\chrome_ext_pack\*"; DestDir: "{userappdata}\JaTubePlayer\chrome_ext_pack"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\jtp.ico"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\jtp.ico"; Tasks: desktopicon
 
-[Registry]
-; Store the selected uninstall-data policy. Both entries are present so a
-; later upgrade can change the previous choice in either direction.
-Root: HKLM; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}"; ValueType: dword; ValueName: "DeleteUserDataOnUninstall"; ValueData: "1"; Tasks: deleteuserdata; Flags: uninsdeletekeyifempty
-Root: HKLM; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}"; ValueType: dword; ValueName: "DeleteUserDataOnUninstall"; ValueData: "0"; Tasks: not deleteuserdata; Flags: uninsdeletekeyifempty
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{userappdata}\JaTubePlayer"; Tasks: deleteuserdata
+
 [Code]
-var
-  DeleteUserDataOnUninstall: Boolean;
-
-function InitializeUninstall(): Boolean;
-var
-  DeleteUserDataValue: Cardinal;
+procedure CurPageChanged(CurPageID: Integer);
 begin
-  DeleteUserDataOnUninstall := False;
-
-  if RegQueryDWordValue(
-    HKLM,
-    'Software\{#MyAppPublisher}\{#MyAppName}',
-    'DeleteUserDataOnUninstall',
-    DeleteUserDataValue) then
-  begin
-    DeleteUserDataOnUninstall := DeleteUserDataValue <> 0;
-  end;
-
-  Result := True;
+  if CurPageID = wpFinished then
+    WizardForm.FinishedLabel.Caption :=
+      WizardForm.FinishedLabel.Caption + #13#10#13#10 +
+      'Chrome Extension package is at ' +
+      ExpandConstant('{userappdata}\JaTubePlayer\chrome_ext_pack') + '.' + #13#10 +
+      'Install it through chrome://extensions using Load unpacked.';
 end;
 
-procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
-var
-  UserDataDir: String;
-begin
-  if (CurUninstallStep = usPostUninstall) and DeleteUserDataOnUninstall then
-  begin
-    // Delete only this exact application-owned directory.
-    UserDataDir := AddBackslash(ExpandConstant('{userappdata}')) + '{#MyAppName}';
-    if DirExists(UserDataDir) then
-      DelTree(UserDataDir, True, True, True);
-  end;
-end;
