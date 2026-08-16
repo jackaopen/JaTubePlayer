@@ -2221,7 +2221,8 @@ def setting_frame():
                     
                     try:
                         _info_dict = playing_vid_info_dict if playing_vid_info_dict else {}
-                        if playing_vid_mode == 0 and _info_dict.get('live_status') == 'is_live':
+                        if (playing_vid_mode == 0 and _info_dict.get('live_status') == 'is_live'
+                            and media_data_list.current_playing_idx_num == selected_song_number):
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
                         elif playing_vid_mode ==1 or playing_vid_mode ==2:
                             ui_queue.put(lambda: downloadselectedsong.configure(state='disabled'))
@@ -3544,12 +3545,9 @@ def load_thread():  ### add every try except to a new log system for next update
                                  for name, value in http_headers.items()
                                ]
                             # set mpv req size, with bitwise
-                            player.stream_lavf_o = {
-                                "request_size": str(10<<20),
-                                "initial_request_size": str(4<<20),
-                                "multiple_requests": "1",
-                                "short_seek_size": str(10<<20),
-                            }
+                            player.curl_max_request_size = 1 << 20 
+                            player.curl_buffer_size = 4 << 20
+
                             log_handle(
                                 content=f"[headers] set {list(http_headers)}",
                                 errtype='info',
@@ -4585,6 +4583,7 @@ def create_mpv_player():
         log_handler=log_handler.mpv_log_handler,
         vid="no" if audio_only.get() else "auto",
         keep_open=True,
+        curl_enabled=True,
         af='scaletempo',
         msg_level="ytdl_hook=debug,ffmpeg=warn,cplayer=warn",
         script_opts=f"ytdl_hook-ytdl_path={os.path.join(_internal_dir, 'yt-dlp.exe')}",
