@@ -176,7 +176,7 @@ class log_handle_frame:
             self.refresh_log()
             return
 
-        self.log_frame = tk.Toplevel(self.root, bg='#1a1a1a')
+        self.log_frame = ctk.CTkToplevel(self.root, fg_color='#1a1a1a')
         self.log_frame.title('JaTubePlayer Log Viewer')
         self.log_frame.resizable(True, True)
         self.log_frame.geometry('800x600')

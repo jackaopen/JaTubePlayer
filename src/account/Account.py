@@ -51,7 +51,7 @@ class account_handle:
         for line in process.stderr:
             try:self.log_handle(
                     content=line.strip(),
-                    errtype='err',
+                    errtype='error',
                     component='account',
                 )
             except:pass
@@ -62,7 +62,7 @@ class account_handle:
             for line in process.stdout:
                 try:self.log_handle(
                         content=line.strip(),
-                        errtype='err',
+                        errtype='Info',
                         component='account',
                     )
                 except:pass

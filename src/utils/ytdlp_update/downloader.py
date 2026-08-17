@@ -6,12 +6,14 @@ from notification.wintoast_notify import ToastNotification
 import hashlib
 from utils.ytdlp_update.run_updater import run_as_admin_and_wait,UpdaterState
 import json
+from notification.ctkmessagebox import ctk_messagebox
 CHUNK_SIZE = 256*1024
 class ytdlp_update:
     def __init__(self,
                 appdata_dir:str,
                 root:ctk.CTkToplevel|ctk.CTk,
                 _internal_dir:str,
+                messagebox:ctk_messagebox,
                 icondir:str="",
                 log_handle:Callable=print):
         '''
@@ -26,6 +28,7 @@ class ytdlp_update:
         self.log_handle = log_handle
         self.file_hash_dict = {}
         self.start_updater = False
+        self.messagebox = messagebox
 
         self.ytdlpgz_path = os.path.join(self.ytdlp_update_dir, 'yt-dlp.tar.gz')
         self.ytdlpexe_path = os.path.join(self.ytdlp_update_dir, 'new_yt-dlp.exe')
@@ -53,6 +56,10 @@ class ytdlp_update:
                 self.log_handle(content="cannot cancel update, updater already started",
                                 errtype='err',
                                 component='download_ytdlp')
+                self.messagebox.showwarning(
+                    title="JaTubePlayer",
+                    message="Cannot cancel update, updater already started"
+                )
                 return
             self.is_canceled.set()
             self.cancel_btn.configure(state="disabled")

@@ -4870,6 +4870,7 @@ def _extra_startup_imports():
         _internal_dir = _internal_dir,
         root=root,
         appdata_dir=appdata_dir,
+        messagebox=messagebox,
         icondir=icondir,
         log_handle=log_handle
     )

@@ -52,3 +52,4 @@ pub.ps1
 *.bat
 JaTubePlayer_spec.py
 _internal/update_result.json
+docs/Test_update_vs_main_complete_change_report.md
