@@ -184,7 +184,7 @@ class log_handle_frame:
         self.log_frame.attributes('-topmost', True)
         if self.icondir:
             try:
-                self.log_frame.iconbitmap(self.icondir)
+                self.root.after(200,lambda:self.log_frame.iconbitmap(self.icondir))
             except Exception:
                 pass
         self.log_frame.protocol('WM_DELETE_WINDOW', self.close)

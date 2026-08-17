@@ -50,15 +50,20 @@ static class Verifier
         string TrimedInputDir = Path.TrimEndingDirectorySeparator(
             Path.GetFullPath(inputDir)
         );
-        Helper.ErrorLog($"Expected directory: {expectedDir}");
-        Helper.ErrorLog($"Input directory: {TrimedInputDir}");
-
-        return string.Equals(expectedDir,
+        bool VerifyResult = string.Equals(expectedDir,
                     TrimedInputDir,
                     StringComparison.OrdinalIgnoreCase)||
                     string.Equals(expectedDir_packed,
                     TrimedInputDir,
                     StringComparison.OrdinalIgnoreCase);
+                    
+        if(!VerifyResult) 
+        {
+            Helper.Log($"Expected directory: {expectedDir}");
+            Helper.Log($"Input directory: {TrimedInputDir}");
+        }
+
+        return VerifyResult;
     }
     private static string calculatFileHash(string targetfile)
     {   

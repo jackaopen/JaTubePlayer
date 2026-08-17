@@ -2,11 +2,11 @@ aiohttp==3.13.3
 pycryptodome==3.23.0
 customtkinter==5.2.2
 CTkMessagebox==2.7
-Pillow>=10,<=12
+Pillow>=10,<13
 sv_ttk==2.6.1
 ffmpeg-python==0.2.0
 python-mpv==1.0.8
-yt-dlp==2026.7.4
+yt-dlp[default,curl-cffi]==2026.7.4
 Flask==3.1.2
 flask-cors==6.0.1
 Werkzeug==3.1.5
@@ -19,3 +19,4 @@ win11toast==0.36.3
 winsdk==1.0.0b10
 pypresence==4.6.1
 pyinstaller==6.18.0
+rpgp-py==0.20.0
