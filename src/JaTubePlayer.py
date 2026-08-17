@@ -2663,10 +2663,11 @@ def history_control(mode:int):
                         load_thread_queue.put((None,playing_url))
                 insert_textbox(playlist_name_textbox, history_template_dict.get("playlistname",""))
                 if playing_url in media_data_list.vid_url:
-                    print(f"found playing_url in media_data_list.vid_url: {playing_url} adwiohiopadhwhdwiopahiopwadiophwadh;iowadiohwadhio;awoidhahwiodhiowahouida;uioswdhna;uiobg;ouiadwoual;bsgwd;oulajgbfwd;ouaghwsd;uoAHNWS;RODFULAHW;DPUOHA;/LUODH;OALUHWSDNUOAL;HNWSDOAL;UHS;DJLNA;LJWND\nDWAGUIWUIAGDGWUIADGLUIAWDGYUIWDGLIAGWIDAWUIDUIAWDUILAWUDAWGLUIDGALWIUDGWALIUDGLIAYUGWDLIAUSDIKAGFUIAGHWDUIOA;OWU;EIOFJ;PASJF;OSJEGHIL;ESJFGHI.")
                     global selected_song_number
                     selected_song_number = media_data_list.vid_url.index(playing_url)
-                    thumbnail_loader.select_item(selected_song_number)
+                    if media_list_page_controller.media_data_list.current_media_page != 1:
+                        root.after(250,lambda:media_list_page_controller.set_page(selected_song_number//50+1))
+                    root.after(400,lambda:thumbnail_loader.select_item(selected_song_number%50))
 
                 if star_vid_handle.search(playing_url):
                     star_btn_ui_functions.star_starred()

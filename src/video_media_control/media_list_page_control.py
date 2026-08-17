@@ -671,6 +671,62 @@ class MediaList_PageControl_:
         finally:
             self.loading_page = False
 
+    def set_page(self,
+                  page:int)->int:
+        '''
+        load the page given
+        '''
+        _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
+        if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
+            self.log_handle(
+                content=f'page still loading,totalpagecurrentdata ={_total_page_of_current_data}, total_page={self.total_page}, current_page={self.current_page}',
+                errtype='warning',
+                component='page_control',
+            )
+            return -1
+        if not 0 < page < self.total_page:
+            self.log_handle(
+                content=f'invalid page, total_page={self.total_page}, current_page={self.current_page}',
+                errtype='warning',
+                component='page_control',
+            )
+            return -1
+        try:
+            if self.loading_page:
+                self.log_handle(
+                    content=f'This page is still loading, current_page={self.current_page} total_page={self.total_page}',
+                    errtype='warning',
+                    component='page_control',
+                )
+                return -1
+            self.loading_page = True
+            if self.media_type in [MediaType.YOUTUBE,MediaType.FOLDER,MediaType.STARRED_VIDEO]:
+                self.current_page = page
+                
+                self.log_handle(
+                    content=f'set page to {page}',
+                    errtype='info',
+                    component='page_control',
+                )
+            
+                self._insert_to_ui_queue()
+                return 0
+            else:
+                self.log_handle(
+                    content=f'current media type does not support page control, media_type={self.media_type}',
+                    errtype='warning',
+                    component='page_control',
+                )
+                return -3
+        except Exception as e:
+            self.log_handle(
+                content=str(e),
+                errtype='error',
+                component='page_control',
+            )
+            return -2
+        finally:
+            self.loading_page = False
 
     def random_media(self,
                      selected_idx : int = -1) -> int:

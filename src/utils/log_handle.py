@@ -23,6 +23,11 @@ YTDLP_ERROR_MESSAGES = (
         (("geo-restricted",), "This video is geo-restricted"),
         (("unable to download",), "Unable to download video\ncheck the log for more details"),
     )
+YTDLP_ERR_FROM_INFO = (
+        (("post-Live","manifestless"), ("The live stream has just ended\n"
+                                        "and video is still being processed\n\n"
+                                        "Please watch this later")),
+        )
 
 class log_handler_:
     def __init__(self,
@@ -69,6 +74,19 @@ class log_handler_:
                     self.messagebox.showerror(f"JaTubePlayer {self.ver}", message)
                 )
                 return
+            
+    def _show_ytdlp_error_from_info(self, content: str) -> None:
+        normalized = content.casefold()
+        
+        for patterns, message in YTDLP_ERR_FROM_INFO:
+            if any(pattern in normalized for pattern in patterns):
+                self.force_stop_loading()
+                self.ui_queue.put(
+                    lambda message=message:
+                    self.messagebox.showerror(f"JaTubePlayer {self.ver}", message)
+                )
+                return
+
     def mpv_log_handler(self,log_level, component, message):
         normalized_level = str(log_level).strip().lower()
         if normalized_level in {"warn", "warning"}:
@@ -107,6 +125,8 @@ class log_handler_:
 
         if level == "error" and component == "yt-dlp":
             self._show_ytdlp_error(content)
+        if level == "info" and component == "yt-dlp":
+            self._show_ytdlp_error_from_info(content)
         if level in ["error","err","warn","warning"]:
             self.flush_log_locally(force_flush_log=True)
 
