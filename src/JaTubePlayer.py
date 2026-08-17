@@ -603,6 +603,8 @@ def video_info_frame_main(mode:int):
 
 def setting_frame():
     global maxresolutioncombobox,setting,setting_closed,init_playlist_combobox,subtitlecombobox
+    setting_btn.configure(state="disabled")
+    root.after(200, lambda: setting_btn.configure(state="normal"))
     try:
         if setting and setting.winfo_exists():
             setting.deiconify()

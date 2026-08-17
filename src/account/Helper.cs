@@ -89,12 +89,25 @@ static class Helper
         return host == "accounts.google.com" || host == "accounts.youtube.com";
     }
 
-    public static bool SuccessPage(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) &&
-        uri.IsFile &&
-        (uri.LocalPath.EndsWith("google_login_suc_red_page.html", StringComparison.OrdinalIgnoreCase)||
-        uri.LocalPath.EndsWith("google_login_waiting_page.html", StringComparison.OrdinalIgnoreCase)||
-        uri.LocalPath.EndsWith("google_login_err_screen.html",StringComparison.OrdinalIgnoreCase));
+    public static bool SuccessPage(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) || !uri.IsFile)
+            return false;
+
+        string localPath = Path.GetFullPath(uri.LocalPath);
+        string packedRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "_internal"));
+        string devRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "_internal"));
+        string[] allowedFiles =
+        {
+            "google_login_suc_red_page.html",
+            "google_login_waiting_page.html",
+            "google_login_err_screen.html"
+        };
+
+        return allowedFiles.Any(fileName =>
+            string.Equals(localPath, Path.Combine(packedRoot, fileName), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(localPath, Path.Combine(devRoot, fileName), StringComparison.OrdinalIgnoreCase));
+    }
 
 
     static string Host(string url) =>

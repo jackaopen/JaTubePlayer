@@ -11,6 +11,7 @@ import tarfile
 import json
 from pathlib import Path
 import sys
+import winreg
 
 YT_DLP_PUBLIC_KEY  = """
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -57,6 +58,14 @@ class ytdlp_file_updater:
             "message": "",
         }
         internal_dir = Path(sys.executable).resolve().parent
+        # read HKLM64 reg to ensure that the updater is running from the expected directory
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                            r"SOFTWARE\JatubePlayer") as key:
+            expected_file = winreg.QueryValueEx(key, "UpdaterDir")[0]
+            if not internal_dir.samefile(expected_file):
+                raise ValueError(
+                    f"Updater is not running from the expected directory: {expected_file}"
+                )
 
         self.internal_result_json_path = os.path.join(internal_dir, 'update_result.json')
         self.ytdlp_update_path = os.path.join(self.appdata_path, 'JatubePlayer', 'ytdlp_update')
@@ -94,6 +103,7 @@ class ytdlp_file_updater:
         try:
             signature.verify(public_key, sums_bytes)
         except Exception as error:
+            self._remove_downloaded_files()
             raise ValueError(
                 f"Signature verification failed: {error}"
             ) from error

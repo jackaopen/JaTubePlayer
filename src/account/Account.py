@@ -41,12 +41,12 @@ class account_handle:
 
         self._encfile_lock = threading.Lock()
         self.check_and_create_aes_key()
-        self.process_log_reader_thread = None
-        
-    
-    def _process_log_reader(self, process:subprocess.Popen):
+        self.process_err_log_reader_thread = None
+        self.process_out_log_reader_thread = None
+
+    def _process_log_err_reader(self, process:subprocess.Popen):
         '''
-        read the log from the process and print it to the console
+        read the err log from the process and print it to the console
         '''
         for line in process.stderr:
             try:self.log_handle(
@@ -55,26 +55,39 @@ class account_handle:
                     component='account',
                 )
             except:pass
-
-        for line in process.stdout:
-            try:self.log_handle(
-                    content=line.strip(), 
-                    errtype='info',
-                    component='account',
-                )
-            except:pass
+    def _process_log_out_reader(self, process:subprocess.Popen):
+            '''
+            read the out log from the process and print it to the console
+            '''
+            for line in process.stdout:
+                try:self.log_handle(
+                        content=line.strip(),
+                        errtype='err',
+                        component='account',
+                    )
+                except:pass
 
     def _start_process_log_reader(self, process:subprocess.Popen):
         '''
         start a thread to read the log from the process and print it to the console
         '''
-        if not self.process_log_reader_thread or not self.process_log_reader_thread.is_alive():
-            self.process_log_reader_thread = threading.Thread(target=self._process_log_reader, args=(process,))
-            self.process_log_reader_thread.daemon = True
-            self.process_log_reader_thread.start()
+        if not self.process_err_log_reader_thread or not self.process_err_log_reader_thread.is_alive():
+            self.process_err_log_reader_thread = threading.Thread(target=self._process_log_err_reader, args=(process,))
+            self.process_err_log_reader_thread.daemon = True
+            self.process_err_log_reader_thread.start()
         else:
             self.log_handle(
-                content="Log reader thread is already running, skipping start.",
+                content="err Log reader thread is already running, skipping start.",
+                errtype='info',
+                component='account',
+            )
+        if not self.process_out_log_reader_thread or not self.process_out_log_reader_thread.is_alive():
+                    self.process_out_log_reader_thread = threading.Thread(target=self._process_log_out_reader, args=(process,))
+                    self.process_out_log_reader_thread.daemon = True
+                    self.process_out_log_reader_thread.start()
+        else:
+            self.log_handle(
+                content="out Log reader thread is already running, skipping start.",
                 errtype='info',
                 component='account',
             )
@@ -194,7 +207,8 @@ class account_handle:
             
 
             exit_code = WV_host_result.wait()
-            self.process_log_reader_thread.join() 
+            self.process_err_log_reader_thread.join()
+            self.process_out_log_reader_thread.join()
             
 
             if exit_code != 0:

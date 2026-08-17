@@ -63,6 +63,8 @@ Source: "..\..\dist\JaTubePlayer\chrome_ext_pack\*"; DestDir: "{userappdata}\JaT
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\jtp.ico"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\jtp.ico"; Tasks: desktopicon
 
+[Registry]
+Root: HKLM64; Subkey: "SOFTWARE\JaTubePlayer"; ValueType: string; ValueName: "UpdaterDir"; ValueData: "{app}\_internal"; Flags: uninsdeletevalue uninsdeletekeyifempty
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent runasoriginaluser
@@ -74,10 +76,17 @@ Type: filesandordirs; Name: "{userappdata}\JaTubePlayer"; Tasks: deleteuserdata
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpFinished then
-    WizardForm.FinishedLabel.Caption :=
-      WizardForm.FinishedLabel.Caption + #13#10#13#10 +
-      'Chrome Extension package is at ' +
-      ExpandConstant('{userappdata}\JaTubePlayer\chrome_ext_pack') + '.' + #13#10 +
-      'Install it through chrome://extensions using Load unpacked.';
-end;
+  begin
+    with WizardForm do
+    begin
+      FinishedLabel.Caption :=
+        FinishedLabel.Caption + #13#10#13#10 +
+        'Chrome extension: ' +
+        ExpandConstant('{userappdata}\JaTubePlayer\chrome_ext_pack') + #13#10 + 
+        'Open chrome://extensions and select Load unpacked.';
 
+      AdjustLabelHeight(FinishedLabel);
+      RunList.Top := FinishedLabel.Top + FinishedLabel.Height + ScaleY(8);
+    end;
+  end;
+end;
