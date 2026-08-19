@@ -1,21 +1,30 @@
+# Python cache and bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 
+# Local environments and editor settings
 .env/
 .venv/
 .vscode/
 
+# Logs
 *.log
-_internal/yt_dlp
+JaTubePlayer_log.txt
+
+# Bundled runtime dependencies and generated binaries
+_internal/yt_dlp/
 _internal/*.exe
 _internal/*.dll
+_internal/bgutil/
+_internal/streamlink/
 *.dll
+*.exe
 
 # User data
 user_data/*.enc
 user_data/config.json
-user_data/downloaded_file/*
+user_data/downloaded_file/
 user_data/liked.json
 user_data/recent_channel_url.json
 user_data/recent_tag.json
@@ -24,8 +33,24 @@ user_data/channel_info.json
 user_data/starred_vid.json
 cred&api/
 
-build/*
-dist/*
-pyinstaller asset/*
+# Build and temporary output
+build/
+dist/
+pyinstaller asset/
 temp_data/
+tmp/
 
+# WebView2/.NET generated output after the src migration
+src/account/bin/
+src/account/obj/
+src/account/profile/
+account_dev/
+
+# Local packaging/build helpers and backups
+pub.ps1
+*.bak
+*.bat
+JaTubePlayer_spec.py
+_internal/update_result.json
+docs/Test_update_vs_main_complete_change_report.md
+docs_old/

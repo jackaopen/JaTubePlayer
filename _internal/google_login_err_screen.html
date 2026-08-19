@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authentication Error - JaTubePlayer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 24px;
+            color: #ffffff;
+            background: #1a1a2e;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 71, 87, 0.12), rgba(80, 128, 255, 0.08));
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: min(100%, 520px);
+            padding: 50px 70px;
+            text-align: center;
+            background: #2a2a3e;
+            border: 1px solid #4a4a5e;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 34px;
+        }
+
+        .error-box {
+            margin: 20px 0;
+            padding: 20px;
+            background: #353550;
+            border: 1px solid #ff4757;
+            border-radius: 10px;
+        }
+
+        .error-icon {
+            width: 52px;
+            height: 52px;
+            margin-bottom: 14px;
+            color: #ff4757;
+        }
+
+        .error-text {
+            color: #ff6b6b;
+            font-size: 34px;
+            line-height: 1.4;
+        }
+
+        .close-message {
+            margin-top: 25px;
+            padding-top: 20px;
+            color: #a8a8c0;
+            font-size: 20px;
+            line-height: 1.5;
+            border-top: 1px solid #4a4a5e;
+        }
+
+        @media (max-width: 560px) {
+            .container { padding: 38px 28px; }
+            .error-text { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <main class="container">
+        <h1>JaTubePlayer</h1>
+
+        <div class="error-box">
+            <svg class="error-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="3" />
+                <path d="M17 17L31 31M31 17L17 31" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+            </svg>
+            <p class="error-text">Authentication Failed</p>
+        </div>
+
+        <p class="close-message">
+            Check the log inside JaTubePlayer for details, then close this window and try again.
+        </p>
+    </main>
+</body>
+</html>

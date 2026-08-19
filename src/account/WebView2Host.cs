@@ -1,0 +1,549 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+static class Program
+{
+    [STAThread]
+    static void Main(string[] args) // args: [root folder],[appdata_dir], ["login" or "refresh" or "clear"]
+    {
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        
+        if (args.Length != 3 || (args[2] != "login" && args[2] != "refresh" && args[2] != "clear"))
+        {
+            Helper.ErrorLog("invalid arg");
+            Environment.Exit(1);
+        }
+
+        if(!Verifier.verifyDir(args[0]))
+        {
+            Helper.ErrorLog("invalid dir");
+            Environment.Exit(1);
+        }
+        if(!Verifier.verifyLocalResources(args[0]))
+        {
+            Helper.ErrorLog("invalid LocalResources");
+            Environment.Exit(1);
+        }
+        
+
+        string? encoded = Console.ReadLine();
+        if (encoded == null)
+        {
+            Helper.ErrorLog("no token");
+            Environment.Exit(1);
+        }
+        byte[] InputToken = Convert.FromBase64String(encoded);
+        if (Verifier.verifyToken(args[1],InputToken) == false)
+        {
+            Helper.ErrorLog("invalid token");
+            Environment.Exit(1);
+        }
+        
+        Application.Run(new CookieForm(args[0], args[1] , args[2]));
+    }
+    
+}
+
+
+
+
+public class CookieForm : Form
+{
+    const string YoutubeUrl = "https://www.youtube.com/";
+    
+    const string LogoutUrl = "https://accounts.google.com/Logout";
+    const string SignInUrl = "https://accounts.google.com/v3/signin/identifier" +
+                             "?continue=https%3A%2F%2Fwww.youtube.com%2F" +
+                             "&service=youtube&flowName=GlifWebSignIn&flowEntry=ServiceLogin";
+    
+    readonly string profileDir;
+    string SuccessPagePath = "";
+    string WaitingPagePath = "";
+    string ErrorPagePath = "";
+    readonly string EncryptedCookieKeyPath = ""; 
+    readonly string mode;
+    readonly string keyPath = "";
+    readonly WebView2 view = new WebView2 { Dock = DockStyle.Fill };
+    bool checking;
+    bool done;
+    bool signInStarted;
+    bool showingSuccess;
+    bool waitingShown;
+    CookieForm? waitingForm;
+    private Task? startTask;
+    private Task EnsureStartedAsync()
+        {
+            return startTask ??= Start();
+        }
+
+    public CookieForm(string rootDir, string appdataDir, string mode)
+    {
+        
+        profileDir = Path.Combine(appdataDir, "JaTubePlayer", "profile");
+        keyPath = Path.Combine(appdataDir, "JaTubePlayer", "AES_key.enc");
+
+        EncryptedCookieKeyPath = Path.Combine(appdataDir, "JaTubePlayer", "cookie_key.enc");
+        SuccessPagePath = Path.Combine(rootDir, "_internal", "google_login_suc_red_page.html");
+        WaitingPagePath = Path.Combine(rootDir,"_internal", "google_login_waiting_page.html");
+        ErrorPagePath = Path.Combine(rootDir,"_internal", "google_login_err_screen.html");
+        
+        this.mode = mode;
+
+        Text = mode == "process" ? "Processing" : "JaTubePlayer Account Login";
+        Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        Width = mode == "process" ? 560 : 1100;
+        Height = mode == "process" ? 360 : 760;
+        Controls.Add(view);
+        Environment.ExitCode = 1;
+        if (mode == "refresh" || mode == "clear")
+        {
+            Opacity = 0.0;
+        }
+        if(mode=="login"||mode=="clear"){Shown += async (sender, args) => await EnsureStartedAsync();}
+        else if (mode=="refresh"){Shown += async (sender, args) => await refresh();}
+        
+        
+        if (mode == "login") {
+            waitingForm = new CookieForm(rootDir, appdataDir, "process");
+            waitingForm.FormClosed += (sender, args) =>
+            {
+                {
+                    Helper.Log("waiting form closed, exiting");
+                    Close();
+                }
+            };
+        }
+    }
+
+    
+
+
+    async Task Start()
+    {
+        // Start the primary WebView with a fresh profile. The processing/waiting
+        // form shares this directory, so it must not delete the active profile.
+        try
+        {   
+            Directory.CreateDirectory(profileDir);
+
+            // Use our own WebView2 profile. Never touch the user's real browser profile.
+            var env = await CoreWebView2Environment.CreateAsync(
+                null,
+                profileDir,
+                new CoreWebView2EnvironmentOptions("--disable-extensions")
+            );
+            await view.EnsureCoreWebView2Async(env);
+
+            HashSet<string> GoogleAccountHost = Helper.LoadGoogleAccountHosts();
+
+            // Keep the WebView small and locked down.
+            view.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            view.CoreWebView2.Settings.AreHostObjectsAllowed = false;
+            view.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            view.CoreWebView2.Settings.IsWebMessageEnabled = false;
+            if (mode == "process")
+            {
+                view.CoreWebView2.WindowCloseRequested += (sender, args) => Close();
+            }
+            
+            view.CoreWebView2.NavigationStarting += async (sender, args) =>
+            {
+                if (mode == "process")
+                {
+                    if (Helper.Allowed(args.Uri))
+                    {
+                        return;
+                    }
+                    args.Cancel = true;
+                    return;
+                }
+                
+
+                // Log only safe URLs. Query strings can contain login tokens.
+                Helper.Log("navigation starting: " + Helper.LeftPartialToPath(args.Uri));
+                if (Helper.YoutubeHost(args.Uri) && waitingForm != null && !waitingShown)
+                {
+                    waitingShown = true;
+                    waitingForm.StartPosition = FormStartPosition.Manual;
+                    waitingForm.Bounds = Bounds;
+                    waitingForm.WindowState = WindowState == FormWindowState.Minimized
+                        ? FormWindowState.Normal
+                        : WindowState;
+                    waitingForm.Show();
+                    await waitingForm.NavigateAsync(WaitingPagePath);
+                    waitingForm.Activate();
+                    Hide();
+                }
+
+                bool allowedRegionalSetSid =
+                    mode == "login" &&
+                    args.IsRedirected &&
+                    Uri.TryCreate(args.Uri, UriKind.Absolute, out Uri setSidUri) &&
+                    setSidUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+                    setSidUri.Port == 443 &&
+                    GoogleAccountHost.Contains(setSidUri.IdnHost)  &&
+                    setSidUri.AbsolutePath.Equals("/accounts/SetSID", StringComparison.OrdinalIgnoreCase);
+
+                if (Helper.Allowed(args.Uri) || allowedRegionalSetSid) return;
+
+                args.Cancel = true;
+                Helper.Log("blocked redirect: " + Helper.LeftPartialToPath(args.Uri));
+            };
+
+            view.CoreWebView2.NewWindowRequested += (sender, args) =>
+            {
+                args.Handled = true;
+                Helper.Log("new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
+                if (Helper.Allowed(args.Uri)) view.CoreWebView2.Navigate(args.Uri);
+                else Helper.Log("blocked new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
+            };
+
+            view.CoreWebView2.NavigationCompleted += async (sender, args) =>
+            {
+                string url = view.CoreWebView2.Source;
+                Helper.Log("navigation completed: " + Helper.LeftPartialToPath(url));
+                bool successPageLoaded = Helper.LeftPartialToPath(url).Equals(SuccessPagePath, StringComparison.OrdinalIgnoreCase);
+                
+                
+                if (showingSuccess && successPageLoaded)
+                {
+                    Helper.Log("showing success page");
+                    return;
+                }
+
+                // Logout first, then open the YouTube sign-in page.
+                if (mode == "login" && !signInStarted && Helper.AccountHost(url))
+                {
+                    signInStarted = true;
+                    Helper.Log("navigating to account sign-in");
+                    view.CoreWebView2.Navigate(SignInUrl);
+                    return;
+                }
+
+                if (Helper.YoutubeHost(url))
+                {
+                    Helper.Log("hiding window");
+                    await CheckCookies();
+                }
+            };
+            view.CoreWebView2.WindowCloseRequested += (sender, args) =>
+            {
+                Helper.Log("window close requested");
+                Close();
+            };
+            
+            switch (mode)
+            {
+                case "login":
+                    view.CoreWebView2.Navigate(LogoutUrl);
+                    break;
+                
+                
+                case "clear":
+                    await ResetProfile();
+                    break;
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Helper.Log("Error initializing WebView2: " + ex.ToString());
+            Environment.ExitCode = 1;
+            Close();
+        }
+    }
+
+
+    
+
+    async Task refresh()
+
+    {
+        try
+            {
+            Directory.CreateDirectory(profileDir);
+            
+            // Use our own WebView2 profile. Never touch the user's real browser profile.
+            var env = await CoreWebView2Environment.CreateAsync(
+                null,
+                profileDir,
+                new CoreWebView2EnvironmentOptions("--disable-extensions")
+            );
+            await view.EnsureCoreWebView2Async(env);
+
+            // Keep the WebView small and locked down.
+            view.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            view.CoreWebView2.Settings.AreHostObjectsAllowed = false;
+            view.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            view.CoreWebView2.Settings.IsWebMessageEnabled = false;
+            
+            view.CoreWebView2.NavigationStarting += (sender, args) =>
+            {
+                
+                
+                string ErrorPageUri = new Uri(ErrorPagePath).AbsoluteUri;
+                if (string.Equals(args.Uri, 
+                    ErrorPageUri,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    
+                    Activate();
+                    Opacity = 1.0;
+                    Show();
+                }
+                else Hide();
+             
+
+                
+                if (Helper.Allowed(args.Uri)) return;
+                else{
+                    args.Cancel = true;
+                    Helper.Log("blocked redirect: " + Helper.LeftPartialToPath(args.Uri));
+                }
+                
+            };
+
+            view.CoreWebView2.NewWindowRequested += (sender, args) =>
+            {
+                args.Handled = true;
+                Helper.Log("new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
+                if (Helper.Allowed(args.Uri)) view.CoreWebView2.Navigate(args.Uri);
+                else Helper.Log("blocked new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
+            };
+
+            view.CoreWebView2.DOMContentLoaded += async (sender, args) =>
+            {
+                string url = view.CoreWebView2.Source;
+                Helper.Log("navigation completed: " + Helper.LeftPartialToPath(url));
+
+                if (Helper.YoutubeHost(url))
+                {
+                    await CheckCookies();
+                    if (done){
+                        Close();
+                        }
+                }
+            };
+
+            view.CoreWebView2.Navigate(YoutubeUrl);
+        }
+        catch (Exception ex)
+        {
+            Helper.Log("Error initializing WebView2: " + ex.ToString());
+            Environment.ExitCode = 1;
+            Close();
+        }
+    }
+    async Task ResetProfile()
+    {
+        try{
+            if (view.CoreWebView2 != null)
+            {
+                await view.CoreWebView2.Profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.AllProfile); 
+                Environment.ExitCode = 0;
+                Helper.Log("webviewcore profile cleared");
+            }
+            else
+            {
+                Helper.Log("webviewcore not initialized, cannot clear profile");
+            }
+        }
+        catch(Exception err){
+            Helper.Log("error clearing profile: " + err.ToString());
+            return;
+        }
+        finally
+        {
+            Close();
+        }
+
+        
+
+    }
+    public async Task NavigateAsync(string path)
+    {
+        if(view.CoreWebView2 is null){
+            await EnsureStartedAsync();
+            }
+        view.CoreWebView2.Navigate(new Uri(path).AbsoluteUri);
+    }
+
+    async Task CheckCookies()
+    {
+        if (checking || done) return;
+        checking = true;
+
+        try
+        {
+            // Wait until WebView2 has a YouTube login cookie.
+            for (int WaitingSec = 0; WaitingSec < 300 && !await HasLoginCookie();WaitingSec++)
+            {
+                Helper.Log("youtube reached, cookie not valid yet");
+                await Task.Delay(100);
+            }
+            if (!await HasLoginCookie())
+            {
+                Helper.Log("Login timedout: 30sec no valid cookie, returned None");
+                if (mode!="refresh"){   
+                    await waitingForm.NavigateAsync(ErrorPagePath);}
+                else{
+                    Show();
+                    await NavigateAsync(ErrorPagePath);
+                    }
+                return;
+                
+            }
+
+            
+
+            
+            var cookies = await view.CoreWebView2.CookieManager.GetCookiesAsync(YoutubeUrl);
+            
+            bool encrypt_result = EncryptCookies(cookies);
+            cookies.Clear();
+            
+            if (encrypt_result)
+            {
+                done = true;
+                showingSuccess = true;
+                Environment.ExitCode = 0;
+            
+                if (mode != "refresh"){
+                    Helper.Log("loading success page");
+                    await waitingForm.NavigateAsync(SuccessPagePath);
+                }
+            }
+            else
+            {
+                Helper.Log("loading err page");
+                if (mode == "refresh")
+                {
+                    Show();
+                    await NavigateAsync(ErrorPagePath);
+                }
+                else
+                {
+                    await waitingForm.NavigateAsync(ErrorPagePath);
+                }
+            }
+
+
+        }
+        catch(Exception err)
+        {
+            Helper.Log("error checking cookies: " + err.ToString());
+            {
+                Helper.Log("loading err page");
+                if (mode == "refresh")
+                {
+                    Show();
+                    await NavigateAsync(ErrorPagePath);
+                }
+                else
+                {
+                    await waitingForm.NavigateAsync(ErrorPagePath);
+                }
+            }
+        }
+        finally
+        {
+            checking = false;
+        }
+    }
+
+    async Task<bool> HasLoginCookie()
+    {
+        var cookies = await view.CoreWebView2.CookieManager.GetCookiesAsync(YoutubeUrl);
+        bool sid = false, apisid = false, loginInfo = false;
+
+        foreach (CoreWebView2Cookie c in cookies)
+        {
+            if (c.Name == "SID") sid = true;
+            if (c.Name == "APISID") apisid = true;
+            if (c.Name == "LOGIN_INFO") loginInfo = true;
+        }
+
+        cookies.Clear();
+        // Same simple validation as the Android flow: LOGIN_INFO or SID + APISID.
+        return loginInfo || (sid && apisid);
+    }
+
+
+    
+
+
+    bool EncryptCookies(IReadOnlyList<CoreWebView2Cookie> cookies)
+    {   
+        byte[]? AesKey = null;
+        byte[]? cookieinbyte = null;
+        byte[]? Encrypted = null;
+        byte[]? EncryptedByte = null;
+        try{
+            Directory.CreateDirectory(Path.GetDirectoryName(EncryptedCookieKeyPath));
+
+            byte[] encryptedKey = File.ReadAllBytes(keyPath);
+            AesKey = ProtectedData.Unprotect(
+              encryptedKey,
+              optionalEntropy: null,
+              scope: DataProtectionScope.CurrentUser
+            );
+        if (AesKey.Length != 16 && AesKey.Length != 24 && AesKey.Length != 32)
+        {
+            throw new InvalidOperationException("Invalid AES key length.");
+        }
+
+        string cookieHeader = Helper.BuildCookieHeader(cookies);
+        cookieinbyte = Encoding.UTF8.GetBytes(cookieHeader);
+
+
+        byte[] nonce = RandomNumberGenerator.GetBytes(12);
+        Encrypted = new byte[cookieinbyte.Length];
+        byte[] tag = new byte[16];
+
+        using AesGcm aes = new AesGcm(AesKey, 16);
+        aes.Encrypt(nonce, cookieinbyte, Encrypted, tag);
+
+        EncryptedByte = new byte[nonce.Length + tag.Length + Encrypted.Length];
+
+        Buffer.BlockCopy(nonce, 0, EncryptedByte, 0, nonce.Length);
+        Buffer.BlockCopy(tag, 0, EncryptedByte, nonce.Length, tag.Length);
+        Buffer.BlockCopy(Encrypted, 0, EncryptedByte, nonce.Length + tag.Length, Encrypted.Length);
+
+        File.WriteAllBytes(EncryptedCookieKeyPath, EncryptedByte);
+        return true;
+        }
+        catch(Exception err){
+            Helper.Log(err.ToString());
+            return false;
+        }
+        finally
+        {
+            if (AesKey is not null)
+                CryptographicOperations.ZeroMemory(AesKey);
+
+            if (cookieinbyte is not null)
+                CryptographicOperations.ZeroMemory(cookieinbyte);
+
+            if (Encrypted is not null)
+                CryptographicOperations.ZeroMemory(Encrypted);
+
+            if (EncryptedByte is not null)
+                CryptographicOperations.ZeroMemory(EncryptedByte);
+        }
+            
+        
+    }
+
+
+
+    
+}
