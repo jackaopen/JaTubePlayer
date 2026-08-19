@@ -684,7 +684,7 @@ class MediaList_PageControl_:
                 component='page_control',
             )
             return -1
-        if not 0 < page < self.total_page:
+        if not 0 < page <= self.total_page:
             self.log_handle(
                 content=f'invalid page, total_page={self.total_page}, current_page={self.current_page}',
                 errtype='warning',

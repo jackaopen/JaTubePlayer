@@ -5,7 +5,7 @@ import hashlib
 import win32file
 import win32con
 
-EXPTECTED_HASH = "1579edd6c97911e962d372245f020950657e1a2cfd53f741e282c6e65450c7a4"
+EXPTECTED_HASH = "2b8a9252d23af0d768a49423a6036734ca9344bf4f002092d12603a12ac28e73"
 class account_token:
     def __init__(self,
                  appdata_dir:str,

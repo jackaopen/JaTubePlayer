@@ -1,4 +1,5 @@
 # Media List Page Control Structure
+> This is a deprecated doc, but somewhat still explain a part of the MLPC
 
 This note explains the current hand-coded media list structure as-is. It focuses on:
 
