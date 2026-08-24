@@ -106,7 +106,7 @@ root = ctk.CTk()
 hwnd = win32gui.FindWindow(None, root.title())
 tkinter_scaling = get_window_dpi(hwnd)
 root.geometry(f"{int(BASE_WIDTH*tkinter_scaling)}x{int(BASE_HEIGHT*tkinter_scaling)}+0+0")
-ver='3.0'
+ver='3.0.1'
 root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
  
@@ -3255,7 +3255,7 @@ def set_position_keyboard(mode):
 def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
     try:
         global paused
-        if mode == 2 and str(root.focus_get()) == '.!entry':pass
+        if mode == 2 and str(root.focus_get()) == '.!ctkframe.!ctkentry.!entry':pass
         else:
             if player.duration != None:
                 if paused == False:

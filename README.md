@@ -109,6 +109,15 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - Write the current session to `%APPDATA%\JaTubePlayer\JaTubePlayer_log.txt`, flushing queued entries every second, immediately for warnings and errors, and once more during shutdown
 - Translate recognized yt-dlp failures into clearer user-facing messages and stop the active loading operation when appropriate
 
+### Keeping yt-dlp Current
+
+- Update **yt-dlp** before reporting online playback, extraction, playlist, or download failures because supported sites change frequently.
+- The built-in updater supports both **Stable** and **Nightly** channels. If the latest stable build still fails, install the latest nightly build and try the same operation again.
+- Reproduce the issue after updating and attach the new session log when reporting it.
+
+
+> [!NOTE]
+> **First-start AES warning:** A  warning while JaTubePlayer creates its AES key for the first time is expected. Key creation always triggers this warning. It may appear again after the protected key is deleted or reset; repeated warnings on every normal startup should be reported with the session log.
 
 <br>
 
@@ -129,7 +138,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 | **Processor** | AMD Ryzen 3 1200 / Intel Core i3-6100 |
 | **Memory** | 8 GB RAM |
 | **Graphics** | NVIDIA GTX 750 or GT1030 / AMD Radeon RX 460 / Intel UHD 610 or Vega 8 |
-| **Storage** | 2 GB available |
+| **Storage** | At least 4 GB available |
 | **OS** | Windows 10 / 11 (64-bit) |
 
 <br>
@@ -169,7 +178,38 @@ JaTubePlayer 3.0 includes general safeguards against common risks. They support 
 - Obtain JaTubePlayer and its extension from official sources, and approve UAC only after starting an update from the app.
 - Keep Windows and application components current, and protect account files and logs from unauthorized access or sharing.
 
+#### Windows SmartScreen
 
+A newly downloaded JaTubePlayer build may show **“Windows protected your PC”** when Microsoft SmartScreen has not established enough reputation for that file. This warning alone does not identify the file as malware.
+
+- Download JaTubePlayer only from the official project release.
+- Confirm the expected filename, source, signature, or published hash before continuing.
+- If the file is the expected official build, select **More info → Run anyway**.
+- Stop if the source, filename, signature, or hash is unexpected, and report it instead of launching the file.
+
+
+
+---
+
+### Contribution Guidelines
+
+If you have problems, ideas, suggestions, or improvements, feel free to **Open an issue** first to discuss proposed changes. I appreciate all feedback and suggestions! 🚀
+
+> Before opening an issue, update yt-dlp (try the latest **Nightly** build when the stable build still fails), reproduce the problem, and collect the log from the same session.
+
+Every bug report must include:
+
+1. **Description** — What happened, what you expected, and whether the problem is reproducible.
+2. **Log** — Attach `%APPDATA%\JaTubePlayer\JaTubePlayer_log.txt` from the affected session
+
+
+Remove account identifiers, cookies, tokens, local usernames, and other private data before attaching a log.
+
+
+Issues missing both a useful description and the relevant log may be closed until the required information is provided.
+
+
+>you can check out some code explantion in `docs_3.0`folder
 
 ---
 ##  Author's Note
@@ -178,15 +218,12 @@ JaTubePlayer 3.0 includes general safeguards against common risks. They support 
 A full refactor is not currently planned, as it would be a large task; however, some targeted refactors and logic refinements have already been made, with additional improvements planned over time.
 Due to other ongoing work and commitments, pull requests will not be reviewed or merged, but issues and feedback are always welcome!*
 
-### Contribution Guidelines
-
-If you have problems, ideas, suggestions, or improvements, feel free to **Open an issue** first to discuss proposed changes. I appreciate all feedback and suggestions! 🚀
->you can check out some code explantion in `docs_3.0`folder
-
-
-
 ---
 >This project is provided for educational and research purposes. Users are responsible for complying with applicable laws and the terms of service of any platforms they interact with.
+
+
+
+
 
 
 

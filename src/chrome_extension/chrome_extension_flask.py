@@ -2,7 +2,7 @@ from flask import Flask, request
 import threading
 import queue
 from werkzeug.serving import make_server
-
+import urllib.parse as urlparse
 from notification.wintoast_notify import ToastNotification
 from flask_cors import CORS
 from video_media_control.media_list_page_control import MediaList_PageControl_
@@ -61,6 +61,20 @@ class ChromeExtensionServer:
         def _receive_url(action):
             try:
                 url = request.data.decode().split("&")[0]
+                if urlparse.urlparse(url).scheme not in ["http", "https"]:
+                    self.log_handle(
+                        content=f"Received URL with unsupported scheme from Chrome extension: {url}",
+                        errtype='error',
+                        component='chrome_ext',
+                    )
+                    return "unsupported scheme", 400
+                if urlparse.urlparse(url).hostname not in ["www.youtube.com", "youtu.be","www.twitch.tv"]:
+                    self.log_handle(
+                        content=f"Received URL with unsupported hostname from Chrome extension: {url}",
+                        errtype='error',
+                        component='chrome_ext',
+                    )
+                    return "unsupported hostname", 400
                 self.log_handle(
                     content=f"Received URL from Chrome extension: {url} with action: {action}",
                     errtype='info',

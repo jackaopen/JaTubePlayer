@@ -4,7 +4,7 @@ using System;
 
 static class Verifier
 {
-    static string ErrPageHash = "82fd2e536bad20b7a71326dfaa9e97290fcd59c4f714161cd8f7c7307c8af2f2";
+    static string ErrPageHash = "447a027d36ba9a584b6b17dcace448c221d7e8656e7bb5c49253a096175e6414";
     static string SucPageHash = "741b4977a6e6b0e850a7e704981e4f9bc8f04e43f6504edb4e864a7cfed4a558";
     static string WaitPageHash ="d44fddb564bb8017671d4c8141548e5fd6a9d7b2e6b4d335bab992b223af2e23";
     public static bool verifyToken(string appdataDir,byte[]InputToken){
