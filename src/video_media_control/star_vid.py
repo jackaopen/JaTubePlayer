@@ -73,7 +73,7 @@ class star_vid_handler:
     
     def list_all(self,
                  loadingplaylist_flag=None
-                 )->media_data_list_template|bool:
+                 )->media_data_list_template:
         '''
         Run this in thread to avoid blocking the main thread, it will clear the input lists and fill them with the starred videos info, and also put the info into the treeview_queue for updating the treeview in the main thread
         This function is designed to be called when the user clicks the "Starred Videos" button, it will update the treeview with the starred videos info
@@ -94,7 +94,7 @@ class star_vid_handler:
             return media_data_list
         except Exception as e:
             self.get_info_loader.ytdlp_log_handle.info(f"Error listing starred videos: {e}")
-            return False
+            return media_data_list_template()
         
 
 

@@ -224,6 +224,9 @@ class MediaList_PageControl_:
                 content=f'Failed to init reload youtube media list: {e}',
                 errtype='error',
                 component='page_control')
+            self.messagebox.showerror("JatubePlayer",
+                                      f"Failed to load youtube media list: {e}")
+            self.media_data_list = media_data_list_template()
         finally:
             self._busy = False
 
@@ -381,9 +384,9 @@ class MediaList_PageControl_:
             ydl_opts['logger'] = ytdlp_log_handle
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                vid_search_results = ydl.extract_info(search_url_vid, download=False)
+                vid_search_results = ydl.extract_info(search_url_stream, download=False)
                 ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.7)
-                stream_search_results = ydl.extract_info(search_url_stream, download=False)
+                stream_search_results = ydl.extract_info(search_url_vid, download=False)
             
 
             for item in stream_search_results['entries']:

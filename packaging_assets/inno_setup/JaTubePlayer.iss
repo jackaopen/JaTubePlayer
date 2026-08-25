@@ -1,5 +1,5 @@
 ﻿#define MyAppName "JaTubePlayer"
-#define MyAppVersion "3.0"
+#define MyAppVersion "3.0.1"
 #define MyAppPublisher "Jackaopen"
 #define MyAppURL "https://github.com/jackaopen/JaTubePlayer"
 #define MyAppExeName "JaTubePlayer.exe"
@@ -40,7 +40,7 @@ UsePreviousTasks=yes
 ; owns all later writes under %APPDATA%\JaTubePlayer.
 UsedUserAreasWarning=no
 
-VersionInfoVersion=3.0.0.0
+VersionInfoVersion=3.0.1.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup
 VersionInfoProductName={#MyAppName}

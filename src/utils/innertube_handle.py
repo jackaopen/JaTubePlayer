@@ -297,7 +297,7 @@ class innertube_handle:
             inntertube_URL,
             headers=self.api_headers,
             json=payload,
-            timeout=30,
+            timeout=20,
         )
         print(response.text)
         if response.status_code != 200:

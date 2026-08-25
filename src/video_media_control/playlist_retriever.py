@@ -31,7 +31,7 @@ class playlist_retriever_:
 
     def get_playlist_content(self, 
                              page: playlist_type, 
-                             playlist_id: str=None)->media_data_list_template|None:
+                             playlist_id: str=None)->media_data_list_template:
         '''
         page: playlist_type Enum, specify which page to retrieve content from
         '''
@@ -46,7 +46,7 @@ class playlist_retriever_:
                 errtype='error',
                 component='playlist',
             )
-            return None
+            return media_data_list_template()
         else:
             match page:
                 case playlist_type.HOME:
@@ -59,69 +59,61 @@ class playlist_retriever_:
                     maxresults = "5000"
 
 
+
+        payload = self.innertube_handle.preInit_buildPayload(use_matching_page=True,
+                                                                playlist_id=playlist_id,
+                                                                page=page.value
+                                                                )
         
-        try:
-            payload = self.innertube_handle.preInit_buildPayload(use_matching_page=True,
-                                                                    playlist_id=playlist_id,
-                                                                    page=page.value
-                                                                    )
-            
-            while count < int(maxresults):
+        while count < int(maxresults):
 
-                if payload is None:
-                    self.log_handle(
-                        content=f"Failed to build payload for page '{page}'",
-                        errtype='error',
-                        component='playlist',
-                    )
-                    break
+            if payload is None:
+                self.log_handle(
+                    content=f"Failed to build payload for page '{page}'",
+                    errtype='error',
+                    component='playlist',
+                )
+                break
 
-                response = self.innertube_handle.get_innertube_response(payload)
-                if response is None:
-                    self.log_handle(
-                        content=f"Failed to retrieve innertube content for page '{page}'",
-                        errtype='error',
-                        component='playlist',
-                    )
-                    break
+            response = self.innertube_handle.get_innertube_response(payload)
+            if response is None:
+                self.log_handle(
+                    content=f"Failed to retrieve innertube content for page '{page}'",
+                    errtype='error',
+                    component='playlist',
+                )
+                break
 
-                for media in self.innertube_parser.parse(response, contiunation_page):
-                    if media and count < int(maxresults):
-                        if (
-                            media["url"] not in [
-                                "https://www.youtube.com/playlist?list=WL",
-                                "https://www.youtube.com/playlist?list=LL",
-                            ]
-                            and page == playlist_type.PLAYLISTS 
-                        ) or (page != playlist_type.PLAYLISTS):
-                            if page == playlist_type.PLAYLISTS or (page != playlist_type.PLAYLISTS and "playlist" not in media["url"]):
-                                media_data_list.playlisttitles.append(media["title"])
-                                media_data_list.vid_url.append(media["url"])
-                                media_data_list.playlist_thumbnails.append(media["thumb"])
-                                media_data_list.playlist_channel.append(media["channel"])
-                                count += 1
+            for media in self.innertube_parser.parse(response, contiunation_page):
+                if media and count < int(maxresults):
+                    if (
+                        media["url"] not in [
+                            "https://www.youtube.com/playlist?list=WL",
+                            "https://www.youtube.com/playlist?list=LL",
+                        ]
+                        and page == playlist_type.PLAYLISTS 
+                    ) or (page != playlist_type.PLAYLISTS):
+                        if page == playlist_type.PLAYLISTS or (page != playlist_type.PLAYLISTS and "playlist" not in media["url"]):
+                            media_data_list.playlisttitles.append(media["title"])
+                            media_data_list.vid_url.append(media["url"])
+                            media_data_list.playlist_thumbnails.append(media["thumb"])
+                            media_data_list.playlist_channel.append(media["channel"])
+                            count += 1
 
-                continuation_token = self.innertube_parser.get_continuation_token()
-                contiunation_page = True
-                if not continuation_token:
-                    self.log_handle(
-                        content=f"No more continuation token found for page '{page}'",
-                        errtype='info',
-                        component='playlist',
-                    )
-                    break
-                else:
-                    payload["continuation"] = continuation_token
-                    payload.pop("browseId", None) # Clear browseId when using continuation token
+            continuation_token = self.innertube_parser.get_continuation_token()
+            contiunation_page = True
+            if not continuation_token:
+                self.log_handle(
+                    content=f"No more continuation token found for page '{page}'",
+                    errtype='info',
+                    component='playlist',
+                )
+                break
+            else:
+                payload["continuation"] = continuation_token
+                payload.pop("browseId", None) # Clear browseId when using continuation token
 
-            return media_data_list
-        except Exception as err:
-            self.log_handle(
-                content=f"An error occurred while retrieving playlist content for page '{page}': {err}",
-                errtype='error',
-                component='playlist',
-            )
-            return None
+        return media_data_list
 
 
 

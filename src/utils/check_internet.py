@@ -25,7 +25,7 @@ def check_internet_silent(func):
     return wrapper
 
 def check_internet_socket():
-    """Ultra-fast socket-based internet check - typically 10-50ms"""
+    """fast socket-based internet check"""
     dns_servers = [
         ('8.8.8.8', 53),     # Google DNS (DNS port)
         ('1.1.1.1', 53),     # Cloudflare DNS (DNS port)
@@ -37,7 +37,7 @@ def check_internet_socket():
     for host, port in dns_servers:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(0.5)  # Increased timeout to 1 second
+                sock.settimeout(0.5) 
                 sock.connect((host, port))
                 return True
         except (socket.error, socket.timeout):
