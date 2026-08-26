@@ -259,50 +259,66 @@ class MediaList_PageControl_:
                                     quick_start_folder_path:str=None,
                                     mode_for_local_files:int = -1,
                                     dnd_mode:bool=False,
-                                    )->None|bool:
+                                    )->bool:
         '''
         will be called by local_media_handler to init and reload the media_data_list for local files
         mode_for_local_files: 0 for single file, 1 for folder
 
-        return : None if successfully load, False if failed
+        return : True if successfully load, False if failed
         '''
-        self._record_history()
-        self.current_page = 1
-        self.media_type = MediaType.FOLDER
-        
-        if dnd_mode is False:# JTP called this, calling local_media_handler to get the data
-            mdl_result = self.local_media_handler.load_local_files(mode=mode_for_local_files, 
-                                                                             local_folder_path=quick_start_folder_path)
-            if mdl_result is not None:
-                media_data_list.set(mdl_result)
-                self.media_data_list = media_data_list
-            else:
-                return False
-        else: # dnd called this, media_data_list is already filled
-            self.media_data_list = copy.deepcopy(media_data_list)
-        
+        try:
+            self._record_history()
+            self.current_page = 1
+            self.media_type = MediaType.FOLDER
+            
+            if dnd_mode is False:# JTP called this, calling local_media_handler to get the data
+                mdl_result = self.local_media_handler.load_local_files(mode=mode_for_local_files, 
+                                                                                local_folder_path=quick_start_folder_path)
+                if mdl_result is not None:
+                    media_data_list.set(mdl_result)
+                    self.media_data_list = media_data_list
+                else:
+                    return False
+            else: # dnd called this, media_data_list is already filled
+                self.media_data_list = copy.deepcopy(media_data_list)
+            
 
-        self.media_data_list.current_media_page = 1  
-        self.media_data_list.current_playing_idx_num = -1
-        
-        self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+            self.media_data_list.current_media_page = 1  
+            self.media_data_list.current_playing_idx_num = -1
+            
+            self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
 
-        self._insert_to_ui_queue()
-        self.log_handle(
-            content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
-            errtype='info',
-            component='page_control',
-        )
-        if dnd_mode:
-            if len(self.media_data_list.vid_url) == 1 and os.path.isfile(self.media_data_list.vid_url[0]):
+            self._insert_to_ui_queue()
+            self.log_handle(
+                content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
+                errtype='info',
+                component='page_control',
+            )
+            if dnd_mode:
+                if len(self.media_data_list.vid_url) == 1 and os.path.isfile(self.media_data_list.vid_url[0]):
+                    self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
+                    self.dnd_ui_functions.single_file()
+                    self.thumbnail_loader.select_item(0)
+                    if self.star_vid_handler.search(self.media_data_list.vid_url[0]):
+                        self.star_btn_ui_functions.star_starred()
+                else:
+                    self.dnd_ui_functions.folder_and_files()
+            elif mode_for_local_files == 0:
                 self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
-                self.dnd_ui_functions.single_file()
                 self.thumbnail_loader.select_item(0)
-            else:
-                self.dnd_ui_functions.folder_and_files()
-        elif mode_for_local_files == 0:
-            self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
-            self.thumbnail_loader.select_item(0)
+                if self.star_vid_handler.search(self.media_data_list.vid_url[0]):
+                    self.star_btn_ui_functions.star_starred()
+            return True
+        except Exception as e:
+            self.log_handle(
+                content=f'Failed to init reload local media list: {e}',
+                errtype='error',
+                component='page_control',
+            )
+            self.messagebox.showerror("JatubePlayer",
+                                      f"Failed to load local media list: {e}")
+            self.media_data_list = media_data_list_template()
+            return False
     
 
 

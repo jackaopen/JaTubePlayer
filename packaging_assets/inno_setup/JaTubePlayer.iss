@@ -1,5 +1,5 @@
 ﻿#define MyAppName "JaTubePlayer"
-#define MyAppVersion "3.0.1"
+#define MyAppVersion "3.1"
 #define MyAppPublisher "Jackaopen"
 #define MyAppURL "https://github.com/jackaopen/JaTubePlayer"
 #define MyAppExeName "JaTubePlayer.exe"

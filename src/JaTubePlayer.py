@@ -33,7 +33,7 @@ from utils.check_internet import *
 from utils.check_internet import check_internet
 from utils.get_media_info import *
 from utils.color_picker.ctk_color_picker import AskColor  
-from utils.additional_utils import lenght_convertor
+from utils.additional_utils import lenght_convertor,is_url_valid
 from utils.load_font import load_private_font
 from utils.log_handle import log_handler_
 from utils.user_file import UserFile_handle
@@ -106,7 +106,7 @@ root = ctk.CTk()
 hwnd = win32gui.FindWindow(None, root.title())
 tkinter_scaling = get_window_dpi(hwnd)
 root.geometry(f"{int(BASE_WIDTH*tkinter_scaling)}x{int(BASE_HEIGHT*tkinter_scaling)}+0+0")
-ver='3.0.1'
+ver='3.1'
 root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
  
@@ -2664,10 +2664,11 @@ def history_control(mode:int):
                 media_data_list = media_list_page_controller.media_data_list
                 playing_url = history_template_dict.get("current_playing",None)
                 if playing_url:
-                    if media_type == 4: # Folder
-                        load_thread_queue.put((playing_url,None))
-                    else:
+                    if is_url_valid(playing_url):
                         load_thread_queue.put((None,playing_url))
+                    else:
+                        load_thread_queue.put((playing_url,None))
+                        
                 insert_textbox(playlist_name_textbox, history_template_dict.get("playlistname",""))
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
@@ -2895,34 +2896,31 @@ def switch_starred_vid(event=None):
     global star_vid_handle,selected_song_number,playing_vid_mode,playing_vid_info_dict,media_data_list
     
     if playing_vid_mode == 0 or playing_vid_mode == 2 or playing_vid_mode == 4:
-        if selected_song_number == None:
+        if selected_song_number is None and not playing_vid_info_dict:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
             return
 
         
     if playing_vid_mode == 0 or playing_vid_mode == 4:
-        url_or_path = media_data_list.vid_url[selected_song_number]
-        title = media_data_list.playlisttitles[selected_song_number]
-        thumb = media_data_list.playlist_thumbnails[selected_song_number]
-        channel = media_data_list.playlist_channel[selected_song_number]
-    elif playing_vid_mode == 1:
-        url_or_path = playing_title_textbox.get(0.0,tk.END).strip()
-        title = os.path.basename(url_or_path)
-        thumb = None
-        channel = 'local file'
-    elif playing_vid_mode == 2:
-        url_or_path = media_data_list.vid_url[selected_song_number]
-        title = media_data_list.playlisttitles[selected_song_number]
-        thumb = None
-        channel = 'local file'
-    elif playing_vid_mode == 3:
-        url_or_path = playing_vid_info_dict['original_url']
-        title = playing_vid_info_dict['title']
-        try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
-        except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
-        finally:thumb = thumb if thumb else None
-        channel = playing_vid_info_dict['channel']
-        
+        if selected_song_number is not None:
+            url_or_path = media_data_list.vid_url[selected_song_number]
+            title = media_data_list.playlisttitles[selected_song_number]
+            thumb = media_data_list.playlist_thumbnails[selected_song_number]
+            channel = media_data_list.playlist_channel[selected_song_number]
+        elif playing_vid_info_dict:
+            print(playing_vid_info_dict)
+            url_or_path = playing_vid_info_dict['original_url']
+            if is_url_valid(url_or_path):
+                title = playing_vid_info_dict['title']
+                try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
+                except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
+                finally:thumb = thumb if thumb else None
+                channel = playing_vid_info_dict['channel']
+            else:
+                title = os.path.basename(url_or_path)
+                thumb = None
+                channel = 'local file'
+   
             
 
     if star_vid_handle.search(url_or_path):
@@ -3926,12 +3924,9 @@ def load_local_files(mode:int,
     )
     media_data_list = media_list_page_controller.media_data_list
         
-    if result is None:
-            selected_song_number = None
-            ui_queue.put(lambda: star_btn_ui_functions.star_regular())
-            stop_playing_video()
-
-            insert_textbox(playlist_name_textbox, "Local File")
+    if result is True:
+        selected_song_number = None
+        insert_textbox(playlist_name_textbox, "Local File")
     elif result is False:
         messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to load local files, or canceled by user.')
         log_handle(
