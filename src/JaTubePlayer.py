@@ -36,6 +36,7 @@ from utils.color_picker.ctk_color_picker import AskColor
 from utils.additional_utils import lenght_convertor
 from utils.load_font import load_private_font
 from utils.log_handle import log_handler_
+from utils.user_file import UserFile_handle
 from loader.get_info_loader import get_info_loader_
 from loader.media_data_list import media_data_list_template
 
@@ -87,7 +88,6 @@ appdata_dir = os.getenv('APPDATA')
 os.makedirs(os.path.join(appdata_dir,'JaTubePlayer'),exist_ok=True)
 os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','ytdlp_update'),exist_ok=True)
 os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','saved_file'),exist_ok=True)
-
 
 
 
@@ -294,8 +294,15 @@ media_data_list = media_data_list_template()
     - playlist_thumbnails
 '''
 
-
-
+try:
+    UserFile_handle(user_data_dir=appdata_dir,
+                    current_dir=current_dir)
+except Exception as e:
+    log_handle(
+        content=f"Error in UserFile_handle: {e}",
+        errtype='error',
+        component='startup',
+    )
 
 def save_config():
     '''

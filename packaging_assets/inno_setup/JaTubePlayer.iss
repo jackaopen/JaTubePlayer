@@ -54,10 +54,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Name: "deleteuserdata"; Description: "Delete my JaTubePlayer settings, account data, WebView2 profile, and cache when uninstalling";
 
 [Files]
-Source: "..\..\dist\JaTubePlayer\*"; DestDir: "{app}"; Excludes: "\chrome_ext_pack\*,\user_data\*"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\..\dist\JaTubePlayer\user_data\config.json"; DestDir: "{userappdata}\JaTubePlayer"; DestName: "config.json"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "..\..\dist\JaTubePlayer\user_data\starred_vid.json"; DestDir: "{userappdata}\JaTubePlayer"; DestName: "starred_vid.json"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "..\..\dist\JaTubePlayer\chrome_ext_pack\*"; DestDir: "{userappdata}\JaTubePlayer\chrome_ext_pack"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "..\..\dist\JaTubePlayer\*"; DestDir: "{app}"; Excludes: "\user_data\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\jtp.ico"
