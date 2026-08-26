@@ -2901,26 +2901,25 @@ def switch_starred_vid(event=None):
             return
 
         
-    if playing_vid_mode == 0 or playing_vid_mode == 4:
-        if selected_song_number is not None:
-            url_or_path = media_data_list.vid_url[selected_song_number]
-            title = media_data_list.playlisttitles[selected_song_number]
-            thumb = media_data_list.playlist_thumbnails[selected_song_number]
-            channel = media_data_list.playlist_channel[selected_song_number]
-        elif playing_vid_info_dict:
-            print(playing_vid_info_dict)
-            url_or_path = playing_vid_info_dict['original_url']
-            if is_url_valid(url_or_path):
-                title = playing_vid_info_dict['title']
-                try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
-                except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
-                finally:thumb = thumb if thumb else None
-                channel = playing_vid_info_dict['channel']
-            else:
-                title = os.path.basename(url_or_path)
-                thumb = None
-                channel = 'local file'
-   
+    if selected_song_number is not None:
+        url_or_path = media_data_list.vid_url[selected_song_number]
+        title = media_data_list.playlisttitles[selected_song_number]
+        thumb = media_data_list.playlist_thumbnails[selected_song_number]
+        channel = media_data_list.playlist_channel[selected_song_number]
+    elif playing_vid_info_dict:
+        print(playing_vid_info_dict)
+        url_or_path = playing_vid_info_dict['original_url']
+        if is_url_valid(url_or_path):
+            title = playing_vid_info_dict['title']
+            try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
+            except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
+            finally:thumb = thumb if thumb else None
+            channel = playing_vid_info_dict['channel']
+        else:
+            title = os.path.basename(url_or_path)
+            thumb = None
+            channel = 'local file'
+
             
 
     if star_vid_handle.search(url_or_path):
