@@ -2,6 +2,7 @@
 import os
 import json
 import shutil
+from account.Account import account_handle
 
 DEFAULT_CONFIG_DICT = {
     "quickstartup_init": {
@@ -68,6 +69,9 @@ class UserFile_handle:
 
         self.config_file = os.path.join(self.JaTubeplayer_data, "config.json")
         self.star_vid_file = os.path.join(self.JaTubeplayer_data, "starred_vid.json")
+
+        self.aes_key_file = os.path.join(self.JaTubeplayer_data, "AES_key.enc")
+        self.cookie_dir = os.path.join(self.JaTubeplayer_data, "cookie_key.enc")
         self._init_user_file()
 
     def _init_user_file(self):
@@ -85,3 +89,6 @@ class UserFile_handle:
         shutil.copytree(self.chrome_ext_origin, 
                         self.chrome_ext_user_data,
                         dirs_exist_ok=True)
+
+        if not os.path.exists(self.aes_key_file) and not os.path.exists(self.cookie_dir):
+            account_handle.silent_create_AES_key(self.aes_key_file)

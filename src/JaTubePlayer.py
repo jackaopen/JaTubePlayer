@@ -535,6 +535,13 @@ class AccountInfo:
         insert_textbox(google_status_text, "No login yet!")
         google_status_text.configure(text_color = "#777777")
 
+class mlpc_ui_functions:
+    @staticmethod
+    def get_cur_playing_url():
+        return playing_vid_info_dict.get("original_url", '')
+    @staticmethod
+    def get_cur_playlist_title():
+        return playlist_name_textbox.get(0.0, tk.END).strip()    
 
 
 
@@ -2933,11 +2940,7 @@ def switch_starred_vid(event=None):
                 item_id = playlisttreebox.get_children()[selected_song_number%50]
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                             selected_tree_ID=item_id)
-                media_data_list.vid_url.pop(selected_song_number)
-                media_data_list.playlisttitles.pop(selected_song_number)
-                media_data_list.playlist_thumbnails.pop(selected_song_number)
-                media_data_list.playlist_channel.pop(selected_song_number)
-                
+                                
             except Exception as e:
                 log_handle(
                     content=str(e),
@@ -4711,8 +4714,7 @@ def _init_load_extra_objs():
         messagebox=messagebox,
         dnd_ui_functions = dnd_ui_functions,
         Chrome_ext_server_ui_functions=Chrome_ext_server_ui_functions,
-        get_cur_playing_url = lambda: playing_vid_info_dict.get("original_url", ''),
-        get_cur_playlist_title= lambda: playlist_name_textbox.get(0.0, tk.END).strip()
+        mlpc_ui_functions=mlpc_ui_functions
         )
     twitch_handler = twitch_handle(log_handle,
                                    _internal_dir)
@@ -5306,7 +5308,7 @@ playselectedsong.place(relx=0.212, rely=0.54, relwidth=0.19, relheight=0.33)
 _src_w = 0.187
 _src_gap = 0.008
 recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='🏠Recommend',
-                                    command=lambda: threading.Thread(daemon=True, target=lambda: get_youtube_playlists("home")).start(),
+                                    command=lambda: get_youtube_playlists("home"),
                                     fg_color='#2E2E2E', hover_color='#404040', corner_radius=6,
                                     font=('Segoe UI', 13), border_width=1, border_color='#444444')
 recommendation_btn.place(relx=0.020, rely=0.1, relwidth=_src_w, relheight=0.33)

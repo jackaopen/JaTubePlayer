@@ -59,9 +59,7 @@ class MediaList_PageControl_:
                  dnd_ui_functions:object,
                  Chrome_ext_server_ui_functions:object,
                  messagebox:ctk_messagebox,
-                 get_cur_playing_url:Callable,
-                 get_cur_playlist_title:Callable,
-                 ):
+                 mlpc_ui_functions:object):
         self.total_page = 0
         self.current_page = 1
         '''
@@ -95,8 +93,7 @@ class MediaList_PageControl_:
         
 
         self.load_thread_queue = load_thread_queue
-        self._get_cur_playing_url = get_cur_playing_url
-        self._get_cur_playlist_title = get_cur_playlist_title
+        self.mlpc_ui_functions = mlpc_ui_functions
         self._prev_playlist_name=""
         '''
         This is used to record the playlist name brfore retrieving playlisttype.PLAYLISTS is changed
@@ -129,28 +126,28 @@ class MediaList_PageControl_:
                         playlistname:str=None)->bool:
         current_playing_url = ''
         try:
-            current_playing_url = self._get_cur_playing_url()
+            current_playing_url = self.mlpc_ui_functions.get_cur_playing_url()
         except Exception as e:
             self.log_handle(
                 content=f'Failed to get current playing url: {e}',
                 errtype='error',
                 component='page_control',
             )
-        print(f"record history: current_playing_url={current_playing_url}, media_type={self.media_type}, playlistname={playlistname or self._get_cur_playlist_title()}, media_data length={len(self.media_data_list.vid_url)}")
         result = self.history_page_handler.record_history(current_playing_url=current_playing_url, 
-                                                media_data=self.media_data_list,
-                                                media_type=self.media_type,
-                                                playlistname=playlistname or self._get_cur_playlist_title())
+            media_data=self.media_data_list,
+            media_type=self.media_type,
+            playlistname=self.mlpc_ui_functions.get_cur_playlist_title() if playlistname is None else playlistname)
+
         if result:
             self.log_handle(
-                content=f'record hisory PLAYLIST{playlistname or self._get_cur_playlist_title()} ',
+                content=f'record hisory PLAYLIST{playlistname or self.mlpc_ui_functions.get_cur_playlist_title()} ',
                 errtype='info',
                 component='page_control',
             )
             return True
         else:
             self.log_handle(
-                content=f'Failed to record history PLAYLIST{playlistname or self._get_cur_playlist_title()} ',
+                content=f'Failed to record history PLAYLIST{playlistname or self.mlpc_ui_functions.get_cur_playlist_title()} ',
                 errtype='warning',
                 component='page_control',
             )
@@ -178,25 +175,12 @@ class MediaList_PageControl_:
                     errtype='info',
                     component='page_control',
                 )
-                if page == playlist_type.PLAYLIST:
-                    
-                    self._record_history(self._prev_playlist_name if self._prev_playlist_name else None)
-                    self._prev_playlist_name = ''
-                else:
-                    self._record_history(playlistname=prev_playlist_name)
-
+                self._record_history(playlistname=prev_playlist_name)
                 self.current_page = 1
                 self.media_data_list = media_data_list
                 self.media_type = MediaType.YOUTUBE
                 self.media_data_list.clear()
-            else:
-                self._prev_playlist_name = self._get_cur_playlist_title()
-                self.log_handle(
-                    content=f'record prev playlist name={self._prev_playlist_name}',
-                    errtype='info',
-                    component='page_control',
-                )
-        
+                    
             if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() == False:return 
             if (self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False 
                 and page != playlist_type.HOME): return
@@ -531,7 +515,10 @@ class MediaList_PageControl_:
             if self.total_page != (len(self.media_data_list.vid_url) + 49) // 50:
                 if self.media_data_list.current_media_page == self.total_page:
                     self.media_data_list.current_media_page -= 1
-                self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+                self.total_page = max(1, (len(self.media_data_list.vid_url) + 49) // 50)
+
+            if self.current_page > self.total_page:
+                self.current_page = self.total_page
 
             self._insert_to_ui_queue()
             if self.current_page == self.media_data_list.current_media_page:
@@ -754,7 +741,9 @@ class MediaList_PageControl_:
         will automatically load the page of the video if the video is not in the current page
         return -2 if list are not fully loaded, return -1 if failed
         '''
-        if len(self.media_data_list.vid_url)//50+1 != self.total_page:
+        if not self.media_data_list.vid_url:
+            return -1
+        if (len(self.media_data_list.vid_url)+49) // 50 != self.total_page:
             return -2
         try:
             random_idx = random.randint(0, len(self.media_data_list.vid_url)-1)

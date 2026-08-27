@@ -402,6 +402,21 @@ class account_handle:
         bolb = win32crypt.CryptProtectData(get_random_bytes(32))
         with open(self.aes_key_path, "wb") as f:
             f.write(bolb)
+
+    @staticmethod
+    def silent_create_AES_key(aes_key_path:str):
+        '''
+        create a new AES key and store it in the specified path.
+        This function is specifically designed to be used when the app is first launched and the AES key is missing.
+
+        use AES 256
+        '''
+        if os.path.exists(aes_key_path):
+            return
+        os.makedirs(os.path.dirname(aes_key_path), exist_ok=True)
+        bolb = win32crypt.CryptProtectData(get_random_bytes(32))
+        with open(aes_key_path, "wb") as f:
+            f.write(bolb)
         
     def check_aes_key(self)->bool:
         '''
