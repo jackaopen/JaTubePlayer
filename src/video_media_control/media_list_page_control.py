@@ -376,7 +376,7 @@ class MediaList_PageControl_:
                 'extract_flat': True,  # Get video list without downloading
                 'force_generic_extractor': True,
                 'skip_download':True,
-                'playlistend':int(int(self.max_search_result_count)*0.3)
+                'playlistend':int(int(self.max_search_result_count)*0.2)
             }
 
             if cookie:
@@ -384,9 +384,9 @@ class MediaList_PageControl_:
             ydl_opts['logger'] = ytdlp_log_handle
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                vid_search_results = ydl.extract_info(search_url_stream, download=False)
-                ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.7)
-                stream_search_results = ydl.extract_info(search_url_vid, download=False)
+                stream_search_results = ydl.extract_info(search_url_stream, download=False)
+                ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.8)
+                vid_search_results = ydl.extract_info(search_url_vid, download=False)
             
 
             for item in stream_search_results['entries']:
