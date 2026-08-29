@@ -29,7 +29,6 @@ def check_internet_socket():
     dns_servers = [
         ('8.8.8.8', 53),     # Google DNS (DNS port)
         ('1.1.1.1', 53),     # Cloudflare DNS (DNS port)
-        ('208.67.222.222', 53),  # OpenDNS (DNS port)
         ('8.8.8.8', 80),     # Google DNS (HTTP port)
         ('1.1.1.1', 80),     # Cloudflare DNS (HTTP port)
     ]
@@ -37,7 +36,7 @@ def check_internet_socket():
     for host, port in dns_servers:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(0.5) 
+                sock.settimeout(0.2) 
                 sock.connect((host, port))
                 return True
         except (socket.error, socket.timeout):

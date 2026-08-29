@@ -27,7 +27,7 @@ LicenseFile=..\..\LICENSE
 UninstallDisplayName={#MyAppName} {#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
-Compression=lzma2/ultra64
+Compression=lzma2/normal
 SolidCompression=yes
 WizardStyle=modern polar includetitlebar
 CloseApplications=yes
