@@ -412,19 +412,17 @@ class Chrome_ext_server_ui_functions:
     @staticmethod
     def show_star_video():
         global playing_vid_info_dict,selected_song_number
+        _was_playing = False
         if playing_vid_info_dict.get("original_url", None):
-            _selected_song_number = selected_song_number
-            _cur_playing_idx = media_list_page_controller.media_data_list.current_playing_idx_num
+            _was_playing = True
+            media_list_page_controller.record_current_mdl()
 
         get_starred_vid()
         try:
-            if _selected_song_number is not None:
-                selected_song_number = _selected_song_number
-                thumbnail_loader.select_item(selected_song_number%50)
-            if _cur_playing_idx is not None:
-                media_list_page_controller.media_data_list.current_playing_idx_num = _cur_playing_idx
-                thumbnail_loader.set_item_color(_cur_playing_idx%50,
-                                                delay=500)
+            if _was_playing:
+                media_list_page_controller.restore_old_mdl()
+                selected_song_number = None
+
         except Exception as e:
             log_handle(
                 content=f"Error in show_star_video: {e}",
@@ -2688,7 +2686,8 @@ def progressbar_hook(d):
 
 def page_control(mode):
     '''
-    mode == 1: next page, mode == 2: prev page'''
+    mode == 1: next page, mode == 2: prev page
+    '''
     if mode == 1:
         nextpageresult = media_list_page_controller.next_page()
     elif mode == 2:
@@ -2967,7 +2966,7 @@ def get_starred_vid(event=None):
         _prev_playlistname = playlist_name_textbox.get(0.0,tk.END).strip()
         insert_textbox(playlist_name_textbox, "Starred Videos")
         ui_queue.put(lambda: page_num_label.configure(text=''))
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()
         
         loadingplaylist = False
                 
@@ -2985,7 +2984,12 @@ def switch_starred_vid(event=None):
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
             return
 
-        
+    if (playing_vid_mode == 4 and
+        selected_song_number == media_data_list.current_playing_idx_num and
+        star_vid_handle.search(media_data_list.vid_url[selected_song_number])):
+        messagebox.showinfo(f'JaTubePlayer {ver}','you cannot remove the currently playing video from starred videos, please select another video first!')
+        return
+
     if selected_song_number is not None:
         url_or_path = media_data_list.vid_url[selected_song_number]
         title = media_data_list.playlisttitles[selected_song_number]
@@ -3018,7 +3022,7 @@ def switch_starred_vid(event=None):
                 item_id = playlisttreebox.get_children()[selected_song_number%50]
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                             selected_tree_ID=item_id)
-                                
+                selected_song_number = None
             except Exception as e:
                 log_handle(
                     content=str(e),
@@ -3430,7 +3434,7 @@ def playprevnext(direction:int)->None:
         idx after change
         '''
 
-    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number 
+    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_data_list.current_media_page == media_list_page_controller.current_page
     try:
         if media_data_list.current_playing_idx_num == -1:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first'))
@@ -4050,11 +4054,14 @@ def download_and_play(event=None):### button and double click event
             component='player',
         )
         messagebox.showerror(f'JaTubePlayer {ver}', 'An error occurred while accessing the media data list.')
+    #no row is selected, so do nothing
+    if event and not playlisttreebox.identify_row(event.y):
+        return
 
     if playing_vid_mode == 0:
         if check_internet_socket():
             #load from youtube
-            if selected_song_number is not None:
+            if selected_song_number is not None and playlisttreebox.identify_row:
                 load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
                 
                     

@@ -67,6 +67,9 @@ class MediaList_PageControl_:
         '''
         self.media_type = MediaType.NONE
         self.media_data_list = media_data_list_template()
+
+        self._prev_media_data_list = None
+        self._prev_current_page = 0
         self.local_media_handler = local_media_handle(log_handle=log_handle)
         self.max_search_result_count = 50
         self.ui_queue = ui_queue
@@ -784,7 +787,8 @@ class MediaList_PageControl_:
         tag : "playing" or "normal"
         only set the tag when the video is in the current page, otherwise do nothing, since the tag will be set when the page is loaded
         '''
-
+        if idx < 0 or idx >= len(self.media_data_list.vid_url):
+            return
         page_idx = idx % 50
         if self.media_data_list.current_media_page == self.current_page:
             self.thumbnail_loader.set_item_color(page_idx % 50, tag)
@@ -794,7 +798,32 @@ class MediaList_PageControl_:
         remove ALL the placed tag in current page
         '''
         self.thumbnail_loader.clear_all_tag()
-            
+
+    def record_current_mdl(self):
+        '''
+        record the current page and current playing index in the media data list
+        '''
+        self._prev_media_data_list = copy.deepcopy(self.media_data_list)
+        self._prev_current_page = self.current_page
+        self.log_handle(
+            content=f'recorded current page {self.current_page} and current playing index {self.media_data_list.current_playing_idx_num}',
+            errtype='info',
+            component='page_control',
+        )
+    def restore_old_mdl(self):
+        '''
+        Only restore the current page and current playing index in the media data list, does not restore the media data list itself
+        '''
+        self.media_data_list.current_playing_idx_num = self._prev_media_data_list.current_playing_idx_num
+        self.media_data_list.current_media_page = self._prev_media_data_list.current_media_page
+        self.set_page(self._prev_current_page)
+        self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+        self.log_handle(
+            content=f'restored old page {self.media_data_list.current_media_page} and current playing index {self.media_data_list.current_playing_idx_num}',
+            errtype='info',
+            component='page_control',
+        )
+
     def clear(self):
         '''
         mainly for single and chrome mode, clear the media data list and reset the page control
