@@ -383,24 +383,57 @@ class star_btn_ui_functions:
             text_color='#FFFDE7',
             font=('Segoe UI', 14.5, 'bold')
         ))
+    @staticmethod
+    def check_playing_remove():
+        '''
+        If any vid is playing, will not change the star state\n
+        else will change the star state to regular
+        '''
+        global playing_vid_info_dict
+        if not playing_vid_info_dict.get("original_url", None):
+            star_btn_ui_functions.star_regular()
 
 class Chrome_ext_server_ui_functions:
     '''
     for both ChromeExtServer and dnd_winsys
     '''
     @staticmethod
-    def direct_url(reset_star = True):
+    def direct_url(reset_star = True,
+                   url:str = None):
         global playing_vid_mode,selected_song_number
 
         playing_vid_mode = 3
         selected_song_number = None
         if reset_star:
             star_btn_ui_functions.star_regular()
-
+            if url and star_vid_handle.search(url):
+                star_btn_ui_functions.star_starred()
         insert_textbox(playlist_name_textbox, "Direct URL")
     @staticmethod
     def show_star_video():
+        global playing_vid_info_dict,selected_song_number
+        if playing_vid_info_dict.get("original_url", None):
+            _selected_song_number = selected_song_number
+            _cur_playing_idx = media_list_page_controller.media_data_list.current_playing_idx_num
+
         get_starred_vid()
+        try:
+            if _selected_song_number is not None:
+                selected_song_number = _selected_song_number
+                thumbnail_loader.select_item(selected_song_number%50)
+            if _cur_playing_idx is not None:
+                media_list_page_controller.media_data_list.current_playing_idx_num = _cur_playing_idx
+                thumbnail_loader.set_item_color(_cur_playing_idx%50,
+                                                delay=500)
+        except Exception as e:
+            log_handle(
+                content=f"Error in show_star_video: {e}",
+                errtype='error',
+                component='chrome_ext',
+            )
+
+        
+
     @staticmethod
     def get_playing_vid_mode()->int:
         '''
@@ -453,7 +486,7 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 1
         selected_song_number = 0
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Single file")
 
     @staticmethod
@@ -461,8 +494,12 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 2
         selected_song_number = None
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Folder/Multiple Files")
+    @staticmethod
+    def dnd_global_mdl():
+        global media_data_list
+        media_data_list = media_list_page_controller.media_data_list
     
 
 
@@ -544,14 +581,19 @@ class mlpc_ui_functions:
         return playlist_name_textbox.get(0.0, tk.END).strip()    
 
 class quickstartup_ui_functions:
+    '''
+    For quick startup playlist loading, this class provides methods to disable and enable the playing widget during the loading process.
+    '''
     @staticmethod
     def disable_playing_widget():
+        insert_textbox(playlist_name_textbox, "Loading Quick Startup Playlist...")
         ui_queue.put(lambda: recommendation_btn.configure(state='disabled'))
         ui_queue.put(lambda: sub_btn.configure(state='disabled'))
         ui_queue.put(lambda: like_btn.configure(state='disabled'))
         ui_queue.put(lambda: playselectedfile.configure(state='disabled'))
         ui_queue.put(lambda: playselectedfolder.configure(state='disabled'))
         ui_queue.put(lambda: load_star_btn.configure(state='disabled'))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
     @staticmethod
     def enable_playing_widget():
         ui_queue.put(lambda: recommendation_btn.configure(state='normal'))
@@ -560,6 +602,7 @@ class quickstartup_ui_functions:
         ui_queue.put(lambda: playselectedfile.configure(state='normal'))
         ui_queue.put(lambda: playselectedfolder.configure(state='normal'))
         ui_queue.put(lambda: load_star_btn.configure(state='normal'))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
 
 def insert_textbox(widget:ctk.CTkTextbox,
                    text:str,
@@ -703,7 +746,7 @@ def setting_frame():
         def deletesyskey():
             try:
                 deletesyskey_btn.configure(state="disabled")
-                if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including cookies and AES key\nAre you sure?'):
+                if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including login sessions and AES key\nAre you sure?'):
                     if not account_handler.clear_login_data(cookie_only=False):
                         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
                         return
@@ -2699,7 +2742,7 @@ def history_control(mode:int):
                 media_list_page_controller.history_page_init_and_reload(history_template_dict.get("media_data"),
                                                                         media_type=media_type)
                 log_handle(
-                    content=f"History page loaded with {history_template_dict.get("media_data", []).vid_url} items",
+                    content=f"History page loaded with {len(history_template_dict.get("media_data", []).vid_url)} items",
                     errtype='info',
                     component='history',
                 )
@@ -3786,7 +3829,7 @@ def load_thread():  ### add every try except to a new log system for next update
 
                 try:
                     if chosen_file:
-                        current_idx = media_data_list.current_playing_idx_num if playing_vid_mode == 2 else None  #for MLPC
+                        current_idx = media_data_list.current_playing_idx_num if playing_vid_mode in (2,4) else None  #for MLPC
                         loadingvideo = True
                         succed = False
                         ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
@@ -4376,13 +4419,13 @@ def init_quick_startup(iter:int=0):
                         return
                     
                     if playlistID != "star":
-                        if not account_handler.check_cookie_exist():
+                        if not account_handler.check_cookie_exist() and playlistID != "home":
                             log_handle(
                                 content="No valid cookie found, quick startup in playlist mode is cancelled.",
                                 errtype='info',
                                 component='startup',
                             )
-                            messagebox.showwarning(f'JaTubePlayer {ver}', 'No valid cookie found, quick startup in playlist mode is cancelled.')
+                            messagebox.showwarning(f'JaTubePlayer {ver}', 'No valid login session found, quick startup in playlist mode is cancelled.')
                             quickstartup_ui_functions.enable_playing_widget()
                             return
                         insert_textbox(playlist_name_textbox, playlistname)
@@ -4393,14 +4436,13 @@ def init_quick_startup(iter:int=0):
                         get_starred_vid()
                 elif mode == 3:
                     load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
-                quickstartup_ui_functions.enable_playing_widget()
-            else:
+            elif not yt_dlp:
                 log_handle(
                     content="yt_dlp is not loaded, quick startup in youtube related mode is cancelled.",
                     errtype='info',
                     component='startup',
                 )
-                quickstartup_ui_functions.enable_playing_widget()
+            quickstartup_ui_functions.enable_playing_widget()
         elif mode == 3:
             load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
             quickstartup_ui_functions.enable_playing_widget()

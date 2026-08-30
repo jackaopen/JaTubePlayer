@@ -47,7 +47,7 @@ class ChromeExtensionServer:
         )
         
         if self.media_list_page_controller.handle_url_drop(url):
-            self.ext_ui_functions.direct_url()
+            self.ext_ui_functions.direct_url(url=url)
 
 
 

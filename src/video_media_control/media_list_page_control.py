@@ -175,6 +175,7 @@ class MediaList_PageControl_:
                     errtype='info',
                     component='page_control',
                 )
+                self.star_btn_ui_functions.check_playing_remove()
                 self._record_history(playlistname=prev_playlist_name)
                 self.current_page = 1
                 self.media_data_list = media_data_list
@@ -220,6 +221,7 @@ class MediaList_PageControl_:
                                     star_vid_handler_:star_vid_handler,
                                     prev_playlist_name:str=None
                                     ):
+        self.star_btn_ui_functions.check_playing_remove()
         self._record_history(playlistname=prev_playlist_name)
         self.current_page = 1
         self.media_type = MediaType.STARRED_VIDEO
@@ -251,6 +253,7 @@ class MediaList_PageControl_:
         return : True if successfully load, False if failed
         '''
         try:
+            self.star_btn_ui_functions.check_playing_remove()
             self._record_history()
             self.current_page = 1
             self.media_type = MediaType.FOLDER
@@ -292,6 +295,12 @@ class MediaList_PageControl_:
                 self.thumbnail_loader.select_item(0)
                 if self.star_vid_handler.search(self.media_data_list.vid_url[0]):
                     self.star_btn_ui_functions.star_starred()
+                    print(f"starred video found: {self.media_data_list.vid_url[0]}")
+                else:
+                    self.star_btn_ui_functions.star_regular()
+                    print(f"starred video not found: {self.media_data_list.vid_url[0]}")
+
+            self.dnd_ui_functions.dnd_global_mdl()
             return True
         except Exception as e:
             self.log_handle(
@@ -362,6 +371,7 @@ class MediaList_PageControl_:
                                 cookie:str):
         try:
             self._busy = True
+            self.star_btn_ui_functions.check_playing_remove()
             self._record_history()
             self.thumbnail_loader.clear_thumbnails()
             self.media_data_list.clear()
@@ -430,6 +440,7 @@ class MediaList_PageControl_:
     def history_page_init_and_reload(self,
                                     media_data_list:media_data_list_template,
                                     media_type:int):
+        self.star_btn_ui_functions.check_playing_remove()
         self.thumbnail_loader.clear_thumbnails()
         self.media_data_list.clear()
         self.current_page = 1
@@ -473,9 +484,7 @@ class MediaList_PageControl_:
             self.media_data_list.playlist_channel.append(channel)
             self.media_data_list.playlist_thumbnails.append(thumbnail_url)
             self.Chrome_ext_server_ui_functions.add_to_end()
-            self.tree_view_queue.put((thumbnail_url,
-                                        title,
-                                        channel))
+            
             self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
             self._insert_to_ui_queue()
             if self.current_page == self.media_data_list.current_media_page:

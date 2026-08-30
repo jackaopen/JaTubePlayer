@@ -1,6 +1,7 @@
 import json,os
 from loader.media_data_list import media_data_list_template
 from utils.get_media_info import *
+from utils.additional_utils import is_url_valid
 from loader.get_info_loader import get_info_loader_
 import queue
 
@@ -50,6 +51,8 @@ class star_vid_handler:
                 "title":title,
                 "channel":channel
             }
+            if not is_url_valid(url):
+                url = os.path.abspath(url)
             self.starred_vid_dict[url] = info_dict
             self._save()
         except Exception as e:
@@ -68,6 +71,8 @@ class star_vid_handler:
         return True
     
     def search(self,url:str)->dict|None:
+        if not is_url_valid(url):
+            url = os.path.abspath(url)
         info = self.starred_vid_dict.get(url,None)
         return info
     

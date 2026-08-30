@@ -320,7 +320,7 @@ class DropHandler(object):
                         
                     if file_paths:
                         self.selected_song_number = None
-                        self.media_data_list.clear()
+                        self.media_data_list = media_data_list_template()
                         
                         try:
 
@@ -376,7 +376,7 @@ class DropHandler(object):
                                         for file in files:
                                             if os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
                                                 
-                                                self.media_data_list.vid_url.append(os.path.join(dir,file))
+                                                self.media_data_list.vid_url.append(os.path.abspath(os.path.join(dir,file)))
                                                 self.media_data_list.playlisttitles.append(file)
                                                 self.media_data_list.playlist_channel.append("local file")
                                                 self.media_data_list.playlist_thumbnails.append("")
@@ -387,7 +387,7 @@ class DropHandler(object):
                             elif len(file_paths) > 0:
                                 for file in file_paths:
                                     if os.path.isfile(file) and os.path.splitext(file)[1].lower() in FILE_TYPE_EXT:
-                                        self.media_data_list.vid_url.append(file)
+                                        self.media_data_list.vid_url.append(os.path.abspath(file))
                                         self.media_data_list.playlisttitles.append(os.path.basename(file))
                                         self.media_data_list.playlist_channel.append("local file")
                                         self.media_data_list.playlist_thumbnails.append("")
@@ -415,7 +415,8 @@ class DropHandler(object):
                                     )
                                     while not self.URL_DropHandler.url_queue.empty():
                                         self.URL_DropHandler.url_queue.get()
-                                    self.ext_ui_functions.direct_url(reset_star = False)
+                                    self.ext_ui_functions.direct_url(reset_star = False,
+                                                                     url = dropped_url.strip().split("&")[0])
                                     break
                         else:
                             self.log_handle(
