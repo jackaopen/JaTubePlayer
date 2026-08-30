@@ -484,7 +484,7 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 1
         selected_song_number = 0
-        star_btn_ui_functions.check_playing_remove()
+        star_btn_ui_functions.star_regular()# for single file, we dont have current playing since it will automatically play the file, so we set the star state to regular
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Single file")
 
     @staticmethod
@@ -492,7 +492,7 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 2
         selected_song_number = None
-        star_btn_ui_functions.check_playing_remove()
+        star_btn_ui_functions.check_playing_remove()# since for folder and files, we will have current playing since it will not automatically play the first file, so we set the star state to check_playing_remove
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Folder/Multiple Files")
     @staticmethod
     def dnd_global_mdl():
@@ -2753,7 +2753,7 @@ def history_control(mode:int):
                     else:
                         load_thread_queue.put((playing_url,None))
                         
-                insert_textbox(playlist_name_textbox, history_template_dict.get("playlistname",""))
+                insert_textbox(playlist_name_textbox, f'[History] {history_template_dict.get("playlistname","")}')
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
                     selected_song_number = media_data_list.vid_url.index(playing_url)
@@ -2762,9 +2762,17 @@ def history_control(mode:int):
                     root.after(400,lambda:thumbnail_loader.select_item(selected_song_number%50))
 
                 if star_vid_handle.search(playing_url):
+                    log_handle(
+                        content=f"Current playing video is starred, updating star button UI",
+                        errtype='info',
+                        component='history')
                     star_btn_ui_functions.star_starred()
                 else:
-                    star_btn_ui_functions.star_regular()
+                    log_handle(
+                        content=f"Current playing video is not starred, updating star button UI",
+                        errtype='info',
+                        component='history')
+                    star_btn_ui_functions.check_playing_remove()
                             
 
         except Exception as e:
