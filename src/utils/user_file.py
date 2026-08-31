@@ -85,10 +85,11 @@ class UserFile_handle:
         if not os.path.exists(self.star_vid_file):
             with open(self.star_vid_file, "w", encoding="utf-8") as f:
                 json.dump({}, f, indent=4)
-
-        shutil.copytree(self.chrome_ext_origin, 
-                        self.chrome_ext_user_data,
-                        dirs_exist_ok=True)
+        try:
+            shutil.copytree(self.chrome_ext_origin, 
+                            self.chrome_ext_user_data,
+                            dirs_exist_ok=True)
+        except WindowsError:pass
 
         if not os.path.exists(self.aes_key_file) and not os.path.exists(self.cookie_dir):
             account_handle.silent_create_AES_key(self.aes_key_file)

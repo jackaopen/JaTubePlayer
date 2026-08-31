@@ -92,9 +92,12 @@ class MediaList_PageControl_:
         self.user_playlist_dict_list = []
 
 
-        
-        
-
+        self.page_change_select = False
+        '''
+        For page change, will control selected follow\n
+        only be used in caller(not mlpc)\n
+        for each "MANUAL "page cahnge it should be set to False, and the get selected item in main should set it to True
+        '''
         self.load_thread_queue = load_thread_queue
         self.mlpc_ui_functions = mlpc_ui_functions
         self._prev_playlist_name=""
@@ -547,10 +550,12 @@ class MediaList_PageControl_:
 
     def next_page(self,
                   select_first_of_next_page:bool=False,
-                  selected_follow:bool=True)->int:
+                  selected_follow:bool=True,
+                  manual_change:bool=False
+                  )->int:
         '''
-        return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
-        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected
+        return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control\n
+        selected_follow: if True, will load the page oftreeview, else only change the page number, and load the page when the page is selected\n
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
@@ -618,15 +623,18 @@ class MediaList_PageControl_:
             return -2
         finally:
             self.loading_page = False
+            if manual_change:
+                self.page_change_select = False
 
 
 
     def prev_page(self, 
                 select_last_of_prev_page:bool=False,
-                selected_follow:bool=True)->int:
+                selected_follow:bool=True,
+                manual_change:bool=False)->int:
         '''
-        return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
-        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected
+        return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control\n
+        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected\n
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if self.current_page == 1 and _total_page_of_current_data < self.total_page:
@@ -688,6 +696,8 @@ class MediaList_PageControl_:
             return -3
         finally:
             self.loading_page = False
+            if manual_change:
+                self.page_change_select = False
 
     def set_page(self,
                   page:int)->int:
@@ -747,11 +757,11 @@ class MediaList_PageControl_:
             self.loading_page = False
 
     def random_media(self,
-                     selected_idx : int = -1) -> int:
+                     selected_follow:bool = False) -> int:
         '''
-        random select a video from the mediadata list and return the idx
-        will automatically load the page of the video if the video is not in the current page
-        return -2 if list are not fully loaded, return -1 if failed
+        random select a video from the mediadata list and return the idx\n
+        will automatically load the page of the video if the video is not in the current page\n
+        return -2 if list are not fully loaded, return -1 if failed\n
         '''
         if not self.media_data_list.vid_url:
             return -1
@@ -759,17 +769,19 @@ class MediaList_PageControl_:
             return -2
         try:
             random_idx = random.randint(0, len(self.media_data_list.vid_url)-1)
-            self.current_page = random_idx//50+1
-            if self.media_data_list.current_playing_idx_num == selected_idx:
-                self._insert_to_ui_queue()
+            
+            if selected_follow:
+                self.set_page(random_idx//50+1)
                 self.thumbnail_loader.root.after(1000, lambda: self.thumbnail_loader.select_item(random_idx%50))
+                self.current_page = random_idx//50+1
+
+            self.media_data_list.current_playing_idx_num = random_idx
+            self.media_data_list.current_media_page = random_idx//50+1
             self.log_handle(
-                content=f'randomly selected video: {random_idx}, page: {self.current_page}',
+                content=f'randomly selected video: {random_idx}, cur page: {self.current_page} , media page: {self.media_data_list.current_media_page}, total page: {self.total_page}',
                 errtype='info',
                 component='page_control',
             )
-            self.media_data_list.current_media_page = self.current_page
-            self.media_data_list.current_playing_idx_num = random_idx
 
         except Exception as e:
             self.log_handle(

@@ -358,6 +358,7 @@ def get_selected_vid(event=None):
     try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0]) + (media_list_page_controller.current_page -1)*50
     except:pass
     try:
+        media_list_page_controller.page_change_select = True
         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
             star_btn_ui_functions.star_starred()
         else:
@@ -2689,9 +2690,9 @@ def page_control(mode):
     mode == 1: next page, mode == 2: prev page
     '''
     if mode == 1:
-        nextpageresult = media_list_page_controller.next_page()
+        nextpageresult = media_list_page_controller.next_page(manual_change=True)
     elif mode == 2:
-        nextpageresult = media_list_page_controller.prev_page()
+        nextpageresult = media_list_page_controller.prev_page(manual_change=True)
     if nextpageresult == -1:
         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','page still loading, please wait...'))
     elif nextpageresult == -2:
@@ -3129,7 +3130,8 @@ def update_playing_pos_local_and_chrome():
 
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            media_idx = media_list_page_controller.random_media(selected_song_number)
+                            SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_list_page_controller.page_change_select
+                            media_idx = media_list_page_controller.random_media(selected_follow=SELECTED_FOLLOW)
                             if media_idx == -2:
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
@@ -3142,9 +3144,12 @@ def update_playing_pos_local_and_chrome():
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
                                 break
                             else:
-                                selected_song_number = media_idx
-                                download_and_play()
-
+                                if is_url_valid(media_list_page_controller.media_data_list.vid_url[media_idx]):
+                                    load_thread_queue.put((None,media_list_page_controller.media_data_list.vid_url[media_idx]))
+                                else:
+                                    load_thread_queue.put((media_list_page_controller.media_data_list.vid_url[media_idx],None))
+                                if SELECTED_FOLLOW:
+                                    selected_song_number = media_idx
 
                         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn_ui_functions.star_starred())
@@ -3222,7 +3227,8 @@ def update_playing_pos_yt():
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            media_idx = media_list_page_controller.random_media(selected_song_number)
+                            SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_list_page_controller.page_change_select
+                            media_idx = media_list_page_controller.random_media(selected_follow=SELECTED_FOLLOW)
                             if media_idx == -2:
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
@@ -3235,8 +3241,12 @@ def update_playing_pos_yt():
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
                                 break
                             else:
-                                selected_song_number = media_idx
-                                download_and_play()
+                                if is_url_valid(media_list_page_controller.media_data_list.vid_url[media_idx]):
+                                    load_thread_queue.put((None,media_list_page_controller.media_data_list.vid_url[media_idx]))
+                                else:
+                                    load_thread_queue.put((media_list_page_controller.media_data_list.vid_url[media_idx],None))
+                                if SELECTED_FOLLOW:
+                                    selected_song_number = media_idx
 
 
 
@@ -3442,7 +3452,7 @@ def playprevnext(direction:int)->None:
         idx after change
         '''
 
-    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_data_list.current_media_page == media_list_page_controller.current_page
+    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_list_page_controller.page_change_select
     try:
         if media_data_list.current_playing_idx_num == -1:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first'))
