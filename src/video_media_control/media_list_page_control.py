@@ -9,7 +9,6 @@ from .local_media_handle import local_media_handle
 from .star_vid import star_vid_handler
 from notification.ctkmessagebox import ctk_messagebox
 from history_page.history_page import history_page
-from typing import Callable
 import copy
 import os
 
@@ -94,7 +93,7 @@ class MediaList_PageControl_:
 
         self.page_change_select = False
         '''
-        For page change, will control selected follow\n
+        For page change and clear selected, will control selected follow\n
         only be used in caller(not mlpc)\n
         for each "MANUAL "page cahnge it should be set to False, and the get selected item in main should set it to True
         '''
@@ -514,7 +513,8 @@ class MediaList_PageControl_:
                         selected_idx:int,
                         selected_tree_ID:str):
         '''
-        clear the selected video from the media data list and treeview, and clear the playing tag if the selected video is playing
+        clear the selected video from the media data list and treeview, and clear the playing tag if the selected video is playing\n
+        note : this will change the page change select to False, so the next page change will not follow the selected item\n
         '''
         try:
             self.media_data_list.vid_url.pop(selected_idx)
@@ -538,6 +538,7 @@ class MediaList_PageControl_:
             self._insert_to_ui_queue()
             if self.current_page == self.media_data_list.current_media_page:
                 self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+            self.page_change_select = False
 
         except Exception as e:
             self.log_handle(

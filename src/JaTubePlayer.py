@@ -387,11 +387,13 @@ class star_btn_ui_functions:
     @staticmethod
     def check_playing_remove():
         '''
-        If any vid is playing, will not change the star state\n
-        else will change the star state to regular
+        If any vid is playing, will check the media's star state\n
+        if no video, will change to regular star state\n
         '''
         global playing_vid_info_dict
-        if not playing_vid_info_dict.get("original_url", None):
+        if playing_vid_info_dict.get("original_url", None) and star_vid_handle.search(playing_vid_info_dict.get("original_url")):
+            star_btn_ui_functions.star_starred()
+        else:
             star_btn_ui_functions.star_regular()
 
 class Chrome_ext_server_ui_functions:
@@ -961,7 +963,7 @@ def setting_frame():
 
         def remove_selected_from_playlist_setting():
             global selected_song_number,media_data_list
-            if selected_song_number is None:
+            if selected_song_number is None or media_list_page_controller.page_change_select is False:
                 messagebox.showerror(f'JaTubePlayer {ver}', 'No item selected in the playlist!')
                 return
             if selected_song_number == media_list_page_controller.media_data_list.current_playing_idx_num:
@@ -973,7 +975,6 @@ def setting_frame():
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                           selected_tree_ID=item_id)
                 media_data_list = media_list_page_controller.media_data_list
-                selected_song_number = None
 
             except Exception as e:
                 log_handle(
@@ -2762,18 +2763,7 @@ def history_control(mode:int):
                         root.after(250,lambda:media_list_page_controller.set_page(selected_song_number//50+1))
                     root.after(400,lambda:thumbnail_loader.select_item(selected_song_number%50))
 
-                if star_vid_handle.search(playing_url):
-                    log_handle(
-                        content=f"Current playing video is starred, updating star button UI",
-                        errtype='info',
-                        component='history')
-                    star_btn_ui_functions.star_starred()
-                else:
-                    log_handle(
-                        content=f"Current playing video is not starred, updating star button UI",
-                        errtype='info',
-                        component='history')
-                    star_btn_ui_functions.check_playing_remove()
+                star_btn_ui_functions.check_playing_remove()
                             
 
         except Exception as e:
@@ -2993,13 +2983,22 @@ def switch_starred_vid(event=None):
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
             return
 
-    if (playing_vid_mode == 4 and
-        selected_song_number == media_data_list.current_playing_idx_num and
-        star_vid_handle.search(media_data_list.vid_url[selected_song_number])):
+    if playing_vid_mode == 4 and((
+        # selected media is the currently playing video
+        selected_song_number == media_data_list.current_playing_idx_num and 
+        star_vid_handle.search(media_data_list.vid_url[selected_song_number]))
+        or
+
+        # the media is the currently playing video, nothing is selected and the currently playing video is starred
+        (playing_vid_info_dict and 
+         not media_list_page_controller.page_change_select and
+         selected_song_number is not None and
+         playing_vid_info_dict['original_url'] == media_data_list.vid_url[media_data_list.current_playing_idx_num] and
+         star_vid_handle.search(playing_vid_info_dict['original_url']))):
         messagebox.showinfo(f'JaTubePlayer {ver}','you cannot remove the currently playing video from starred videos, please select another video first!')
         return
 
-    if selected_song_number is not None:
+    if selected_song_number is not None and media_list_page_controller.page_change_select:
         url_or_path = media_data_list.vid_url[selected_song_number]
         title = media_data_list.playlisttitles[selected_song_number]
         thumb = media_data_list.playlist_thumbnails[selected_song_number]
@@ -3022,7 +3021,7 @@ def switch_starred_vid(event=None):
 
     if star_vid_handle.search(url_or_path):
         star_vid_handle.remove(url_or_path)
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()
 
         ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
 
@@ -3031,7 +3030,6 @@ def switch_starred_vid(event=None):
                 item_id = playlisttreebox.get_children()[selected_song_number%50]
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                             selected_tree_ID=item_id)
-                selected_song_number = None
             except Exception as e:
                 log_handle(
                     content=str(e),
@@ -3219,7 +3217,7 @@ def update_playing_pos_yt():
                     if selected_song_number != None:
 
                         if player_mode_selector.get() =='continue':
-                            playprevnext(1)()
+                            playprevnext(1)
                             break
                             
                         elif player_mode_selector.get() =='replay':
@@ -4978,7 +4976,15 @@ def _init_account_and_quickstartup():
                                                         msg='Refreshing login status, please wait...',
                                                         duration='short',
                                                         icon=icondir))
-        account_info_handler.set_account_avator()
+        if check_internet_socket():
+            account_info_handler.set_account_avator()
+        else:
+            log_handle(
+                content="No internet connection, skipping account refresh.",
+                errtype='info',
+                component='startup',
+            )
+            messagebox.showwarning(f'JaTubePlayer {ver}', 'No internet connection, skipping account refresh.')
     root.after(0, init_quick_startup)
 
 
@@ -5260,7 +5266,7 @@ chrome_ext_text.place(relx=0.083, rely=0.158, relheigh = 0.7)
 
 
 separator = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 19.5), text_color='#444444')
-separator.place(relx=0.296, rely=0.149, relheigh = 0.7)
+separator.place(relx=0.296, rely=0.05, relheigh = 0.8)
 
 discord_status_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 15.5),
                                    text_color='#333333')
@@ -5272,15 +5278,16 @@ discord_status_text.place(relx=0.397, rely=0.158, relheigh = 0.7)
 
 
 separator2 = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 19.5), text_color='#444444')
-separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
+separator2.place(relx=0.520, rely=0.05, relheigh = 0.8)
 
 # Google Profile Container - styled circular frame for profile picture
 
 
-google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 15.5),
+
+google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 14.5),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
-google_status_profile_pic_label.place(relx=0.63, rely=0.5, anchor="center", relheigh = 0.85)
+google_status_profile_pic_label.place(relx=0.63, rely=0.46, anchor="center", relheigh = 0.85)
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 14.5), text_color="#777777", wrap="none",
                                    border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
