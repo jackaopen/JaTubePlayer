@@ -2762,6 +2762,13 @@ def history_control(mode:int):
                     insert_textbox(playlist_name_textbox, f'{history_template_dict.get("playlistname","")}')
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
+
+                    log_handle(
+                        content=f"playing vid in mdl, selected song number: {selected_song_number}",
+                        errtype='info',
+                        component='history',
+                    )
+
                     selected_song_number = media_data_list.vid_url.index(playing_url)
                     if media_list_page_controller.media_data_list.current_media_page != 1:
                         root.after(250,lambda:media_list_page_controller.set_page(selected_song_number//50+1))
@@ -2771,6 +2778,12 @@ def history_control(mode:int):
                     else:
                         star_btn_ui_functions.star_regular()
                 else:
+                    selected_song_number = None
+                    log_handle(
+                        content="playing not vid in mdl",
+                        errtype='info',
+                        component='history',
+                    )
                     star_btn_ui_functions.check_playing_remove()
                             
 
@@ -3016,9 +3029,7 @@ def switch_starred_vid(event=None):
         url_or_path = playing_vid_info_dict['original_url']
         if is_url_valid(url_or_path):
             title = playing_vid_info_dict['title']
-            try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
-            except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
-            finally:thumb = thumb if thumb else None
+            thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
             channel = playing_vid_info_dict['channel']
         else:
             title = os.path.basename(url_or_path)
@@ -3031,7 +3042,7 @@ def switch_starred_vid(event=None):
         star_vid_handle.remove(url_or_path)
         star_btn_ui_functions.check_playing_remove()
 
-        ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
+        ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Removed {title} from starred videos', duration='short', icon=icondir))
 
         if playing_vid_mode == 4:
             try:
@@ -3063,9 +3074,9 @@ def switch_starred_vid(event=None):
                         )
         if res:
             star_btn_ui_functions.star_starred()
-            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Added {title} to starred videos', duration='short', icon=icondir))
         else:
-            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Failed to add {title} to starred videos', duration='short', icon=icondir))
 
 
     

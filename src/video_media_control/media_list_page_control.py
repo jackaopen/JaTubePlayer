@@ -69,6 +69,8 @@ class MediaList_PageControl_:
 
         self._prev_media_data_list = None
         self._prev_current_page = 0
+        self._prev_playing_url = None
+
         self.local_media_handler = local_media_handle(log_handle=log_handle)
         self.max_search_result_count = 50
         self.ui_queue = ui_queue
@@ -411,7 +413,7 @@ class MediaList_PageControl_:
                         
                         media_data_list.vid_url.append(item['url'])
                         media_data_list.playlisttitles.append(f"🛑LIVE {item['title']}")
-                        media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
+                        media_data_list.playlist_thumbnails.append(item['thumbnail'])
                         media_data_list.playlist_channel.append(item['channel'])
 
 
@@ -423,7 +425,7 @@ class MediaList_PageControl_:
 
                         media_data_list.vid_url.append(item['url'])
                         media_data_list.playlisttitles.append(item['title'])
-                        media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
+                        media_data_list.playlist_thumbnails.append(item['thumbnail'])
                         media_data_list.playlist_channel.append(item['channel'])
 
             self.media_data_list = media_data_list
@@ -812,17 +814,21 @@ class MediaList_PageControl_:
         '''
         self.thumbnail_loader.clear_all_tag()
 
-    def record_current_mdl(self):
+    def record_current_mdl(self,
+                           current_url:str=None):
         '''
         record the current page and current playing index in the media data list
+        if current_url is provided, will also record the current playing index in the media data list
         '''
         self._prev_media_data_list = copy.deepcopy(self.media_data_list)
         self._prev_current_page = self.current_page
+        self._prev_playing_url = current_url
         self.log_handle(
             content=f'recorded current page {self.current_page} and current playing index {self.media_data_list.current_playing_idx_num}',
             errtype='info',
             component='page_control',
         )
+
     def restore_old_mdl(self):
         '''
         Only restore the current page and current playing index in the media data list, does not restore the media data list itself
@@ -830,7 +836,16 @@ class MediaList_PageControl_:
         self.media_data_list.current_playing_idx_num = self._prev_media_data_list.current_playing_idx_num
         self.media_data_list.current_media_page = self._prev_media_data_list.current_media_page
         self.set_page(self._prev_current_page)
-        self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+        _restore_target_url = self.media_data_list.vid_url[self.media_data_list.current_playing_idx_num]
+
+        if self._prev_playing_url is None or self._prev_playing_url == _restore_target_url:
+            self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+            self.log_handle(
+                content=f'restored old page {self.media_data_list.current_media_page} and current playing index {self.media_data_list.current_playing_idx_num}',
+                errtype='info',
+                component='page_control',
+            )
+            
         self.log_handle(
             content=f'restored old page {self.media_data_list.current_media_page} and current playing index {self.media_data_list.current_playing_idx_num}',
             errtype='info',
