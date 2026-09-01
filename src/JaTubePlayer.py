@@ -1309,7 +1309,7 @@ def setting_frame():
         def _save_cache_settings():
             CONFIG['cache']['demuxer_max_bytes'] = int(demuxer_max_bytes.get())
             CONFIG['cache']['demuxer_max_back_bytes'] = int(demuxer_max_back_bytes.get())
-            CONFIG['cache']['cache_pause_wait'] = int(cache_pause_wait.get())
+            CONFIG['cache']['cache_pause_wait'] = cache_pause_wait.get()
             CONFIG['cache']['audio_wait_open'] = int(audio_wait_open.get())
             save_config()
 
@@ -2694,7 +2694,9 @@ def page_control(mode):
         nextpageresult = media_list_page_controller.next_page(manual_change=True)
     elif mode == 2:
         nextpageresult = media_list_page_controller.prev_page(manual_change=True)
-    if nextpageresult == -1:
+    if nextpageresult == 0:
+        star_btn_ui_functions.check_playing_remove()
+    elif nextpageresult == -1:
         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','page still loading, please wait...'))
     elif nextpageresult == -2:
         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','we got an error while loading the page, please refer to the log for more details'))
@@ -2754,16 +2756,22 @@ def history_control(mode:int):
                         load_thread_queue.put((None,playing_url))
                     else:
                         load_thread_queue.put((playing_url,None))
-                        
-                insert_textbox(playlist_name_textbox, f'[History] {history_template_dict.get("playlistname","")}')
+                if "History" not in history_template_dict.get("playlistname",""):      
+                    insert_textbox(playlist_name_textbox, f'[History] {history_template_dict.get("playlistname","")}')
+                else:
+                    insert_textbox(playlist_name_textbox, f'{history_template_dict.get("playlistname","")}')
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
                     selected_song_number = media_data_list.vid_url.index(playing_url)
                     if media_list_page_controller.media_data_list.current_media_page != 1:
                         root.after(250,lambda:media_list_page_controller.set_page(selected_song_number//50+1))
                     root.after(400,lambda:thumbnail_loader.select_item(selected_song_number%50))
-
-                star_btn_ui_functions.check_playing_remove()
+                    if star_vid_handle.search(playing_url):
+                        star_btn_ui_functions.star_starred()
+                    else:
+                        star_btn_ui_functions.star_regular()
+                else:
+                    star_btn_ui_functions.check_playing_remove()
                             
 
         except Exception as e:
