@@ -40,7 +40,7 @@ UsePreviousTasks=yes
 ; owns all later writes under %APPDATA%\JaTubePlayer.
 UsedUserAreasWarning=no
 
-VersionInfoVersion=3.0.1.0
+VersionInfoVersion=3.1.0.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup
 VersionInfoProductName={#MyAppName}

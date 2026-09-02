@@ -3,27 +3,39 @@
 
 <div align="center">
 
-### 🎬 A Feature-Rich Media Player for the Modern Era
+##  A Feature-Rich Media Player for the Modern Era
 
 **JaTubePlayer** seamlessly bridges online streaming and local playback with **Python**, **yt-dlp**, and **mpv**.  
 Stream videos, access playlists, archive content —all through a stunning **Windows 11-inspired** interface featuring **glass/acrylic blur effects** and intuitive **customtkinter** design.
 
-> 🔒 **Privacy-First Architecture** — Your login session cookies are encrypted locally with **AES-256-GCM**, and the encryption key is protected for the current Windows user with **DPAPI**.
+
+> [!Important] 🔒 **Privacy-First Architecture**
+> Your login session cookies are encrypted locally with **AES-256-GCM**, and the encryption key is protected for the current Windows user with **DPAPI**.
 
 </div>
 <img width="1448" height="772" alt="螢幕擷取畫面 2026-08-16 220359" src="https://github.com/user-attachments/assets/ab78c615-effd-4d68-b86b-3d7acab7dbd3" />
 
 
+---
 
 <div align="center">
+<h2> Features </h2>
 
-## ✨ Features
+<p>
+  <img alt="Local and online playback" src="https://img.shields.io/badge/Playback-Local%20%26%20Online-E63946?style=for-the-badge&amp;" />
+  <img alt="YouTube and Twitch streaming" src="https://img.shields.io/badge/Streaming-YouTube%20%26%20Twitch-9B5DE5?style=for-the-badge&amp;" />
+  <img alt="Starred media and playback history" src="https://img.shields.io/badge/Library-Stars%20%26%20History-4776E6?style=for-the-badge&amp;" />
+  <br>
+  <img alt="Quick Init startup modes" src="https://img.shields.io/badge/Startup-Quick%20Init-FF9F1C?style=for-the-badge&amp;" />
+  <img alt="AES and DPAPI protected account data" src="https://img.shields.io/badge/Privacy-AES%20%26%20DPAPI-54ad2d?style=for-the-badge&amp;" />
+</p>
 
+#### ***Uninterrupted, just how you like it***
+<br>
 </div>
+<h3>&nbsp;🔹Playback &amp; Media Lists</h3>
 
-### ✅ Core Features
 
-**Media Playback & Media Lists**
 - **Play local media** — Open a single file, multiple files, or an entire folder, with support for formats beyond Windows Media Player
 - **Search and play online media** — Search or open supported video and playlist URLs directly
 - **Live streams** — Play live streams and Twitch channels through the integrated media pipeline
@@ -31,29 +43,33 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - **Playback history and starred media** — Revisit previously played items and maintain a persistent starred list
 - **Playback options** — Select online resolution, use audio-only mode, adjust playback speed, and display available subtitles
 
-**User Interface & Windows Integration**
+<br>
+
+<h3>&nbsp;🔹Interface &amp; Windows Integration</h3>
+
+
 - **Windows 11-style glass UI** — Acrylic/glass effects, DPI-aware scaling, theme controls, and a card-based Settings window
 - **Flexible viewing modes** — Normal window, fullscreen with controls, fullscreen-to-window, and configurable hover controls
 - **Keyboard, mouse, and drag-and-drop controls** — Hotkeys, click-to-pause, mouse-wheel volume, and file, folder, multi-file, or URL drops
 - **Windows integration** — System Media Transport Controls, taskbar/action-center controls, system tray support, toast notifications, and File Explorer “Open With”
 - **Player information** — View playback, buffering, cache, and structured diagnostic information from the interface
 
-**Integration, Startup & Saving**
+<br>
+
+<h3>&nbsp;🔹Integration, Startup &amp; Saving</h3>
+
+
 - **Chrome extension integration** — Send, star, or add YouTube and Twitch pages to JaTubePlayer through a configurable local port
 - **Discord Rich Presence** — Display current playback status with configurable privacy options
-- **Quick Init** — Start with a search, Online source or playlist, or local folder
+- **Quick Init** — Start with a search, online source or playlist, starred media, or a local folder
 - **Media saving** — Save audio or video, choose a saving path, open the destination folder, cancel active work, and clean up partial output
 - **yt-dlp hot update** — Select stable or nightly builds, verify update metadata and files, install with Windows elevation when needed, and restore the previous copy on failure
 - **Persistent application data** — Store settings, stars, history, saved-media records, encrypted account state, and logs under the user application-data directory
 
 <br>
 
-<div align="center">
+<h3>&nbsp;🔹Account &amp; Privacy</h3>
 
-###  🔏Advanced Features
-
-> No API key, client-secret file, or manually imported cookie file is required
-</div>
 
 - **Sign in through the built-in WebView2 account window** — Complete the sign-in flow without copying browser cookies
 - **Personal sources** — Load account playlists, subscriptions, and liked videos through the internal retriever and parser
@@ -62,19 +78,14 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - **Account lifecycle controls** — Login, refresh, logout, delete the protected system key, and retry once after a recognized authentication failure
 - **Optional signed-in media requests** — Allow yt-dlp to use the encrypted account session for media available to the signed-in account
 
-
 <br>
 
-<div align="center">
-
-> 🔓 **Basic functionality** — local playback, online search, playback lists, stars, and media saving — works without signing in.
-> Personal playlists, subscriptions, liked videos, and optional signed-in media requests only require **Settings → Account & Playlist → Login Google**.
-> JaTubePlayer does not require a manually entered API key, a client-secret file, or a raw cookie file.
-
-</div>
+> [!NOTE]
+> **The essentials work without signing in.** Local playback, online search, playback lists, starred media, and media saving are immediately available.
+>
+> Personal playlists, subscriptions, liked videos, and optional signed-in requests are enabled from **Settings → Account & Playlist → Login Google**. No manually entered API key, client-secret file, or raw cookie file is required.
 
 <br>
-
 <div align="center">
 
 ## 🛠️ Additional Functionalities
@@ -109,15 +120,15 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 - Write the current session to `%APPDATA%\JaTubePlayer\JaTubePlayer_log.txt`, flushing queued entries every second, immediately for warnings and errors, and once more during shutdown
 - Translate recognized yt-dlp failures into clearer user-facing messages and stop the active loading operation when appropriate
 
-### Keeping yt-dlp Current
+<br>
+
+### 🔹Keeping yt-dlp Current
 
 - Update **yt-dlp** before reporting online playback, extraction, playlist, or download failures because supported sites change frequently.
 - The built-in updater supports both **Stable** and **Nightly** channels. If the latest stable build still fails, install the latest nightly build and try the same operation again.
 - Reproduce the issue after updating and attach the new session log when reporting it.
 
 
-> [!NOTE]
-> **First-start AES warning:** A  warning while JaTubePlayer creates its AES key for the first time is expected. Key creation always triggers this warning. It may appear again after the protected key is deleted or reset; repeated warnings on every normal startup should be reported with the session log.
 
 <br>
 
@@ -127,7 +138,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 ## 📖 Documentation
 
-**[📚 Complete GUI Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/HkiZya7YZl)** &nbsp;|&nbsp; **[🆕 Version 3.0 Update Details](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/BybMxxzPZe)** &nbsp;|&nbsp; **[🧩 Extension Setup](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/By1q6Nzwbg)**
+**[📚 Complete GUI Guide](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/HkiZya7YZl)** &nbsp;|&nbsp; **[🆕 Version 3 Update Details](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/BybMxxzPZe)** &nbsp;|&nbsp; **[🧩 Extension Setup](https://hackmd.io/@XtGB9ScDSjK6uua6PYhF2A/By1q6Nzwbg)**
 
 ---
 
@@ -147,8 +158,8 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 | Category | Libraries / Components |
 | :--- | :--- |
-| **Runtime** | Python 3.11+ |
-| **GUI** | `customtkinter`, `tkinter`, `CTkMessagebox`, `sv_ttk` |
+| **Runtime** | Python 3.13+ |
+| **GUI** | `customtkinter`, `tkinter`, `CTkMessagebox`, `sv_ttk` , `CTkColorPicker`|
 | **Media** | `Pillow`, `ffmpeg-python`, `python-mpv`, `yt-dlp`, Deno, Streamlink |
 | **Network & services** | `requests`, `aiohttp`, `Flask`, `flask-cors`, `google-api-python-client` |
 | **Windows integration** | `pywin32`, `win11toast`, `winsdk`, `pystray`, `pynput`, `pypresence` |
@@ -158,7 +169,6 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 > *Not all dependencies are listed.*
 
 </div>
-
 
 
 
@@ -194,8 +204,10 @@ A newly downloaded JaTubePlayer build may show **“Windows protected your PC”
 ### Contribution Guidelines
 
 If you have problems, ideas, suggestions, or improvements, feel free to **Open an issue** first to discuss proposed changes. I appreciate all feedback and suggestions! 🚀
-
-> Before opening an issue, update yt-dlp (try the latest **Nightly** build when the stable build still fails), reproduce the problem, and collect the log from the same session.
+> [!Note]
+>  Before opening an issue, update yt-dlp (try the latest **Nightly** build when the stable build still fails), reproduce the problem, and collect the log from the same session.
+> 
+>  you can check out part of codebase explantion in `docs_3.0`folder
 
 Every bug report must include:
 
@@ -209,16 +221,15 @@ Remove account identifiers, cookies, tokens, local usernames, and other private 
 Issues missing both a useful description and the relevant log may be closed until the required information is provided.
 
 
->you can check out some code explantion in `docs_3.0`folder
 
 ---
-##  Author's Note
-
+> [!Note] Author's Note
 > *Since this project is maintained solely by me, some parts of the codebase include messy legacy logic from earlier stages of development.
 A full refactor is not currently planned, as it would be a large task; however, some targeted refactors and logic refinements have already been made, with additional improvements planned over time.
 Due to other ongoing work and commitments, pull requests will not be reviewed or merged, but issues and feedback are always welcome!*
 
 ---
+
 >This project is provided for educational and research purposes. Users are responsible for complying with applicable laws and the terms of service of any platforms they interact with.
 
 
