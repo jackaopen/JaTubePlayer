@@ -13,7 +13,7 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 > Your login session cookies are encrypted locally with **AES-256-GCM**, and the encryption key is protected for the current Windows user with **DPAPI**.
 
 </div>
-<img width="1448" height="772" alt="螢幕擷取畫面 2026-08-16 220359" src="https://github.com/user-attachments/assets/ab78c615-effd-4d68-b86b-3d7acab7dbd3" />
+<img width="1448" height="772" alt="螢幕擷取畫面 2026-08-16 220359" src="https://github.com/user-attachments/assets/33cb4bcf-58c4-4e94-a46d-8bc95717ecf6" />
 
 
 ---
