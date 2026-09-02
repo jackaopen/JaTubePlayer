@@ -413,7 +413,13 @@ class MediaList_PageControl_:
                         
                         media_data_list.vid_url.append(item['url'])
                         media_data_list.playlisttitles.append(f"🛑LIVE {item['title']}")
-                        media_data_list.playlist_thumbnails.append(item['thumbnail'])
+
+                        try:
+                            _thumb = item.get('thumbnail') or item['thumbnails'][-1]['url']
+                        except:
+                            _thumb = None
+
+                        media_data_list.playlist_thumbnails.append(_thumb)
                         media_data_list.playlist_channel.append(item['channel'])
 
 
@@ -425,7 +431,13 @@ class MediaList_PageControl_:
 
                         media_data_list.vid_url.append(item['url'])
                         media_data_list.playlisttitles.append(item['title'])
-                        media_data_list.playlist_thumbnails.append(item['thumbnail'])
+
+                        try:
+                            _thumb = item.get('thumbnail') or item['thumbnails'][-1]['url']
+                        except:
+                            _thumb = None
+
+                        media_data_list.playlist_thumbnails.append(_thumb)
                         media_data_list.playlist_channel.append(item['channel'])
 
             self.media_data_list = media_data_list

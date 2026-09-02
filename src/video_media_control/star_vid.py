@@ -35,7 +35,7 @@ class star_vid_handler:
                                     target_url=url,
                                     )
                     
-                    try:thumb = info['thumbnail']
+                    try:thumb = info.get('thumbnail') or info.get('thumbnails')[-1]['url']
                     except: thumb = None
 
                     title = info.get('title',None)

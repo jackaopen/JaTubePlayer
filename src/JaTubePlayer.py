@@ -3028,7 +3028,10 @@ def switch_starred_vid(event=None):
         url_or_path = playing_vid_info_dict['original_url']
         if is_url_valid(url_or_path):
             title = playing_vid_info_dict['title']
-            thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
+            try:
+                thumb = playing_vid_info_dict.get('thumbnail') or playing_vid_info_dict['thumbnails'][-1]['url']
+            except:
+                thumb = None
             channel = playing_vid_info_dict['channel']
         else:
             title = os.path.basename(url_or_path)
@@ -3807,11 +3810,17 @@ def load_thread():  ### add every try except to a new log system for next update
                             )
 
                         ui_queue.put(lambda: playing_title_textbox.configure(state='disabled'))
+
+                        try:
+                            _thumb = playing_vid_info_dict.get('thumbnail') or playing_vid_info_dict['thumbnails'][-1]['url']
+                        except:
+                            _thumb = None
+
                         ui_queue.put(lambda: smtc.update_media_info(
                             title=playing_vid_info_dict['title'],
                             artist=playing_vid_info_dict['uploader'],
                             album='JaTubePlayer',
-                            thumbnail_url=playing_vid_info_dict['thumbnail']
+                            thumbnail_url=_thumb
                         ))
 
                         if enable_discord_presence.get():
