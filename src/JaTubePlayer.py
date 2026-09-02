@@ -220,7 +220,11 @@ max_recommendation_result_count = tk.StringVar()
 max_sub_result_count = tk.StringVar()
 max_like_result_count = tk.StringVar()
 
-
+FILE_TYPE_EXT = [
+    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mpeg", ".mpg", 
+    ".3gp", ".webm", ".ogv",".ts", ".mts", ".vob", ".mp3", ".wav", 
+    ".flac", ".aac", ".ogg", ".wma", ".m4a", ".aiff", ".opus", ".amr"
+    ]
 # ==== UI 控制變數 ====
 
 playlistID = tk.StringVar()
@@ -4516,24 +4520,37 @@ def init_quick_startup(iter:int=0):
                 )
             finally:
                 quickstartup_ui_functions.enable_playing_widget()
+    else:
+        quickstartup_ui_functions.enable_playing_widget()
+        insert_textbox(playlist_name_textbox, "Open With")
 
 def init_openwith_thread():
     global playing_vid_mode
     try:
         if sys.argv[1]:
-            playing_vid_mode = 1
-            load_thread_queue.put((sys.argv[1],None))
-            #no thread here bc we need to wait for the load to finish
-            #then we can go to fullscreen
+            if (os.path.exists(sys.argv[1]) and os.path.isfile(sys.argv[1])
+                and os.path.splitext(sys.argv[1])[1].lower() in FILE_TYPE_EXT):
+                playing_vid_mode = 1
+                load_thread_queue.put((sys.argv[1],None))
+                #no thread here bc we need to wait for the load to finish
+                #then we can go to fullscreen
 
-            if CONFIG['open_with_fullscreen']:
+                if CONFIG['open_with_fullscreen']:
+                    log_handle(
+                        content='fullscreen',
+                        errtype='info',
+                        component='openwith',
+                    )
+                    fullscreen_widget_change(mode=1)
+                insert_textbox(playlist_name_textbox, "Open With")
                 log_handle(
-                    content='fullscreen',
+                    content=f'open with file {sys.argv[1]}',
                     errtype='info',
-                    component='startup',
+                    component='openwith',
                 )
-                fullscreen_widget_change(mode=1)
-            
+            else:
+                messagebox.showerror(f'JaTubePlayer {ver}',
+                                      'The file you opened with is not a valid media file, please check the file path and try again')
     except:pass
 
 
