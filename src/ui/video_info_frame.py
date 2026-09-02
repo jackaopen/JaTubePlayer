@@ -7,7 +7,6 @@ import customtkinter as ctk
 import queue
 import win32gui
 import threading
-import googleapiclient.errors
 
 
 @check_internet
@@ -154,14 +153,7 @@ def vid_info_frame(mode,
                 else:
                     ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','No video selected'))
                     return
-            except googleapiclient.errors.HttpError as err: ######  handle stupid api
-                log_handle(
-                    content=f"Failed to load selected video information: {err}",
-                    errtype="error",
-                    component="video_info",
-                )
-                ui_queue.put(lambda e=err: messagebox.showerror(f'JaTubePlayer {ver}', f"An error occurred: {e}"))
-                ui_queue.put(lambda: info.destroy())
+
             except Exception as e : 
                 log_handle(
                     content=f"Failed to populate selected video information: {e}",

@@ -78,7 +78,6 @@ RUNTIME_PACKAGES = [
 WINDOWS_IMPORTS = [
     "PIL._tkinter_finder",
     "ffmpeg.nodes",
-    "googleapiclient.errors",
     "pynput.keyboard",
     "pystray._win32",
     "pythoncom",
