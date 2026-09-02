@@ -86,7 +86,8 @@ static class Helper
     {
         string host = Host(url);
         if(!TryGetHttpsUri(url))return false;
-        return host == "accounts.google.com" || host == "accounts.youtube.com";
+        return host == "accounts.google.com" || host == "accounts.youtube.com"
+            || host == "gds.google.com" || host == "myaccount.google.com" || host == "consent.youtube.com";
     }
 
     public static bool SuccessPage(string url)

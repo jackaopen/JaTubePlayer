@@ -297,9 +297,8 @@ class innertube_handle:
             inntertube_URL,
             headers=self.api_headers,
             json=payload,
-            timeout=30,
+            timeout=20,
         )
-        print(response.text)
         if response.status_code != 200:
             self.log_handle(
                 content=f"Failed to retrieve innertube content for page '{payload.get('browseId', '_')}': {response.status_code} - {response.text}",

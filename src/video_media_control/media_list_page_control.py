@@ -9,7 +9,6 @@ from .local_media_handle import local_media_handle
 from .star_vid import star_vid_handler
 from notification.ctkmessagebox import ctk_messagebox
 from history_page.history_page import history_page
-from typing import Callable
 import copy
 import os
 
@@ -59,9 +58,7 @@ class MediaList_PageControl_:
                  dnd_ui_functions:object,
                  Chrome_ext_server_ui_functions:object,
                  messagebox:ctk_messagebox,
-                 get_cur_playing_url:Callable,
-                 get_cur_playlist_title:Callable,
-                 ):
+                 mlpc_ui_functions:object):
         self.total_page = 0
         self.current_page = 1
         '''
@@ -69,6 +66,11 @@ class MediaList_PageControl_:
         '''
         self.media_type = MediaType.NONE
         self.media_data_list = media_data_list_template()
+
+        self._prev_media_data_list = None
+        self._prev_current_page = 0
+        self._prev_playing_url = None
+
         self.local_media_handler = local_media_handle(log_handle=log_handle)
         self.max_search_result_count = 50
         self.ui_queue = ui_queue
@@ -91,12 +93,14 @@ class MediaList_PageControl_:
         self.user_playlist_dict_list = []
 
 
-        
-        
-
+        self.page_change_select = False
+        '''
+        For page change and clear selected, will control selected follow\n
+        only be used in caller(not mlpc)\n
+        for each "MANUAL "page cahnge it should be set to False, and the get selected item in main should set it to True
+        '''
         self.load_thread_queue = load_thread_queue
-        self._get_cur_playing_url = get_cur_playing_url
-        self._get_cur_playlist_title = get_cur_playlist_title
+        self.mlpc_ui_functions = mlpc_ui_functions
         self._prev_playlist_name=""
         '''
         This is used to record the playlist name brfore retrieving playlisttype.PLAYLISTS is changed
@@ -129,28 +133,28 @@ class MediaList_PageControl_:
                         playlistname:str=None)->bool:
         current_playing_url = ''
         try:
-            current_playing_url = self._get_cur_playing_url()
+            current_playing_url = self.mlpc_ui_functions.get_cur_playing_url()
         except Exception as e:
             self.log_handle(
                 content=f'Failed to get current playing url: {e}',
                 errtype='error',
                 component='page_control',
             )
-        print(f"record history: current_playing_url={current_playing_url}, media_type={self.media_type}, playlistname={playlistname or self._get_cur_playlist_title()}, media_data length={len(self.media_data_list.vid_url)}")
         result = self.history_page_handler.record_history(current_playing_url=current_playing_url, 
-                                                media_data=self.media_data_list,
-                                                media_type=self.media_type,
-                                                playlistname=playlistname or self._get_cur_playlist_title())
+            media_data=self.media_data_list,
+            media_type=self.media_type,
+            playlistname=self.mlpc_ui_functions.get_cur_playlist_title() if playlistname is None else playlistname)
+
         if result:
             self.log_handle(
-                content=f'record hisory PLAYLIST{playlistname or self._get_cur_playlist_title()} ',
+                content=f'record hisory PLAYLIST{playlistname or self.mlpc_ui_functions.get_cur_playlist_title()} ',
                 errtype='info',
                 component='page_control',
             )
             return True
         else:
             self.log_handle(
-                content=f'Failed to record history PLAYLIST{playlistname or self._get_cur_playlist_title()} ',
+                content=f'Failed to record history PLAYLIST{playlistname or self.mlpc_ui_functions.get_cur_playlist_title()} ',
                 errtype='warning',
                 component='page_control',
             )
@@ -178,25 +182,13 @@ class MediaList_PageControl_:
                     errtype='info',
                     component='page_control',
                 )
-                if page == playlist_type.PLAYLIST:
-                    
-                    self._record_history(self._prev_playlist_name if self._prev_playlist_name else None)
-                    self._prev_playlist_name = ''
-                else:
-                    self._record_history(playlistname=prev_playlist_name)
-
+                self.star_btn_ui_functions.check_playing_remove()
+                self._record_history(playlistname=prev_playlist_name)
                 self.current_page = 1
                 self.media_data_list = media_data_list
                 self.media_type = MediaType.YOUTUBE
                 self.media_data_list.clear()
-            else:
-                self._prev_playlist_name = self._get_cur_playlist_title()
-                self.log_handle(
-                    content=f'record prev playlist name={self._prev_playlist_name}',
-                    errtype='info',
-                    component='page_control',
-                )
-        
+                    
             if self.yt_playlist_retriever.innertube_handle.account_handle.check_aes_key() == False:return 
             if (self.yt_playlist_retriever.innertube_handle.account_handle.check_cookie_exist() == False 
                 and page != playlist_type.HOME): return
@@ -224,6 +216,9 @@ class MediaList_PageControl_:
                 content=f'Failed to init reload youtube media list: {e}',
                 errtype='error',
                 component='page_control')
+            self.messagebox.showerror("JatubePlayer",
+                                      f"Failed to load youtube media list: {e}")
+            self.media_data_list = media_data_list_template()
         finally:
             self._busy = False
 
@@ -233,6 +228,7 @@ class MediaList_PageControl_:
                                     star_vid_handler_:star_vid_handler,
                                     prev_playlist_name:str=None
                                     ):
+        self.star_btn_ui_functions.check_playing_remove()
         self._record_history(playlistname=prev_playlist_name)
         self.current_page = 1
         self.media_type = MediaType.STARRED_VIDEO
@@ -256,50 +252,73 @@ class MediaList_PageControl_:
                                     quick_start_folder_path:str=None,
                                     mode_for_local_files:int = -1,
                                     dnd_mode:bool=False,
-                                    )->None|bool:
+                                    )->bool:
         '''
         will be called by local_media_handler to init and reload the media_data_list for local files
         mode_for_local_files: 0 for single file, 1 for folder
 
-        return : None if successfully load, False if failed
+        return : True if successfully load, False if failed
         '''
-        self._record_history()
-        self.current_page = 1
-        self.media_type = MediaType.FOLDER
-        
-        if dnd_mode is False:# JTP called this, calling local_media_handler to get the data
-            mdl_result = self.local_media_handler.load_local_files(mode=mode_for_local_files, 
-                                                                             local_folder_path=quick_start_folder_path)
-            if mdl_result is not None:
-                media_data_list.set(mdl_result)
-                self.media_data_list = media_data_list
-            else:
-                return False
-        else: # dnd called this, media_data_list is already filled
-            self.media_data_list = copy.deepcopy(media_data_list)
-        
+        try:
+            self.star_btn_ui_functions.check_playing_remove()
+            self._record_history()
+            self.current_page = 1
+            self.media_type = MediaType.FOLDER
+            
+            if dnd_mode is False:# JTP called this, calling local_media_handler to get the data
+                mdl_result = self.local_media_handler.load_local_files(mode=mode_for_local_files, 
+                                                                                local_folder_path=quick_start_folder_path)
+                if mdl_result is not None:
+                    media_data_list.set(mdl_result)
+                    self.media_data_list = media_data_list
+                else:
+                    return False
+            else: # dnd called this, media_data_list is already filled
+                self.media_data_list = copy.deepcopy(media_data_list)
+            
 
-        self.media_data_list.current_media_page = 1  
-        self.media_data_list.current_playing_idx_num = -1
-        
-        self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+            self.media_data_list.current_media_page = 1  
+            self.media_data_list.current_playing_idx_num = -1
+            
+            self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
 
-        self._insert_to_ui_queue()
-        self.log_handle(
-            content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
-            errtype='info',
-            component='page_control',
-        )
-        if dnd_mode:
-            if len(self.media_data_list.vid_url) == 1 and os.path.isfile(self.media_data_list.vid_url[0]):
+            self._insert_to_ui_queue()
+            self.log_handle(
+                content=f'init reload media_type= localfiles total_items={len(self.media_data_list.vid_url)} total_page={self.total_page}',
+                errtype='info',
+                component='page_control',
+            )
+            if dnd_mode:
+                if len(self.media_data_list.vid_url) == 1 and os.path.isfile(self.media_data_list.vid_url[0]):
+                    self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
+                    self.dnd_ui_functions.single_file()
+                    self.thumbnail_loader.select_item(0)
+                    if self.star_vid_handler.search(self.media_data_list.vid_url[0]):
+                        self.star_btn_ui_functions.star_starred()
+                else:
+                    self.dnd_ui_functions.folder_and_files()
+            elif mode_for_local_files == 0:
                 self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
-                self.dnd_ui_functions.single_file()
                 self.thumbnail_loader.select_item(0)
-            else:
-                self.dnd_ui_functions.folder_and_files()
-        elif mode_for_local_files == 0:
-            self.load_thread_queue.put((self.media_data_list.vid_url[0],None))
-            self.thumbnail_loader.select_item(0)
+                if self.star_vid_handler.search(self.media_data_list.vid_url[0]):
+                    self.star_btn_ui_functions.star_starred()
+                    print(f"starred video found: {self.media_data_list.vid_url[0]}")
+                else:
+                    self.star_btn_ui_functions.star_regular()
+                    print(f"starred video not found: {self.media_data_list.vid_url[0]}")
+
+            self.dnd_ui_functions.dnd_global_mdl()
+            return True
+        except Exception as e:
+            self.log_handle(
+                content=f'Failed to init reload local media list: {e}',
+                errtype='error',
+                component='page_control',
+            )
+            self.messagebox.showerror("JatubePlayer",
+                                      f"Failed to load local media list: {e}")
+            self.media_data_list = media_data_list_template()
+            return False
     
 
 
@@ -359,6 +378,7 @@ class MediaList_PageControl_:
                                 cookie:str):
         try:
             self._busy = True
+            self.star_btn_ui_functions.check_playing_remove()
             self._record_history()
             self.thumbnail_loader.clear_thumbnails()
             self.media_data_list.clear()
@@ -373,7 +393,7 @@ class MediaList_PageControl_:
                 'extract_flat': True,  # Get video list without downloading
                 'force_generic_extractor': True,
                 'skip_download':True,
-                'playlistend':int(int(self.max_search_result_count)*0.3)
+                'playlistend':int(int(self.max_search_result_count)*0.2)
             }
 
             if cookie:
@@ -381,9 +401,9 @@ class MediaList_PageControl_:
             ydl_opts['logger'] = ytdlp_log_handle
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                vid_search_results = ydl.extract_info(search_url_vid, download=False)
-                ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.7)
                 stream_search_results = ydl.extract_info(search_url_stream, download=False)
+                ydl_opts['playlistend'] = int(int(self.max_search_result_count)*0.8)
+                vid_search_results = ydl.extract_info(search_url_vid, download=False)
             
 
             for item in stream_search_results['entries']:
@@ -393,7 +413,7 @@ class MediaList_PageControl_:
                         
                         media_data_list.vid_url.append(item['url'])
                         media_data_list.playlisttitles.append(f"🛑LIVE {item['title']}")
-                        media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
+                        media_data_list.playlist_thumbnails.append(item['thumbnail'])
                         media_data_list.playlist_channel.append(item['channel'])
 
 
@@ -405,7 +425,7 @@ class MediaList_PageControl_:
 
                         media_data_list.vid_url.append(item['url'])
                         media_data_list.playlisttitles.append(item['title'])
-                        media_data_list.playlist_thumbnails.append(item['thumbnails'][-1]['url'])
+                        media_data_list.playlist_thumbnails.append(item['thumbnail'])
                         media_data_list.playlist_channel.append(item['channel'])
 
             self.media_data_list = media_data_list
@@ -427,6 +447,7 @@ class MediaList_PageControl_:
     def history_page_init_and_reload(self,
                                     media_data_list:media_data_list_template,
                                     media_type:int):
+        self.star_btn_ui_functions.check_playing_remove()
         self.thumbnail_loader.clear_thumbnails()
         self.media_data_list.clear()
         self.current_page = 1
@@ -470,9 +491,7 @@ class MediaList_PageControl_:
             self.media_data_list.playlist_channel.append(channel)
             self.media_data_list.playlist_thumbnails.append(thumbnail_url)
             self.Chrome_ext_server_ui_functions.add_to_end()
-            self.tree_view_queue.put((thumbnail_url,
-                                        title,
-                                        channel))
+            
             self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
             self._insert_to_ui_queue()
             if self.current_page == self.media_data_list.current_media_page:
@@ -496,7 +515,8 @@ class MediaList_PageControl_:
                         selected_idx:int,
                         selected_tree_ID:str):
         '''
-        clear the selected video from the media data list and treeview, and clear the playing tag if the selected video is playing
+        clear the selected video from the media data list and treeview, and clear the playing tag if the selected video is playing\n
+        note : this will change the page change select to False, so the next page change will not follow the selected item\n
         '''
         try:
             self.media_data_list.vid_url.pop(selected_idx)
@@ -512,11 +532,15 @@ class MediaList_PageControl_:
             if self.total_page != (len(self.media_data_list.vid_url) + 49) // 50:
                 if self.media_data_list.current_media_page == self.total_page:
                     self.media_data_list.current_media_page -= 1
-                self.total_page = (len(self.media_data_list.vid_url) + 49) // 50
+                self.total_page = max(1, (len(self.media_data_list.vid_url) + 49) // 50)
+
+            if self.current_page > self.total_page:
+                self.current_page = self.total_page
 
             self._insert_to_ui_queue()
             if self.current_page == self.media_data_list.current_media_page:
                 self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+            self.page_change_select = False
 
         except Exception as e:
             self.log_handle(
@@ -529,10 +553,12 @@ class MediaList_PageControl_:
 
     def next_page(self,
                   select_first_of_next_page:bool=False,
-                  selected_follow:bool=True)->int:
+                  selected_follow:bool=True,
+                  manual_change:bool=False
+                  )->int:
         '''
-        return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
-        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected
+        return 0 if successfully load next page, return -1 if still loading, return -2 if failed -3 if media type does not support page control\n
+        selected_follow: if True, will load the page oftreeview, else only change the page number, and load the page when the page is selected\n
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if _total_page_of_current_data < self.current_page + 1 and self.current_page != self.total_page:
@@ -600,15 +626,18 @@ class MediaList_PageControl_:
             return -2
         finally:
             self.loading_page = False
+            if manual_change:
+                self.page_change_select = False
 
 
 
     def prev_page(self, 
                 select_last_of_prev_page:bool=False,
-                selected_follow:bool=True)->int:
+                selected_follow:bool=True,
+                manual_change:bool=False)->int:
         '''
-        return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control
-        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected
+        return 0 if successfully load previous page, return -1 if still loading, return -2 if failed -3 if media type does not support page control\n
+        selected_follow: if True, will load the page of treeview, else only change the page number, and load the page when the page is selected\n
         '''
         _total_page_of_current_data = (len(self.media_data_list.vid_url) + 49) // 50
         if self.current_page == 1 and _total_page_of_current_data < self.total_page:
@@ -670,6 +699,8 @@ class MediaList_PageControl_:
             return -3
         finally:
             self.loading_page = False
+            if manual_change:
+                self.page_change_select = False
 
     def set_page(self,
                   page:int)->int:
@@ -729,27 +760,31 @@ class MediaList_PageControl_:
             self.loading_page = False
 
     def random_media(self,
-                     selected_idx : int = -1) -> int:
+                     selected_follow:bool = False) -> int:
         '''
-        random select a video from the mediadata list and return the idx
-        will automatically load the page of the video if the video is not in the current page
-        return -2 if list are not fully loaded, return -1 if failed
+        random select a video from the mediadata list and return the idx\n
+        will automatically load the page of the video if the video is not in the current page\n
+        return -2 if list are not fully loaded, return -1 if failed\n
         '''
-        if len(self.media_data_list.vid_url)//50+1 != self.total_page:
+        if not self.media_data_list.vid_url:
+            return -1
+        if (len(self.media_data_list.vid_url)+49) // 50 != self.total_page:
             return -2
         try:
             random_idx = random.randint(0, len(self.media_data_list.vid_url)-1)
-            self.current_page = random_idx//50+1
-            if self.media_data_list.current_playing_idx_num == selected_idx:
-                self._insert_to_ui_queue()
+            
+            if selected_follow:
+                self.set_page(random_idx//50+1)
                 self.thumbnail_loader.root.after(1000, lambda: self.thumbnail_loader.select_item(random_idx%50))
+                self.current_page = random_idx//50+1
+
+            self.media_data_list.current_playing_idx_num = random_idx
+            self.media_data_list.current_media_page = random_idx//50+1
             self.log_handle(
-                content=f'randomly selected video: {random_idx}, page: {self.current_page}',
+                content=f'randomly selected video: {random_idx}, cur page: {self.current_page} , media page: {self.media_data_list.current_media_page}, total page: {self.total_page}',
                 errtype='info',
                 component='page_control',
             )
-            self.media_data_list.current_media_page = self.current_page
-            self.media_data_list.current_playing_idx_num = random_idx
 
         except Exception as e:
             self.log_handle(
@@ -767,7 +802,8 @@ class MediaList_PageControl_:
         tag : "playing" or "normal"
         only set the tag when the video is in the current page, otherwise do nothing, since the tag will be set when the page is loaded
         '''
-
+        if idx < 0 or idx >= len(self.media_data_list.vid_url):
+            return
         page_idx = idx % 50
         if self.media_data_list.current_media_page == self.current_page:
             self.thumbnail_loader.set_item_color(page_idx % 50, tag)
@@ -777,7 +813,45 @@ class MediaList_PageControl_:
         remove ALL the placed tag in current page
         '''
         self.thumbnail_loader.clear_all_tag()
+
+    def record_current_mdl(self,
+                           current_url:str=None):
+        '''
+        record the current page and current playing index in the media data list
+        if current_url is provided, will also record the current playing index in the media data list
+        '''
+        self._prev_media_data_list = copy.deepcopy(self.media_data_list)
+        self._prev_current_page = self.current_page
+        self._prev_playing_url = current_url
+        self.log_handle(
+            content=f'recorded current page {self.current_page} and current playing index {self.media_data_list.current_playing_idx_num}',
+            errtype='info',
+            component='page_control',
+        )
+
+    def restore_old_mdl(self):
+        '''
+        Only restore the current page and current playing index in the media data list, does not restore the media data list itself
+        '''
+        self.media_data_list.current_playing_idx_num = self._prev_media_data_list.current_playing_idx_num
+        self.media_data_list.current_media_page = self._prev_media_data_list.current_media_page
+        self.set_page(self._prev_current_page)
+        _restore_target_url = self.media_data_list.vid_url[self.media_data_list.current_playing_idx_num]
+
+        if self._prev_playing_url is None or self._prev_playing_url == _restore_target_url:
+            self.set_playing_tag(self.media_data_list.current_playing_idx_num)
+            self.log_handle(
+                content=f'restored old page {self.media_data_list.current_media_page} and current playing index {self.media_data_list.current_playing_idx_num}',
+                errtype='info',
+                component='page_control',
+            )
             
+        self.log_handle(
+            content=f'restored old page {self.media_data_list.current_media_page} and current playing index {self.media_data_list.current_playing_idx_num}',
+            errtype='info',
+            component='page_control',
+        )
+
     def clear(self):
         '''
         mainly for single and chrome mode, clear the media data list and reset the page control

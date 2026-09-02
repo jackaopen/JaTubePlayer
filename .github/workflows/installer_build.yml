@@ -1,0 +1,426 @@
+
+name: JatubePlayer installer build
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/build-windows.trigger]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-private-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build installer
+    runs-on: windows-2025
+    timeout-minutes: 75
+    outputs:
+      installer-artifact-id: ${{ steps.upload-installer.outputs.artifact-id }}
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.7"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.422"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --requirement requirements.txt
+
+      - name: Download runtimes
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          function Assert-Sha256([string]$Path, [string]$Expected) {
+          if (!(Test-Path -LiteralPath $Path -PathType Leaf)) { throw "File not found: $Path" }
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+          if ($actual -ne $Expected.ToLowerInvariant()) { throw "SHA-256 mismatch: $Path" }
+          }
+
+          function Download([string]$Url, [string]$OutFile, [string]$ExpectedHash="") {
+          Write-Host "Downloading $Url"
+          Invoke-WebRequest -Uri $Url -OutFile $OutFile
+          if ($ExpectedHash -ne "") { Assert-Sha256 $OutFile $ExpectedHash }
+          }
+
+          function Get-Sha256FromChecksumFile([string]$ChecksumFile, [string]$FileName) {
+              $line = Get-Content -LiteralPath $ChecksumFile |
+                  Where-Object { $_.EndsWith("  $FileName") } |
+                  Select-Object -First 1
+
+              if (!$line) { throw "SHA-256 entry was not found for $FileName" }
+              return ($line -split "\s+")[0]
+          }
+
+          function Expand-7Zip([string]$Archive, [string]$Destination) {
+          & 7z x $Archive "-o$Destination" -y | Out-Host
+          if ($LASTEXITCODE -ne 0) { throw "Failed to extract $Archive" }
+          }
+
+          function Find-File([string]$Directory, [string]$Name) {
+          $file = Get-ChildItem $Directory -Recurse -File -Filter $Name | Select-Object -First 1
+          if (!$file) { throw "$Name was not found in $Directory" }
+          return $file
+          }
+
+
+          New-Item `
+              -ItemType Directory `
+              -Force `
+              "_downloads", "_stage", "_internal" |
+              Out-Null
+
+          # ==============Deno===================
+          $denoVersion = "v2.6.6"
+          $denoZip = "_downloads\deno.zip"
+          Download `
+              "https://github.com/denoland/deno/releases/download/$denoVersion/deno-x86_64-pc-windows-msvc.zip" `
+              $denoZip `
+              "0e26574aa9028e4b574909a4f561bc7614bef36b0c2cab02ca99b60d838db5fc"
+
+          Expand-Archive $denoZip "_stage\deno" -Force
+
+          Copy-Item `
+              "_stage\deno\deno.exe" `
+              "_internal\deno.exe" `
+              -Force
+
+          Assert-Sha256 `
+              "_internal\deno.exe" `
+              "59a1606a892fe2bb046076bd75ed1fe5e87dcf1b463a2413584460db867f8367"
+
+          # ===============FFmpeg==================
+          $ffmpegVersion = "8.1.2"
+          $ffmpegArchive = "_downloads\ffmpeg.7z"
+          Download `
+              "https://github.com/GyanD/codexffmpeg/releases/download/$ffmpegVersion/ffmpeg-$ffmpegVersion-full_build.7z" `
+              $ffmpegArchive `
+              "0fff188997a499b5382e0f66e845d4556c48c54f0113ebed4853d556dbdd7059"
+
+          Expand-7Zip $ffmpegArchive "_stage\ffmpeg"
+
+          Copy-Item `
+              (Find-File "_stage\ffmpeg" "ffmpeg.exe").FullName `
+              "_internal\ffmpeg.exe" `
+              -Force
+
+          Copy-Item `
+              (Find-File "_stage\ffmpeg" "ffprobe.exe").FullName `
+              "_internal\ffprobe.exe" `
+              -Force
+
+          Assert-Sha256 `
+              "_internal\ffmpeg.exe" `
+              "ad8f211bc894755e0061c55ab280ae00e8d3d4f15a8cc4372b24cfa247b5942e"
+
+          Assert-Sha256 `
+              "_internal\ffprobe.exe" `
+              "9df3b0b5275e830961df6d94e1f7a71121a7abd5ff708e9fec8a0b6084a55015"
+
+          # ===============MPV==================
+          $mpvReleaseTag = "mpv-2026-08-27"
+          $mpvAsset = "mpv-dev-x86_64-v3-20260827-git-182fa6ca49.7z"
+          $mpvArchive = "_downloads\$mpvAsset"
+          Download `
+              "https://github.com/jackaopen/jtp-third-party-binaries/releases/download/$mpvReleaseTag/$mpvAsset" `
+              $mpvArchive `
+              "0509e39efbabdc5dd53235c33644bb05767d7851ab48bd88f6728613895dfa69"
+
+          Expand-7Zip $mpvArchive "_stage\mpv"
+
+          Copy-Item `
+              (Find-File "_stage\mpv" "libmpv-2.dll").FullName `
+              "_internal\libmpv-2.dll" `
+              -Force
+
+          Assert-Sha256 `
+              "_internal\libmpv-2.dll" `
+              "bf5e756f449e5f24bacb4eee5b1f11de7e1b1fd2735ee05365a69e3094b63d53"
+
+          # ==============yt-dlp: Settings==================
+          $ytdlpBase = "https://github.com/yt-dlp/yt-dlp/releases/latest/download"
+          $ytdlpPublicKeyUrl = "https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/public.key"
+          $ytdlpPublicKeySha256 = "45d6b415928b5f3e228b461fa9e6d7eb56a824931c785ece00279a06c7a6d6e5"
+
+          $ytdlpExe = "_downloads\yt-dlp.exe"
+          $ytdlpSource = "_downloads\yt-dlp.tar.gz"
+          $ytdlpChecksums = "_downloads\SHA2-256SUMS"
+          $ytdlpChecksumsSignature = "_downloads\SHA2-256SUMS.sig"
+          $ytdlpPublicKey = "_downloads\yt-dlp-public.key"
+
+          # ==============yt-dlp: Download latest files==================
+          Download `
+              "$ytdlpBase/SHA2-256SUMS" `
+              $ytdlpChecksums
+
+          Download `
+              "$ytdlpBase/SHA2-256SUMS.sig" `
+              $ytdlpChecksumsSignature
+
+          Download `
+              $ytdlpPublicKeyUrl `
+              $ytdlpPublicKey `
+              $ytdlpPublicKeySha256
+
+          Download `
+              "$ytdlpBase/yt-dlp.exe" `
+              $ytdlpExe
+
+          Download `
+              "$ytdlpBase/yt-dlp.tar.gz" `
+              $ytdlpSource
+
+          # ==============yt-dlp: Verify signed checksum list==================
+
+          $gpg = "$env:ProgramFiles\Git\usr\bin\gpg.exe"
+          if (!(Test-Path -LiteralPath $gpg -PathType Leaf)) {
+              throw "GPG was not found: $gpg"
+          }
+
+          #new a temp GPG home
+          $ytdlpGpgHome = "_stage/ytdlp-gpg"
+          New-Item -ItemType Directory -Force $ytdlpGpgHome | Out-Null
+
+          #set the GPG home to the temp folder and import the public key 
+          & $gpg `
+              --batch `
+              --homedir $ytdlpGpgHome `
+              --import $ytdlpPublicKey
+          if ($LASTEXITCODE -ne 0) {
+              throw "Failed to import the yt-dlp public key"
+          }
+
+          #verify the signature of the checksum file
+          & $gpg `
+              --batch `
+              --homedir $ytdlpGpgHome `
+              --verify $ytdlpChecksumsSignature $ytdlpChecksums
+          if ($LASTEXITCODE -ne 0) {
+              throw "The yt-dlp checksum signature is invalid"
+          }
+
+          # ==============yt-dlp: Verify downloaded file hashes==================
+
+          $ytdlpExeHash = Get-Sha256FromChecksumFile $ytdlpChecksums "yt-dlp.exe"
+          $ytdlpSourceHash = Get-Sha256FromChecksumFile $ytdlpChecksums "yt-dlp.tar.gz"
+
+          Assert-Sha256 $ytdlpExe $ytdlpExeHash
+          Assert-Sha256 $ytdlpSource $ytdlpSourceHash
+
+          # ==============yt-dlp: Prepare application files==================
+          Copy-Item $ytdlpExe "_internal\yt-dlp.exe" -Force
+          New-Item `
+              -ItemType Directory `
+              -Force `
+              "_stage\ytdlp" |
+              Out-Null
+
+          tar -xzf $ytdlpSource -C "_stage\ytdlp"
+          if ($LASTEXITCODE -ne 0) {
+              throw "Failed to extract yt-dlp"
+          }
+
+          $ytdlpPackage = "_stage\ytdlp\yt-dlp\yt_dlp"
+          if (!(Test-Path "$ytdlpPackage\version.py")) {
+              throw "yt_dlp source was not found"
+          }
+
+          Copy-Item `
+              $ytdlpPackage `
+              "_internal\yt_dlp" `
+              -Recurse
+
+          # ==============Streamlink==================
+          $streamlinkVersion = "8.5.0-1"
+          $streamlinkAsset = "streamlink-$streamlinkVersion-py314-x86_64.zip"
+          $streamlinkZip = "_downloads\streamlink.zip"
+          Download `
+              "https://github.com/streamlink/windows-builds/releases/download/$streamlinkVersion/$streamlinkAsset" `
+              $streamlinkZip `
+              "86409e93774ec59928ed289d291c48766f9c7535ea41085255404f219875b5f3"
+
+          Expand-Archive $streamlinkZip "_stage\streamlink" -Force
+
+          $streamlinkRoot = "_stage\streamlink\streamlink-$streamlinkVersion-py314-x86_64"
+          $streamlinkExe = Join-Path $streamlinkRoot "bin\streamlink.exe"
+          if (!(Test-Path -LiteralPath $streamlinkExe -PathType Leaf)) {
+              throw "Streamlink was not found: $streamlinkExe"
+          }
+
+          Copy-Item `
+              $streamlinkRoot `
+              "_internal\streamlink" `
+              -Recurse
+
+          Assert-Sha256 `
+              "_internal\streamlink\bin\streamlink.exe" `
+              "6feecea2a405a43c19b2ea8a5a479a5d3c73e7c33e5cfb81f47985af77f32eef"
+
+
+      - name: Build WebView2 host
+        run: |
+          dotnet publish "src\account\WebView2Host.csproj" `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output "_stage\webview" `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false
+          if ($LASTEXITCODE -ne 0) { throw "WebView2Host build failed" }
+          Copy-Item "_stage\webview\WebView2Host.exe" "src\account\WebView2Host.exe" -Force
+
+      - name: Build updater
+        run: |
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --distpath "_stage\updater-dist" `
+            --workpath "_stage\updater-work" `
+            "packaging_assets\updater\updater.spec"
+          if ($LASTEXITCODE -ne 0) { throw "Updater build failed" }
+          Copy-Item "_stage\updater-dist\JatubePlayer_updater.exe" "_internal\JaTubePlayer_updater.exe" -Force
+
+      - name: Record and inject generated hashes
+        run: |
+          $webviewHash = (Get-FileHash "src\account\WebView2Host.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $updaterHash = (Get-FileHash "_internal\JaTubePlayer_updater.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          "WEBVIEW_SHA256=$webviewHash" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "UPDATER_SHA256=$updaterHash" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $accountFile = "src\utils\Account_token.py"
+          $source = Get-Content $accountFile -Raw
+          $pattern = '(?<before>EXPECTED_HASH\s*=\s*")[0-9a-fA-F]+(?<after>")'
+          if ($source -notmatch $pattern) { throw "WebView2Host hash field was not found" }
+          $replacement = '${before}' + $webviewHash + '${after}'
+          $source -replace $pattern, $replacement | Set-Content $accountFile -Encoding utf8 -NoNewline
+
+          Write-Host "WebView2Host SHA-256: $webviewHash"
+          Write-Host "Updater SHA-256: $updaterHash"
+
+      - name: Verify build inputs
+        run: |
+          $files = @(
+            "src\account\WebView2Host.exe"
+            "_internal\deno.exe"
+            "_internal\ffmpeg.exe"
+            "_internal\ffprobe.exe"
+            "_internal\libmpv-2.dll"
+            "_internal\JaTubePlayer_updater.exe"
+            "_internal\yt-dlp.exe"
+            "_internal\yt_dlp\version.py"
+            "_internal\streamlink\bin\streamlink.exe"
+          )
+          foreach ($file in $files) {
+            if (!(Test-Path $file)) { throw "Missing build input: $file" }
+          }
+          Get-FileHash -Algorithm SHA256 -LiteralPath $files | Format-Table Path, Hash -AutoSize
+
+      - name: Build JaTubePlayer
+        run: |
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --distpath "dist" `
+            --workpath "_stage\app-work" `
+            "packaging_assets\app\JaTubePlayer.spec"
+          if ($LASTEXITCODE -ne 0) { throw "JaTubePlayer build failed" }
+
+      - name: Build installer
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $compiler)) { throw "Inno Setup 6 was not found" }
+          
+          & $compiler "packaging_assets\inno_setup\JaTubePlayer.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
+
+          $installer = Get-ChildItem "packaging_assets\inno_setup\output" -File -Filter "*.exe" |
+            Select-Object -First 1
+          if (!$installer) { throw "The installer was not produced" }
+          
+          "INSTALLER_PATH=$($installer.FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "INSTALLER_NAME=$($installer.Name)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Create build manifest
+        run: |
+          $manifest = [ordered]@{
+            source_commit = "${{ github.sha }}"
+            python = "3.13.7"
+            dotnet_sdk = "8.0.422"
+            deno = "v2.6.6"
+            ffmpeg = "8.1.2"
+            ytdlp = "2026.08.19"
+            streamlink = "8.5.0-1"
+            mpv_archive = "mpv-dev-x86_64-v3-20260827-git-182fa6ca49.7z"
+            webview_sha256 = "${env:WEBVIEW_SHA256}"
+            updater_sha256 = "${env:UPDATER_SHA256}"
+            installer_name = "${env:INSTALLER_NAME}"
+            installer_sha256 = (Get-FileHash $env:INSTALLER_PATH -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          $manifest | ConvertTo-Json | Set-Content "build-manifest.json" -Encoding utf8
+          Get-Content "build-manifest.json"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        id: upload-installer
+        with:
+          name: JaTubePlayer-Windows-${{ github.sha }}
+          path: |
+            ${{ env.INSTALLER_PATH }}
+            build-manifest.json
+          if-no-files-found: error
+          retention-days: 21
+          compression-level: 0
+  sign:
+    name: Sign installer
+    needs: build
+    if: ${{ vars.SIGNPATH_ENABLED == 'true' }}
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Submit installer to SignPath
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ needs.build.outputs.installer-artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Upload signed installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: JaTubePlayer-Windows-signed-${{ github.sha }}
+          path: signed/**/*.exe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

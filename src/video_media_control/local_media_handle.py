@@ -52,6 +52,7 @@ class local_media_handle:
                     media_data_list.playlisttitles.append(os.path.basename(local_single_filepath))
                     media_data_list.playlist_channel.append("local file")
                     media_data_list.playlist_thumbnails.append("")
+                    return media_data_list
 
 
             if mode == 1:
@@ -72,11 +73,12 @@ class local_media_handle:
                     folder_items = [file for file in os.listdir(folder_path) if file.endswith(FILE_TYPE_EXT)]
 
                     for item in folder_items:
-                        media_data_list.vid_url.append(os.path.join(folder_path,item))
+                        media_data_list.vid_url.append(os.path.abspath(os.path.join(folder_path,item)))
                         media_data_list.playlisttitles.append(item)
                         media_data_list.playlist_channel.append("local file")
                         media_data_list.playlist_thumbnails.append("")
-            return media_data_list
+                    return media_data_list
+            return None
           
         except Exception as e:
             self.log_handle(

@@ -270,7 +270,7 @@ public class CookieForm : Form
         try
             {
             Directory.CreateDirectory(profileDir);
-            
+            Helper.Log("refreshing wv profile");
             // Use our own WebView2 profile. Never touch the user's real browser profile.
             var env = await CoreWebView2Environment.CreateAsync(
                 null,
@@ -278,7 +278,8 @@ public class CookieForm : Form
                 new CoreWebView2EnvironmentOptions("--disable-extensions")
             );
             await view.EnsureCoreWebView2Async(env);
-
+            Helper.Log("WebView2 initialized");
+            
             // Keep the WebView small and locked down.
             view.CoreWebView2.Settings.AreDevToolsEnabled = false;
             view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -289,7 +290,7 @@ public class CookieForm : Form
             view.CoreWebView2.NavigationStarting += (sender, args) =>
             {
                 
-                
+                Helper.Log("navigation starting: " + Helper.LeftPartialToPath(args.Uri));
                 string ErrorPageUri = new Uri(ErrorPagePath).AbsoluteUri;
                 if (string.Equals(args.Uri, 
                     ErrorPageUri,

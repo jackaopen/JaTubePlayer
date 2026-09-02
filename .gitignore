@@ -54,3 +54,5 @@ JaTubePlayer_spec.py
 _internal/update_result.json
 docs/Test_update_vs_main_complete_change_report.md
 docs_old/
+packaging_assets/inno_setup/inno.ps1
+/src/chrome_ext_pack

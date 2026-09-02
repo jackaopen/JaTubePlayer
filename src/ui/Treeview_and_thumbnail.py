@@ -158,9 +158,9 @@ class ThumbnailLoader:
 
     def select_item(self,idx = int):
         '''
-        This function is for selecting the item with the given idx, and scroll to it.
-        will raise exception if idx is out of range, so please make sure the idx is valid before calling this function.
-        run in root.after to avoid blocking the main thread, and also to sync with the treeview update, since the treeview update is also run in root.after, so we can ensure that the item is selected after the treeview is updated.
+        idx: relative index of the item in the treeview, 0-based, to 50\n
+        will skip if out of range\n
+        will run in root.after 
         '''
         try:
             self.root.after(500, lambda: self._select_item(idx))
@@ -177,14 +177,18 @@ class ThumbnailLoader:
             self.playlisttreebox.selection_set(children[idx])
             self.playlisttreebox.see(children[idx])
     
-    def set_item_color(self, idx = int, color:str = 'playing'):
+    def set_item_color(self, 
+                       idx = int, 
+                       color:str = 'playing',
+                       delay:int = 50):
         '''
-        This function is for setting the item with the given idx to the given color, and scroll to it.
-        will raise exception if idx is out of range, so please make sure the idx is valid before calling this function.
-        run in root.after to avoid blocking the main thread, and also to sync with the treeview update, since the treeview update is also run in root.after, so we can ensure that the item is updated after the treeview is updated.
+        idx: relative index of the item in the treeview, 0-based, to 50\n
+        will skip if out of range\n
+        color: the color to set the item to\n
+        will run in root.after 
         '''
         try:
-            self.root.after(50, lambda: self._set_item_color(idx, color))
+            self.root.after(delay, lambda: self._set_item_color(idx, color))
         except Exception as e:
             self.log_handle(
                 content=f"[set_item_color] error: {str(e)}",

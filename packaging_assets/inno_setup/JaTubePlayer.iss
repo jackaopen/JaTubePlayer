@@ -1,5 +1,5 @@
 ﻿#define MyAppName "JaTubePlayer"
-#define MyAppVersion "3.0"
+#define MyAppVersion "3.1"
 #define MyAppPublisher "Jackaopen"
 #define MyAppURL "https://github.com/jackaopen/JaTubePlayer"
 #define MyAppExeName "JaTubePlayer.exe"
@@ -27,7 +27,7 @@ LicenseFile=..\..\LICENSE
 UninstallDisplayName={#MyAppName} {#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
-Compression=lzma2/ultra64
+Compression=lzma2/normal
 SolidCompression=yes
 WizardStyle=modern polar includetitlebar
 CloseApplications=yes
@@ -40,7 +40,7 @@ UsePreviousTasks=yes
 ; owns all later writes under %APPDATA%\JaTubePlayer.
 UsedUserAreasWarning=no
 
-VersionInfoVersion=3.0.0.0
+VersionInfoVersion=3.1.0.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup
 VersionInfoProductName={#MyAppName}
@@ -54,10 +54,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Name: "deleteuserdata"; Description: "Delete my JaTubePlayer settings, account data, WebView2 profile, and cache when uninstalling";
 
 [Files]
-Source: "..\..\dist\JaTubePlayer\*"; DestDir: "{app}"; Excludes: "\chrome_ext_pack\*,\user_data\*"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\..\dist\JaTubePlayer\user_data\config.json"; DestDir: "{userappdata}\JaTubePlayer"; DestName: "config.json"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "..\..\dist\JaTubePlayer\user_data\starred_vid.json"; DestDir: "{userappdata}\JaTubePlayer"; DestName: "starred_vid.json"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "..\..\dist\JaTubePlayer\chrome_ext_pack\*"; DestDir: "{userappdata}\JaTubePlayer\chrome_ext_pack"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "..\..\dist\JaTubePlayer\*"; DestDir: "{app}"; Excludes: "\user_data\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\_internal\jtp.ico"

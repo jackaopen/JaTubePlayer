@@ -1,6 +1,7 @@
 import json,os
 from loader.media_data_list import media_data_list_template
 from utils.get_media_info import *
+from utils.additional_utils import is_url_valid
 from loader.get_info_loader import get_info_loader_
 import queue
 
@@ -34,7 +35,7 @@ class star_vid_handler:
                                     target_url=url,
                                     )
                     
-                    try:thumb = info['thumbnails'][-1]['url']
+                    try:thumb = info['thumbnail']
                     except: thumb = None
 
                     title = info.get('title',None)
@@ -50,6 +51,8 @@ class star_vid_handler:
                 "title":title,
                 "channel":channel
             }
+            if not is_url_valid(url):
+                url = os.path.abspath(url)
             self.starred_vid_dict[url] = info_dict
             self._save()
         except Exception as e:
@@ -68,12 +71,14 @@ class star_vid_handler:
         return True
     
     def search(self,url:str)->dict|None:
+        if not is_url_valid(url):
+            url = os.path.abspath(url)
         info = self.starred_vid_dict.get(url,None)
         return info
     
     def list_all(self,
                  loadingplaylist_flag=None
-                 )->media_data_list_template|bool:
+                 )->media_data_list_template:
         '''
         Run this in thread to avoid blocking the main thread, it will clear the input lists and fill them with the starred videos info, and also put the info into the treeview_queue for updating the treeview in the main thread
         This function is designed to be called when the user clicks the "Starred Videos" button, it will update the treeview with the starred videos info
@@ -94,7 +99,7 @@ class star_vid_handler:
             return media_data_list
         except Exception as e:
             self.get_info_loader.ytdlp_log_handle.info(f"Error listing starred videos: {e}")
-            return False
+            return media_data_list_template()
         
 
 

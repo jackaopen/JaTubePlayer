@@ -33,9 +33,10 @@ from utils.check_internet import *
 from utils.check_internet import check_internet
 from utils.get_media_info import *
 from utils.color_picker.ctk_color_picker import AskColor  
-from utils.additional_utils import lenght_convertor
+from utils.additional_utils import lenght_convertor,is_url_valid
 from utils.load_font import load_private_font
 from utils.log_handle import log_handler_
+from utils.user_file import UserFile_handle
 from loader.get_info_loader import get_info_loader_
 from loader.media_data_list import media_data_list_template
 
@@ -92,7 +93,6 @@ os.makedirs(os.path.join(appdata_dir,'JaTubePlayer','saved_file'),exist_ok=True)
 
 
 
-
 load_private_font(_internal_dir)
 
 BASE_WIDTH = 1452
@@ -106,7 +106,7 @@ root = ctk.CTk()
 hwnd = win32gui.FindWindow(None, root.title())
 tkinter_scaling = get_window_dpi(hwnd)
 root.geometry(f"{int(BASE_WIDTH*tkinter_scaling)}x{int(BASE_HEIGHT*tkinter_scaling)}+0+0")
-ver='3.0'
+ver='3.1'
 root.title(f'JaTubePlayer {ver} ')
 root.iconbitmap(icondir)
  
@@ -294,8 +294,15 @@ media_data_list = media_data_list_template()
     - playlist_thumbnails
 '''
 
-
-
+try:
+    UserFile_handle(user_data_dir=appdata_dir,
+                    current_dir=current_dir)
+except Exception as e:
+    log_handle(
+        content=f"Error in UserFile_handle: {e}",
+        errtype='error',
+        component='startup',
+    )
 
 def save_config():
     '''
@@ -351,6 +358,7 @@ def get_selected_vid(event=None):
     try:selected_song_number = playlisttreebox.index(playlisttreebox.selection()[0]) + (media_list_page_controller.current_page -1)*50
     except:pass
     try:
+        media_list_page_controller.page_change_select = True
         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
             star_btn_ui_functions.star_starred()
         else:
@@ -376,24 +384,57 @@ class star_btn_ui_functions:
             text_color='#FFFDE7',
             font=('Segoe UI', 14.5, 'bold')
         ))
+    @staticmethod
+    def check_playing_remove():
+        '''
+        If any vid is playing, will check the media's star state\n
+        if no video, will change to regular star state\n
+        '''
+        global playing_vid_info_dict
+        if playing_vid_info_dict.get("original_url", None) and star_vid_handle.search(playing_vid_info_dict.get("original_url")):
+            star_btn_ui_functions.star_starred()
+        else:
+            star_btn_ui_functions.star_regular()
 
 class Chrome_ext_server_ui_functions:
     '''
     for both ChromeExtServer and dnd_winsys
     '''
     @staticmethod
-    def direct_url(reset_star = True):
+    def direct_url(reset_star = True,
+                   url:str = None):
         global playing_vid_mode,selected_song_number
 
         playing_vid_mode = 3
         selected_song_number = None
         if reset_star:
             star_btn_ui_functions.star_regular()
-
+            if url and star_vid_handle.search(url):
+                star_btn_ui_functions.star_starred()
         insert_textbox(playlist_name_textbox, "Direct URL")
     @staticmethod
     def show_star_video():
+        global playing_vid_info_dict,selected_song_number
+        _was_playing = False
+        if playing_vid_info_dict.get("original_url", None):
+            _was_playing = True
+            media_list_page_controller.record_current_mdl()
+
         get_starred_vid()
+        try:
+            if _was_playing:
+                media_list_page_controller.restore_old_mdl()
+                selected_song_number = None
+
+        except Exception as e:
+            log_handle(
+                content=f"Error in show_star_video: {e}",
+                errtype='error',
+                component='chrome_ext',
+            )
+
+        
+
     @staticmethod
     def get_playing_vid_mode()->int:
         '''
@@ -446,7 +487,7 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 1
         selected_song_number = 0
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.star_regular()# for single file, we dont have current playing since it will automatically play the file, so we set the star state to regular
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Single file")
 
     @staticmethod
@@ -454,8 +495,12 @@ class dnd_ui_functions:
         global playing_vid_mode,selected_song_number
         playing_vid_mode = 2
         selected_song_number = None
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()# since for folder and files, we will have current playing since it will not automatically play the first file, so we set the star state to check_playing_remove
         insert_textbox(playlist_name_textbox, "[Drag&Drop] Folder/Multiple Files")
+    @staticmethod
+    def dnd_global_mdl():
+        global media_data_list
+        media_data_list = media_list_page_controller.media_data_list
     
 
 
@@ -528,8 +573,37 @@ class AccountInfo:
         insert_textbox(google_status_text, "No login yet!")
         google_status_text.configure(text_color = "#777777")
 
+class mlpc_ui_functions:
+    @staticmethod
+    def get_cur_playing_url():
+        return playing_vid_info_dict.get("original_url", '')
+    @staticmethod
+    def get_cur_playlist_title():
+        return playlist_name_textbox.get(0.0, tk.END).strip()    
 
-
+class quickstartup_ui_functions:
+    '''
+    For quick startup playlist loading, this class provides methods to disable and enable the playing widget during the loading process.
+    '''
+    @staticmethod
+    def disable_playing_widget():
+        insert_textbox(playlist_name_textbox, "Loading Quick Startup Playlist...")
+        ui_queue.put(lambda: recommendation_btn.configure(state='disabled'))
+        ui_queue.put(lambda: sub_btn.configure(state='disabled'))
+        ui_queue.put(lambda: like_btn.configure(state='disabled'))
+        ui_queue.put(lambda: playselectedfile.configure(state='disabled'))
+        ui_queue.put(lambda: playselectedfolder.configure(state='disabled'))
+        ui_queue.put(lambda: load_star_btn.configure(state='disabled'))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='disabled'))
+    @staticmethod
+    def enable_playing_widget():
+        ui_queue.put(lambda: recommendation_btn.configure(state='normal'))
+        ui_queue.put(lambda: sub_btn.configure(state='normal'))
+        ui_queue.put(lambda: like_btn.configure(state='normal'))
+        ui_queue.put(lambda: playselectedfile.configure(state='normal'))
+        ui_queue.put(lambda: playselectedfolder.configure(state='normal'))
+        ui_queue.put(lambda: load_star_btn.configure(state='normal'))
+        ui_queue.put(lambda: enter_playlist_btn.configure(state='normal'))
 
 def insert_textbox(widget:ctk.CTkTextbox,
                    text:str,
@@ -624,7 +698,8 @@ def setting_frame():
         formats.set(-1)
         #setting.resizable(False, False)
         setting_closed = False
-        root.after(800, lambda: (setting.lift(), setting.iconbitmap(icondir)))
+        root.after(500, lambda: (setting.lift(), setting.iconbitmap(icondir)))
+        root.after(1000, lambda: setting.lift())
         if blur_window.get():blur(win32gui.FindWindow(None,setting.title()),  hexColor=blur_hexColor.get())
 
         setting_tab = ctk.CTkTabview(setting, width=700, height=500,fg_color='#242424')
@@ -672,7 +747,7 @@ def setting_frame():
         def deletesyskey():
             try:
                 deletesyskey_btn.configure(state="disabled")
-                if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including cookies and AES key\nAre you sure?'):
+                if messagebox.askyesno(f'JaTubePlayer {ver}','This will delete the system key and all login data, including login sessions and AES key\nAre you sure?'):
                     if not account_handler.clear_login_data(cookie_only=False):
                         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to clear login data, please check the log for more details'))
                         return
@@ -888,7 +963,7 @@ def setting_frame():
 
         def remove_selected_from_playlist_setting():
             global selected_song_number,media_data_list
-            if selected_song_number is None:
+            if selected_song_number is None or media_list_page_controller.page_change_select is False:
                 messagebox.showerror(f'JaTubePlayer {ver}', 'No item selected in the playlist!')
                 return
             if selected_song_number == media_list_page_controller.media_data_list.current_playing_idx_num:
@@ -900,7 +975,6 @@ def setting_frame():
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                           selected_tree_ID=item_id)
                 media_data_list = media_list_page_controller.media_data_list
-                selected_song_number = None
 
             except Exception as e:
                 log_handle(
@@ -940,6 +1014,7 @@ def setting_frame():
                 init_playlist_like_btn.configure(state='disabled')
                 init_playlist_sub_btn.configure(state='disabled')
                 init_playlist_recommendation_btn.configure(state='disabled')
+                init_playlist_star_btn.configure(state='disabled')
                 init_playlist_combobox.configure(state='disabled')
                 init_get_playlist_btn.configure(state='disabled')
                 init_playlist_set_btn.configure(state='disabled')
@@ -969,6 +1044,7 @@ def setting_frame():
                 init_playlist_like_btn.configure(state='disabled')
                 init_playlist_sub_btn.configure(state='disabled')
                 init_playlist_recommendation_btn.configure(state='disabled')
+                init_playlist_star_btn.configure(state='disabled')
                 init_playlist_combobox.configure(state='disabled')
                 init_get_playlist_btn.configure(state='disabled')
                 init_playlist_set_btn.configure(state='disabled')
@@ -983,6 +1059,7 @@ def setting_frame():
             init_playlist_like_btn.configure(state='disabled')
             init_playlist_sub_btn.configure(state='disabled')
             init_playlist_recommendation_btn.configure(state='disabled')
+            init_playlist_star_btn.configure(state='disabled')
             init_playlist_combobox.configure(state='disabled')
             init_get_playlist_btn.configure(state='disabled')
             init_playlist_set_btn.configure(state='disabled')
@@ -996,36 +1073,27 @@ def setting_frame():
             init_playlist_like_btn.configure(state='normal')
             init_playlist_sub_btn.configure(state='normal')
             init_playlist_recommendation_btn.configure(state='normal')
-
+            init_playlist_star_btn.configure(state='normal')
             if init_quickstartup_playlist_mode.get() == 'yt_playlist':
-                init_yt_playlist_select()
+                init_yt_playlist_enable_widget()
             else:
                 init_playlist_combobox.configure(state='disabled')
                 init_get_playlist_btn.configure(state='disabled')
                 init_playlist_set_btn.configure(state='disabled')
-
-        def init_yt_playlist_select():
+        
+        def init_yt_playlist_enable_widget():
             init_playlist_combobox.configure(state='readonly')
             init_get_playlist_btn.configure(state='normal')
             init_playlist_set_btn.configure(state='normal')
 
-        def init_playlist_like_select():
+        def init_yt_playlist_disable_widget():
+            '''
+            Disable the playlist selection widgets and set the quick startup init mode to playlist with the selected playlist ID and name
+            '''
             init_playlist_combobox.configure(state='disabled')
             init_get_playlist_btn.configure(state='disabled')
             init_playlist_set_btn.configure(state='disabled')
-            init_playlist_set()
-
-        def init_playlist_sub_select():
-            init_playlist_combobox.configure(state='disabled')
-            init_get_playlist_btn.configure(state='disabled')
-            init_playlist_set_btn.configure(state='disabled')
-            init_playlist_set()
-
-        def init_playlist_recommendation_select():
-            init_playlist_combobox.configure(state='disabled')
-            init_get_playlist_btn.configure(state='disabled')
-            init_playlist_set_btn.configure(state='disabled')
-            init_playlist_set()
+            init_playlist_set()    
 
         def init_search_set():
             CONFIG["quickstartup_init"]['mode'] = 1
@@ -1077,6 +1145,9 @@ def setting_frame():
                 case "home":
                     selected_playlist_id = 'home'
                     selected_playlist_name = 'Recommendations'
+                case "star":
+                    selected_playlist_id = 'star'
+                    selected_playlist_name = 'Starred Videos'
                 case _:
                     messagebox.showerror(f'JaTubePlayer {ver}','Please select a playlist type first')
                     return
@@ -1096,6 +1167,7 @@ def setting_frame():
             init_playlist_like_btn.configure(state='disabled')
             init_playlist_sub_btn.configure(state='disabled')
             init_playlist_recommendation_btn.configure(state='disabled')
+            init_playlist_star_btn.configure(state='disabled')
             init_playlist_combobox.configure(state='disabled')
             init_get_playlist_btn.configure(state='disabled')
             init_playlist_set_btn.configure(state='disabled')
@@ -1237,7 +1309,7 @@ def setting_frame():
         def _save_cache_settings():
             CONFIG['cache']['demuxer_max_bytes'] = int(demuxer_max_bytes.get())
             CONFIG['cache']['demuxer_max_back_bytes'] = int(demuxer_max_back_bytes.get())
-            CONFIG['cache']['cache_pause_wait'] = int(cache_pause_wait.get())
+            CONFIG['cache']['cache_pause_wait'] = cache_pause_wait.get()
             CONFIG['cache']['audio_wait_open'] = int(audio_wait_open.get())
             save_config()
 
@@ -1394,7 +1466,8 @@ def setting_frame():
         
         def apply_player_speed_setting(event=None):
             try:
-                player.speed = player_speed.get()
+                if player is not None:
+                    player.speed = player_speed.get()
             except Exception as e:
                 log_handle(
                     content=str(e),
@@ -1825,6 +1898,7 @@ def setting_frame():
         playerspeed_slider = ctk.CTkSlider(general_frame, variable=player_speed, from_=0.3, to=3.0, width=200,
                                             number_of_steps=27, command=set_player_speed_setting,
                                             progress_color='#4A9E6E', button_color='#7EE0A8', button_hover_color='#98F0C0')
+        playerspeed_slider._canvas.unbind('<MouseWheel>')
         playerspeed_slider.bind('<ButtonRelease-1>', apply_player_speed_setting)
         playerspeed_speed_label = ctk.CTkLabel(general_frame, font=('Arial', 13, 'bold'), text='1.0x', text_color='#7EE0A8')
         subtitle_label = ctk.CTkLabel(general_frame, text='Subtitle', font=('Arial', 13), text_color='#B0B0B0')
@@ -1851,24 +1925,28 @@ def setting_frame():
         demuxer_max_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Max front Buffer Size', text_color='#B0B0B0')
         demuxer_max_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_bytes, from_=16, to=2048, width=200,
                                                   number_of_steps=2032, command=_demuxer_max_bytes_slider_change, **_slider_kw)
+        demuxer_max_bytes_slider._canvas.unbind('<MouseWheel>')
         demuxer_max_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
         demuxer_max_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{demuxer_max_bytes.get()}M', text_color='#E0C48C')
 
         demuxer_max_back_bytes_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Max Back Buffer Size', text_color='#B0B0B0')
         demuxer_max_back_bytes_slider = ctk.CTkSlider(cache_buffer_frame, variable=demuxer_max_back_bytes, from_=16, to=2048, width=200,
                                                        number_of_steps=2032, command=_demuxer_max_back_bytes_slider_change, **_slider_kw)
+        demuxer_max_back_bytes_slider._canvas.unbind('<MouseWheel>')
         demuxer_max_back_bytes_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
         demuxer_max_back_bytes_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{demuxer_max_back_bytes.get()}M', text_color='#E0C48C')
 
         cache_pause_wait_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Cache Pause Wait', text_color='#B0B0B0')
         cache_pause_wait_slider = ctk.CTkSlider(cache_buffer_frame, variable=cache_pause_wait, from_=0.1, to=20.0, width=200,
                                                        number_of_steps=199, command=_cache_pause_wait_slider_change, **_slider_kw)
+        cache_pause_wait_slider._canvas.unbind('<MouseWheel>')
         cache_pause_wait_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
         cache_pause_wait_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{cache_pause_wait.get():.1f}s', text_color='#E0C48C')
 
         audio_wait_open_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13), text='Audio Wait Open', text_color='#B0B0B0')
         audio_wait_open_slider = ctk.CTkSlider(cache_buffer_frame, variable=audio_wait_open, from_=1, to=10, width=200,
                                                 number_of_steps=9, command=_audio_wait_open_slider_change, **_slider_kw)
+        audio_wait_open_slider._canvas.unbind('<MouseWheel>')
         audio_wait_open_slider.bind('<ButtonRelease-1>', _apply_cache_slider_settings)
         audio_wait_open_value_label = ctk.CTkLabel(cache_buffer_frame, font=('Arial', 13, 'bold'), text=f'{audio_wait_open.get()}s', text_color='#E0C48C')
 
@@ -2119,7 +2197,7 @@ def setting_frame():
                     
                     
                     if quickstartconfig['playlistmode_playlist_Name']:
-                        if quickstartconfig['playlistmode_playlist_ID'] not in ['sub','like','home']:
+                        if quickstartconfig['playlistmode_playlist_ID'] not in ['sub','like','home','star']:
                             init_playlist_combobox.set(quickstartconfig['playlistmode_playlist_Name'])
                             init_quickstartup_playlist_mode.set('yt_playlist')
                         else:
@@ -2474,7 +2552,7 @@ def setting_frame():
             text='YouTube Playlist',
             variable=init_quickstartup_playlist_mode,
             value='yt_playlist',
-            command=init_yt_playlist_select,
+            command=init_yt_playlist_enable_widget,
             text_color='#C8C8C8',
             font=('Arial', 13),
             height=18,
@@ -2488,7 +2566,7 @@ def setting_frame():
             text='Liked',
             variable=init_quickstartup_playlist_mode,
             value='like',
-            command=init_playlist_like_select,
+            command=init_yt_playlist_disable_widget,
             text_color='#C8C8C8',
             font=('Arial', 13),
             height=18,
@@ -2502,7 +2580,7 @@ def setting_frame():
             text='Subscriptions',
             variable=init_quickstartup_playlist_mode,
             value='sub',
-            command=init_playlist_sub_select,
+            command=init_yt_playlist_disable_widget,
             text_color='#C8C8C8',
             font=('Arial', 13),
             height=18,
@@ -2516,14 +2594,28 @@ def setting_frame():
             text='Recommendation',
             variable=init_quickstartup_playlist_mode,
             value='home',
-            command=init_playlist_recommendation_select,
+            command=init_yt_playlist_disable_widget,
             text_color='#C8C8C8',
             font=('Arial', 13),
             height=18,
             radiobutton_width=16,
             radiobutton_height=16
         )
-        init_playlist_recommendation_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=(3, 7), sticky="w")
+        init_playlist_recommendation_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=3, sticky="w")
+
+        init_playlist_star_btn = ctk.CTkRadioButton(
+                    playlist_options_frame,
+                    text='Starred',
+                    variable=init_quickstartup_playlist_mode,
+                    value='star',
+                    command=init_yt_playlist_disable_widget,
+                    text_color='#C8C8C8',
+                    font=('Arial', 13),
+                    height=18,
+                    radiobutton_width=16,
+                    radiobutton_height=16
+                )
+        init_playlist_star_btn.grid(row=5, column=0, columnspan=2, padx=12, pady=(3, 7), sticky="w")
 
         init_playlist_combobox = ctk.CTkComboBox(playlist_options_frame, font=('Arial', 14), width=14, state='readonly')
         init_playlist_combobox.grid(row=0, column=1, padx=(4, 12), pady=(7, 3), sticky="ew")
@@ -2596,12 +2688,15 @@ def progressbar_hook(d):
 
 def page_control(mode):
     '''
-    mode == 1: next page, mode == 2: prev page'''
+    mode == 1: next page, mode == 2: prev page
+    '''
     if mode == 1:
-        nextpageresult = media_list_page_controller.next_page()
+        nextpageresult = media_list_page_controller.next_page(manual_change=True)
     elif mode == 2:
-        nextpageresult = media_list_page_controller.prev_page()
-    if nextpageresult == -1:
+        nextpageresult = media_list_page_controller.prev_page(manual_change=True)
+    if nextpageresult == 0:
+        star_btn_ui_functions.check_playing_remove()
+    elif nextpageresult == -1:
         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','page still loading, please wait...'))
     elif nextpageresult == -2:
         ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','we got an error while loading the page, please refer to the log for more details'))
@@ -2650,29 +2745,45 @@ def history_control(mode:int):
                 media_list_page_controller.history_page_init_and_reload(history_template_dict.get("media_data"),
                                                                         media_type=media_type)
                 log_handle(
-                    content=f"History page loaded with {history_template_dict.get("media_data", []).vid_url} items",
+                    content=f"History page loaded with {len(history_template_dict.get("media_data", []).vid_url)} items",
                     errtype='info',
                     component='history',
                 )
                 media_data_list = media_list_page_controller.media_data_list
                 playing_url = history_template_dict.get("current_playing",None)
                 if playing_url:
-                    if media_type == 4: # Folder
-                        load_thread_queue.put((playing_url,None))
-                    else:
+                    if is_url_valid(playing_url):
                         load_thread_queue.put((None,playing_url))
-                insert_textbox(playlist_name_textbox, history_template_dict.get("playlistname",""))
+                    else:
+                        load_thread_queue.put((playing_url,None))
+                if "History" not in history_template_dict.get("playlistname",""):      
+                    insert_textbox(playlist_name_textbox, f'[History] {history_template_dict.get("playlistname","")}')
+                else:
+                    insert_textbox(playlist_name_textbox, f'{history_template_dict.get("playlistname","")}')
                 if playing_url in media_data_list.vid_url:
                     global selected_song_number
-                    selected_song_number = media_data_list.vid_url.index(playing_url)
-                    if media_list_page_controller.media_data_list.current_media_page != 1:
-                        root.after(250,lambda:media_list_page_controller.set_page(selected_song_number//50+1))
-                    root.after(400,lambda:thumbnail_loader.select_item(selected_song_number%50))
 
-                if star_vid_handle.search(playing_url):
-                    star_btn_ui_functions.star_starred()
+                    log_handle(
+                        content=f"playing vid in mdl, selected song number: {selected_song_number}",
+                        errtype='info',
+                        component='history',
+                    )
+
+                    selected_song_number = media_data_list.vid_url.index(playing_url)
+                    root.after(250,lambda:media_list_page_controller.set_page(selected_song_number//50+1))
+                    root.after(400,lambda:thumbnail_loader.select_item(selected_song_number%50))
+                    if star_vid_handle.search(playing_url):
+                        star_btn_ui_functions.star_starred()
+                    else:
+                        star_btn_ui_functions.star_regular()
                 else:
-                    star_btn_ui_functions.star_regular()
+                    selected_song_number = None
+                    log_handle(
+                        content="playing not vid in mdl",
+                        errtype='info',
+                        component='history',
+                    )
+                    star_btn_ui_functions.check_playing_remove()
                             
 
         except Exception as e:
@@ -2874,7 +2985,7 @@ def get_starred_vid(event=None):
         _prev_playlistname = playlist_name_textbox.get(0.0,tk.END).strip()
         insert_textbox(playlist_name_textbox, "Starred Videos")
         ui_queue.put(lambda: page_num_label.configure(text=''))
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()
         
         loadingplaylist = False
                 
@@ -2888,52 +2999,55 @@ def switch_starred_vid(event=None):
     global star_vid_handle,selected_song_number,playing_vid_mode,playing_vid_info_dict,media_data_list
     
     if playing_vid_mode == 0 or playing_vid_mode == 2 or playing_vid_mode == 4:
-        if selected_song_number == None:
+        if selected_song_number is None and not playing_vid_info_dict:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video from the playlist first!'))
             return
 
-        
-    if playing_vid_mode == 0 or playing_vid_mode == 4:
+    if playing_vid_mode == 4 and((
+        # selected media is the currently playing video
+        selected_song_number == media_data_list.current_playing_idx_num and 
+        star_vid_handle.search(media_data_list.vid_url[selected_song_number]))
+        or
+
+        # the media is the currently playing video, nothing is selected and the currently playing video is starred
+        (playing_vid_info_dict and 
+         not media_list_page_controller.page_change_select and
+         selected_song_number is not None and
+         playing_vid_info_dict['original_url'] == media_data_list.vid_url[media_data_list.current_playing_idx_num] and
+         star_vid_handle.search(playing_vid_info_dict['original_url']))):
+        messagebox.showinfo(f'JaTubePlayer {ver}','you cannot remove the currently playing video from starred videos, please select another video first!')
+        return
+
+    if selected_song_number is not None and media_list_page_controller.page_change_select:
         url_or_path = media_data_list.vid_url[selected_song_number]
         title = media_data_list.playlisttitles[selected_song_number]
         thumb = media_data_list.playlist_thumbnails[selected_song_number]
         channel = media_data_list.playlist_channel[selected_song_number]
-    elif playing_vid_mode == 1:
-        url_or_path = playing_title_textbox.get(0.0,tk.END).strip()
-        title = os.path.basename(url_or_path)
-        thumb = None
-        channel = 'local file'
-    elif playing_vid_mode == 2:
-        url_or_path = media_data_list.vid_url[selected_song_number]
-        title = media_data_list.playlisttitles[selected_song_number]
-        thumb = None
-        channel = 'local file'
-    elif playing_vid_mode == 3:
+    elif playing_vid_info_dict:
+        print(playing_vid_info_dict)
         url_or_path = playing_vid_info_dict['original_url']
-        title = playing_vid_info_dict['title']
-        try:thumb = playing_vid_info_dict['thumbnails'][-1]['url'] if playing_vid_info_dict['thumbnails'] else None
-        except:thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
-        finally:thumb = thumb if thumb else None
-        channel = playing_vid_info_dict['channel']
-        
+        if is_url_valid(url_or_path):
+            title = playing_vid_info_dict['title']
+            thumb = playing_vid_info_dict['thumbnail'] if playing_vid_info_dict['thumbnail'] else None
+            channel = playing_vid_info_dict['channel']
+        else:
+            title = os.path.basename(url_or_path)
+            thumb = None
+            channel = 'local file'
+
             
 
     if star_vid_handle.search(url_or_path):
         star_vid_handle.remove(url_or_path)
-        star_btn_ui_functions.star_regular()
+        star_btn_ui_functions.check_playing_remove()
 
-        ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Removed from starred videos', duration='short', icon=icondir))
+        ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Removed {title} from starred videos', duration='short', icon=icondir))
 
         if playing_vid_mode == 4:
             try:
                 item_id = playlisttreebox.get_children()[selected_song_number%50]
                 media_list_page_controller.clear_selected(selected_idx=selected_song_number, 
                                                             selected_tree_ID=item_id)
-                media_data_list.vid_url.pop(selected_song_number)
-                media_data_list.playlisttitles.pop(selected_song_number)
-                media_data_list.playlist_thumbnails.pop(selected_song_number)
-                media_data_list.playlist_channel.pop(selected_song_number)
-                
             except Exception as e:
                 log_handle(
                     content=str(e),
@@ -2959,9 +3073,9 @@ def switch_starred_vid(event=None):
                         )
         if res:
             star_btn_ui_functions.star_starred()
-            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Added to starred videos', duration='short', icon=icondir))
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Added {title} to starred videos', duration='short', icon=icondir))
         else:
-            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg='Failed to add to starred videos', duration='short', icon=icondir))
+            ui_queue.put(lambda:ToastNotification().notify(app_id="JaTubePlayer", title=f'JaTubePlayer {ver}', msg=f'Failed to add {title} to starred videos', duration='short', icon=icondir))
 
 
     
@@ -3032,7 +3146,8 @@ def update_playing_pos_local_and_chrome():
 
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            media_idx = media_list_page_controller.random_media(selected_song_number)
+                            SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_list_page_controller.page_change_select
+                            media_idx = media_list_page_controller.random_media(selected_follow=SELECTED_FOLLOW)
                             if media_idx == -2:
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
@@ -3045,9 +3160,12 @@ def update_playing_pos_local_and_chrome():
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
                                 break
                             else:
-                                selected_song_number = media_idx
-                                download_and_play()
-
+                                if is_url_valid(media_list_page_controller.media_data_list.vid_url[media_idx]):
+                                    load_thread_queue.put((None,media_list_page_controller.media_data_list.vid_url[media_idx]))
+                                else:
+                                    load_thread_queue.put((media_list_page_controller.media_data_list.vid_url[media_idx],None))
+                                if SELECTED_FOLLOW:
+                                    selected_song_number = media_idx
 
                         if star_vid_handle.search(media_data_list.vid_url[selected_song_number]):
                             ui_queue.put(lambda: star_btn_ui_functions.star_starred())
@@ -3117,7 +3235,7 @@ def update_playing_pos_yt():
                     if selected_song_number != None:
 
                         if player_mode_selector.get() =='continue':
-                            playprevnext(1)()
+                            playprevnext(1)
                             break
                             
                         elif player_mode_selector.get() =='replay':
@@ -3125,7 +3243,8 @@ def update_playing_pos_yt():
                             root.after(200, lambda: setattr(player, 'pause', False))
                         elif player_mode_selector.get() =='random':
                             player.stop()
-                            media_idx = media_list_page_controller.random_media(selected_song_number)
+                            SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_list_page_controller.page_change_select
+                            media_idx = media_list_page_controller.random_media(selected_follow=SELECTED_FOLLOW)
                             if media_idx == -2:
                                 ui_queue.put(lambda: messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait and try again'))
                                 break
@@ -3138,8 +3257,12 @@ def update_playing_pos_yt():
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Failed to select a random video, Please refer to log for more details'))
                                 break
                             else:
-                                selected_song_number = media_idx
-                                download_and_play()
+                                if is_url_valid(media_list_page_controller.media_data_list.vid_url[media_idx]):
+                                    load_thread_queue.put((None,media_list_page_controller.media_data_list.vid_url[media_idx]))
+                                else:
+                                    load_thread_queue.put((media_list_page_controller.media_data_list.vid_url[media_idx],None))
+                                if SELECTED_FOLLOW:
+                                    selected_song_number = media_idx
 
 
 
@@ -3255,7 +3378,7 @@ def set_position_keyboard(mode):
 def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
     try:
         global paused
-        if mode == 2 and str(root.focus_get()) == '.!entry':pass
+        if mode == 2 and str(root.focus_get()) == '.!ctkframe.!ctkentry.!entry':pass
         else:
             if player.duration != None:
                 if paused == False:
@@ -3345,7 +3468,7 @@ def playprevnext(direction:int)->None:
         idx after change
         '''
 
-    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number 
+    SELECTED_FOLLOW = media_data_list.current_playing_idx_num == selected_song_number and media_list_page_controller.page_change_select
     try:
         if media_data_list.current_playing_idx_num == -1:
             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first'))
@@ -3744,7 +3867,7 @@ def load_thread():  ### add every try except to a new log system for next update
 
                 try:
                     if chosen_file:
-                        current_idx = media_data_list.current_playing_idx_num if playing_vid_mode == 2 else None  #for MLPC
+                        current_idx = media_data_list.current_playing_idx_num if playing_vid_mode in (2,4) else None  #for MLPC
                         loadingvideo = True
                         succed = False
                         ui_queue.put(lambda: player_loading_label.configure(text='Loading ...'))
@@ -3905,33 +4028,44 @@ def load_local_files(mode:int,
     dnd_files_path_lists for dnd file list
     // only use kwarg
     '''
-    global playing_vid_mode,loadingvideo,selected_song_number,media_data_list
+    global playing_vid_mode,loadingvideo,selected_song_number,media_data_list,loadingplaylist
 
+    if loadingplaylist:
+        messagebox.showinfo(f'JaTubePlayer {ver}','The playlist is still loading, please wait for it to finish')
+        return
+    try:
+        loadingplaylist = True
+        if mode == 0:playing_vid_mode = 1
+        elif mode == 1:playing_vid_mode = 2
 
-    if mode == 0:playing_vid_mode = 1
-    elif mode == 1:playing_vid_mode = 2
-
-    
-    result = media_list_page_controller.local_files_init_and_reload(
-        media_data_list=media_data_list,
-        quick_start_folder_path=local_folder_path,
-        mode_for_local_files=mode
-    )
-    media_data_list = media_list_page_controller.media_data_list
         
-    if result is None:
+        result = media_list_page_controller.local_files_init_and_reload(
+            media_data_list=media_data_list,
+            quick_start_folder_path=local_folder_path,
+            mode_for_local_files=mode
+        )
+        media_data_list = media_list_page_controller.media_data_list
+            
+        if result is True:
             selected_song_number = None
-            ui_queue.put(lambda: star_btn_ui_functions.star_regular())
-            stop_playing_video()
-
             insert_textbox(playlist_name_textbox, "Local File")
-    elif result is False:
-        messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to load local files, or canceled by user.')
+        elif result is False:
+            messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to load local files, or canceled by user.')
+            log_handle(
+                content='Failed to load local files, please check the folder or file path and try again',
+                errtype='error',
+                component='player',
+            )
+    except Exception as e:
         log_handle(
-            content='Failed to load local files, please check the folder or file path and try again',
+            content=f"Error loading local files: {e}",
             errtype='error',
             component='player',
         )
+        messagebox.showerror(f'JaTubePlayer {ver}', f'An error occurred while loading local files: {e}')
+    finally:
+        loadingplaylist = False
+
         
             
 
@@ -3954,11 +4088,14 @@ def download_and_play(event=None):### button and double click event
             component='player',
         )
         messagebox.showerror(f'JaTubePlayer {ver}', 'An error occurred while accessing the media data list.')
+    #no row is selected, so do nothing
+    if event and not playlisttreebox.identify_row(event.y):
+        return
 
     if playing_vid_mode == 0:
         if check_internet_socket():
             #load from youtube
-            if selected_song_number is not None:
+            if selected_song_number is not None and playlisttreebox.identify_row:
                 load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
                 
                     
@@ -4298,10 +4435,11 @@ def fullscreen_detect_thread():## auto drag
 
         
 def init_quick_startup(iter:int=0):
+    global loadingplaylist
     if len(sys.argv) == 1:#if no file opened with
         mode = CONFIG["quickstartup_init"]["mode"]
         if check_internet_socket():
-            if yt_dlp:
+            if yt_dlp and mode != 0:
                 if mode == 1:
                     searchentry.insert(tk.END,CONFIG['quickstartup_init']['searchmode_keyword'])
                     youtube_search()
@@ -4311,46 +4449,64 @@ def init_quick_startup(iter:int=0):
                     except IndexError:
                         playlistID = CONFIG["quickstartup_init"]["playlistmode_playlist_ID"]
                     playlistname = CONFIG["quickstartup_init"]["playlistmode_playlist_Name"]
-                    insert_textbox(playlist_name_textbox, playlistname)
+
+                    if not playlistID:
+                        log_handle(
+                            content="No playlist ID provided, quick startup in playlist mode is cancelled.",
+                            errtype='info',
+                            component='startup',
+                        )
+                        quickstartup_ui_functions.enable_playing_widget()
+                        return
                     
-                    get_youtube_playlists(playlistID=playlistID,
-                                          playlist_name=playlistname)
+                    if playlistID != "star":
+                        if not account_handler.check_cookie_exist() and playlistID != "home":
+                            log_handle(
+                                content="No valid cookie found, quick startup in playlist mode is cancelled.",
+                                errtype='info',
+                                component='startup',
+                            )
+                            messagebox.showwarning(f'JaTubePlayer {ver}', 'No valid login session found, quick startup in playlist mode is cancelled.')
+                            quickstartup_ui_functions.enable_playing_widget()
+                            return
+                        insert_textbox(playlist_name_textbox, playlistname)
+                        get_youtube_playlists(playlistID=playlistID,
+                                            playlist_name=playlistname)
+                    else:
+                        insert_textbox(playlist_name_textbox, "Starred Videos")
+                        get_starred_vid()
                 elif mode == 3:
                     load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
-                
-            else:
+            elif not yt_dlp:
                 log_handle(
                     content="yt_dlp is not loaded, quick startup in youtube related mode is cancelled.",
                     errtype='info',
                     component='startup',
                 )
+            quickstartup_ui_functions.enable_playing_widget()
         elif mode == 3:
             load_local_files(mode=1, local_folder_path=CONFIG["quickstartup_init"]["localfoldermode_folder_Path"])
-        elif iter < 10:
-            root.after(500,lambda: init_quick_startup(iter+1))
+            quickstartup_ui_functions.enable_playing_widget()
+        elif iter < 2:
+            root.after(0,lambda: init_quick_startup(iter+1))
             log_handle(
                 content=f"quickstartup internet test {iter} times",
                 errtype='info',
                 component='startup',
             )
-        elif iter >= 10:
+        elif iter >= 2:
             try:
-                ToastNotification().notify(app_id="JaTubePlayer",
-                                        title=f'JaTubePlayer {ver}',
-                                        msg='There seems to be no internet connection, quick startup in youtube related mode is cancelled.\nPlease check your internet connection.', 
-                                        duration='short', icon=icondir)
+                messagebox.showwarning(f'JaTubePlayer {ver}',
+                                       'There seems to be no internet connection, quick startup in youtube related mode is cancelled.\nPlease check your internet connection.')
                 
             except Exception as e:
                 log_handle(
-                    content="Error in init_quick_startup notification:",
+                    content=f"Error in init_quick_startup notification: {e}",
                     errtype='error',
                     component='startup',
                 )
-                log_handle(
-                    content=str(e),
-                    errtype='error',
-                    component='startup',
-                )
+            finally:
+                quickstartup_ui_functions.enable_playing_widget()
 
 def init_openwith_thread():
     global playing_vid_mode
@@ -4370,14 +4526,6 @@ def init_openwith_thread():
                 fullscreen_widget_change(mode=1)
             
     except:pass
-
-
-
-
-
-
-
-
 
 
 
@@ -4487,7 +4635,8 @@ def init_read_config():
 
         maxresolution.set(CONFIG["max_resolution"])
         setting_run_chrome_extension_server.set(CONFIG['run_flask'])
-
+        if CONFIG['quickstartup_init']['mode'] in [1,2,3]:
+            quickstartup_ui_functions.disable_playing_widget()
         
     except Exception as e:
         log_handle(
@@ -4500,6 +4649,7 @@ def init_read_config():
             errtype='error',
             component='startup',
         )
+        quickstartup_ui_functions.enable_playing_widget()
 
 
 
@@ -4710,8 +4860,7 @@ def _init_load_extra_objs():
         messagebox=messagebox,
         dnd_ui_functions = dnd_ui_functions,
         Chrome_ext_server_ui_functions=Chrome_ext_server_ui_functions,
-        get_cur_playing_url = lambda: playing_vid_info_dict.get("original_url", ''),
-        get_cur_playlist_title= lambda: playlist_name_textbox.get(0.0, tk.END).strip()
+        mlpc_ui_functions=mlpc_ui_functions
         )
     twitch_handler = twitch_handle(log_handle,
                                    _internal_dir)
@@ -4845,9 +4994,17 @@ def _init_account_and_quickstartup():
                                                         msg='Refreshing login status, please wait...',
                                                         duration='short',
                                                         icon=icondir))
-        
-        account_info_handler.set_account_avator()
-        root.after(0, init_quick_startup)
+        if check_internet_socket():
+            account_info_handler.set_account_avator()
+        else:
+            log_handle(
+                content="No internet connection, skipping account refresh.",
+                errtype='info',
+                component='startup',
+            )
+            insert_textbox(playlist_name_textbox, "Hey! Search, Login or see Recommended")
+            messagebox.showwarning(f'JaTubePlayer {ver}', 'No internet connection, skipping account refresh.')
+    root.after(0, init_quick_startup)
 
 
 
@@ -5128,7 +5285,7 @@ chrome_ext_text.place(relx=0.083, rely=0.158, relheigh = 0.7)
 
 
 separator = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 19.5), text_color='#444444')
-separator.place(relx=0.296, rely=0.149, relheigh = 0.7)
+separator.place(relx=0.296, rely=0.05, relheigh = 0.8)
 
 discord_status_dot = ctk.CTkLabel(status_panel, text='●', font=('Arial', 15.5),
                                    text_color='#333333')
@@ -5140,15 +5297,16 @@ discord_status_text.place(relx=0.397, rely=0.158, relheigh = 0.7)
 
 
 separator2 = ctk.CTkLabel(status_panel, text='│', font=('Segoe UI', 19.5), text_color='#444444')
-separator2.place(relx=0.540, rely=0.149, relheigh = 0.7)
+separator2.place(relx=0.520, rely=0.05, relheigh = 0.8)
 
 # Google Profile Container - styled circular frame for profile picture
 
 
-google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 15.5),
+
+google_status_profile_pic_label = ctk.CTkLabel(status_panel, text='', font=('Segoe UI', 14.5),
                                                text_color='#555555', fg_color="transparent", 
                                                width=15, height=26, corner_radius=13)
-google_status_profile_pic_label.place(relx=0.63, rely=0.5, anchor="center", relheigh = 0.85)
+google_status_profile_pic_label.place(relx=0.63, rely=0.46, anchor="center", relheigh = 0.85)
 google_status_text = ctk.CTkTextbox(status_panel, 
                                    font=('Segoe UI', 14.5), text_color="#777777", wrap="none",
                                    border_width=0, height=1,fg_color="transparent", activate_scrollbars=False)
@@ -5305,7 +5463,7 @@ playselectedsong.place(relx=0.212, rely=0.54, relwidth=0.19, relheight=0.33)
 _src_w = 0.187
 _src_gap = 0.008
 recommendation_btn = ctk.CTkButton(playlist_btn_frame, text='🏠Recommend',
-                                    command=lambda: threading.Thread(daemon=True, target=lambda: get_youtube_playlists("home")).start(),
+                                    command=lambda: get_youtube_playlists("home"),
                                     fg_color='#2E2E2E', hover_color='#404040', corner_radius=6,
                                     font=('Segoe UI', 13), border_width=1, border_color='#444444')
 recommendation_btn.place(relx=0.020, rely=0.1, relwidth=_src_w, relheight=0.33)
@@ -5406,6 +5564,7 @@ player_pos_label.place(relx=0, rely=0.03, relwidth=0.050)
 player_position_scale = ctk.CTkSlider(progress_frame, from_=0, command=scaler_start_seek,
                                        progress_color='#3e62dc', button_color='#5080ff',
                                        button_hover_color='#6090ff', fg_color='#333333')
+player_position_scale._canvas.unbind('<MouseWheel>')
 player_position_scale.set(0)
 player_position_scale.bind('<ButtonRelease-1>', scaler_finish_seek)
 player_position_scale.place(relx=0.055, rely=0.12, relwidth=0.850, relheight=0.45)
@@ -5483,6 +5642,7 @@ player_volume_label.place(relx=0, rely=0.2, relwidth=0.120)
 player_volume_scale = ctk.CTkSlider(volume_frame, from_=0, to=120, command=set_volume,
                                     progress_color='#FF6B35', button_color='#FF8555',
                                     button_hover_color='#FFA575', fg_color='#333333')
+player_volume_scale._canvas.unbind('<MouseWheel>')
 player_volume_scale.set(50)
 player_volume_scale.bind('<MouseWheel>', set_volume_wheel)
 player_volume_scale.place(relx=0.180, rely=0.35, relwidth=0.780, relheight=0.28)

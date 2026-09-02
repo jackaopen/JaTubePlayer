@@ -5,7 +5,7 @@ import hashlib
 import win32file
 import win32con
 
-EXPTECTED_HASH = "2b8a9252d23af0d768a49423a6036734ca9344bf4f002092d12603a12ac28e73"
+EXPECTED_HASH = "d70aede4cdf3b24559ff9e5f2a57bb80fd945f96d83ea7dea7106e139e5a2034"
 class account_token:
     def __init__(self,
                  appdata_dir:str,
@@ -66,7 +66,7 @@ class account_token:
                     errtype="info",
                     component = "account token"
                 )
-            return  target_path_hash == EXPTECTED_HASH, lock_handle
+            return  target_path_hash == EXPECTED_HASH, lock_handle
         except Exception as e:
             self.log_handle(
                 content=f"error when verify_WV_hash {e}",
