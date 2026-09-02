@@ -135,14 +135,16 @@ class ChromeExtensionServer:
                                                 target_url=url
                             )
 
-                            try:thumb = info['thumbnail']
-                            except:thumb = None
+                            try:
+                                _thumb = info.get('thumbnail') or info['thumbnails'][-1]['url']
+                            except:
+                                _thumb = None
                             
                             self.media_list_page_controller.add_to_page_end(
                                 video_url=url,
                                 title=info['title'],
                                 channel=info['uploader'],
-                                thumbnail_url=thumb
+                                thumbnail_url=_thumb
                             )
 
 
