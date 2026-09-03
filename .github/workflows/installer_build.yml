@@ -287,7 +287,7 @@ jobs:
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:DebugType=None `
             -p:DebugSymbols=false `
-            -p:NoWarn=CS8600,CS8602,CS8604
+            -p:NoWarn=CS8600%3BCS8602%3BCS8604
           if ($LASTEXITCODE -ne 0) { throw "WebView2Host build failed" }
           Copy-Item "_stage\webview\WebView2Host.exe" "src\account\WebView2Host.exe" -Force
 
