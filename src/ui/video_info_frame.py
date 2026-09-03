@@ -134,7 +134,8 @@ def vid_info_frame(mode,
                                         loader=get_info_loader,
                                         target_url=vid_url[selected_song_number]
                                     )
-                        
+                    if not info_dict:
+                        raise Exception(f"No info found for url: {vid_url[selected_song_number]}")
                     
                     ui_queue.put(lambda: info.title('Video info '))
                     ui_queue.put(lambda: title_text.configure(state='normal'))
@@ -151,7 +152,7 @@ def vid_info_frame(mode,
 
                     ui_queue.put(lambda t=info_dict.get('title'): info.configure(title=f"Selected Video info - {t}"))
                 else:
-                    ui_queue.put(lambda: messagebox.showwarning(f'JaTubePlayer {ver}','No video selected'))
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','No video selected'))
                     return
 
             except Exception as e : 
@@ -161,9 +162,8 @@ def vid_info_frame(mode,
                     component="video_info",
                 )
                 try:       
-                    ui_queue.put(lambda: description_text.configure(state='normal'))
-                    ui_queue.put(lambda err=e: description_text.insert(tk.END, f'opps we got some problmes\n{err}'))
-                    ui_queue.put(lambda: description_text.configure(state='disabled'))
+                    ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','No video selected, please check the log for more details'))
+                    ui_queue.put(lambda: info.destroy())
                 except:pass
 
         def loadplayinginfo():

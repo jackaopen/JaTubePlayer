@@ -94,7 +94,7 @@ def get_info(
                 
                 if not info:
                     log_handler.error(f'Failed to extract info for {target_url}')
-                    return None, None
+                    return None, {}
 
 
                 
@@ -131,7 +131,7 @@ def get_info(
             return final_url, info
         except Exception as e:
             log_handler.error(f'get_info error: {e}')
-            return None, None
+            return None, {}
         
 
 
@@ -141,7 +141,7 @@ def get_info(
                 info = ydl.extract_info(target_url, download=True)
                 if not info:
                     log_handler.error(f'Failed to extract info for {target_url}')
-                    return None, None
+                    return None, {}
                 if info.get('live_status', 'not_live') != 'is_live' and 'requested_formats' in info:
                     fmt = info['requested_formats']
                     if len(fmt) == 2:
@@ -182,7 +182,7 @@ def get_info(
             return streamlink_url, yt_like_info
         except Exception as e:
             log_handler.error(f'get_info error: {e}')
-            return None, None
+            return None, {}
         
 
 
