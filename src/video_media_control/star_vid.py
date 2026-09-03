@@ -34,7 +34,8 @@ class star_vid_handler:
                     _,info = get_info(loader=self.get_info_loader,
                                     target_url=url,
                                     )
-                    
+                    if not info:
+                        raise Exception(f"No info found for url: {url}")
                     try:thumb = info.get('thumbnail') or info.get('thumbnails')[-1]['url']
                     except: thumb = None
 

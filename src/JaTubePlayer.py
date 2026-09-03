@@ -395,7 +395,7 @@ class star_btn_ui_functions:
         if no video, will change to regular star state\n
         '''
         global playing_vid_info_dict
-        if playing_vid_info_dict.get("original_url", None) and star_vid_handle.search(playing_vid_info_dict.get("original_url")):
+        if playing_vid_info_dict and playing_vid_info_dict.get("original_url", None) and star_vid_handle.search(playing_vid_info_dict.get("original_url")):
             star_btn_ui_functions.star_starred()
         else:
             star_btn_ui_functions.star_regular()
@@ -420,7 +420,7 @@ class Chrome_ext_server_ui_functions:
     def show_star_video():
         global playing_vid_info_dict,selected_song_number
         _was_playing = False
-        if playing_vid_info_dict.get("original_url", None):
+        if playing_vid_info_dict and playing_vid_info_dict.get("original_url", None):
             _was_playing = True
             media_list_page_controller.record_current_mdl()
 
@@ -580,7 +580,7 @@ class AccountInfo:
 class mlpc_ui_functions:
     @staticmethod
     def get_cur_playing_url():
-        return playing_vid_info_dict.get("original_url", '')
+        return playing_vid_info_dict.get("original_url", '') if playing_vid_info_dict else ''
     @staticmethod
     def get_cur_playlist_title():
         return playlist_name_textbox.get(0.0, tk.END).strip()    
@@ -662,6 +662,10 @@ def _switch_local_server(mode:int)->None|str:
 
 def video_info_frame_main(mode:int):
     global info
+    if mode == 1 and (selected_song_number is None or
+                      media_list_page_controller.page_change_select is False):
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video first!'))
+        return
     info = vid_info_frame(mode,
                           log_handle=log_handle,
                           playing_vid_mode=playing_vid_mode,
@@ -771,11 +775,13 @@ def setting_frame():
         def get_resolution_setting():
 
             if playing_vid_mode == 0 or playing_vid_mode == 4:
-                if playing_vid_mode == 4 and not media_data_list.vid_url[selected_song_number].startswith(('https://','http://')):
+                if (playing_vid_mode == 4 and selected_song_number is not None 
+                        and media_list_page_controller.page_change_select is True
+                        and not is_url_valid(media_data_list.vid_url[selected_song_number])):
                     ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','The selected video is a local file, downloading is not supported'))
                     return
                 try:
-                    if selected_song_number != None:
+                    if selected_song_number != None and media_list_page_controller.page_change_select:
                         ui_queue.put(lambda: resolution_title.configure(text='⏳ Loading resolutions...'))
                         ui_queue.put(lambda: get_resoltion_btn.configure(state='disabled'))
 
@@ -784,35 +790,40 @@ def setting_frame():
                         
                         ui_queue.put(lambda r=res: resoltion_combox.configure(values=r))
                         ui_queue.put(lambda: resoltion_combox._open_dropdown_menu())
-                        ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
                     else:
                         ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','selected a video first'))
 
-                except Exception as e:log_handle(
-                                          content=str(e),
-                                          errtype='error',
-                                          component='download',
-                                      )
+                except Exception as e:
+                    log_handle(
+                        content=str(e),
+                        errtype='error',
+                        component='download',
+                    )
                 finally:
+                    ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
             elif playing_vid_mode == 3:
                 try:
                     ui_queue.put(lambda: resolution_title.configure(text='⏳ Loading resolutions...'))
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='disabled'))
 
+                    if not playing_vid_info_dict or not playing_vid_info_dict.get('original_url'):
+                        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','No video information available, please play a video first'))
+                        raise Exception('No video information available')
                     res = get_resoltion(target_url=playing_vid_info_dict.get('original_url'), 
                                         loader=get_info_loader)
                     
                     ui_queue.put(lambda r=res: resoltion_combox.configure(values=r))
                     ui_queue.put(lambda: resoltion_combox._open_dropdown_menu())
-                    ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
-
-                except Exception as e :log_handle(
-                                           content=str(e),
-                                           errtype='error',
-                                           component='download',
-                                       )
+                    
+                except Exception as e :
+                    log_handle(
+                        content=str(e),
+                        errtype='error',
+                        component='download',
+                    )
                 finally:
+                    ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
                 
             else:
@@ -853,7 +864,7 @@ def setting_frame():
                         is_downloading.set(False)
                         return
                     if playing_vid_mode == 0 or playing_vid_mode == 4:
-                        if _selected_idx == None:
+                        if _selected_idx == None or not media_list_page_controller.page_change_select:
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a video first'))
                             is_downloading.set(False)
                             return
@@ -910,7 +921,7 @@ def setting_frame():
                                 ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select a valid resolution first'))
                                 is_downloading.set(False)
                                 return
-                        if _dict.get('live_status') == 'is_live':
+                        if not _dict or _dict.get('live_status') == 'is_live':
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Live video downloading is not supported'))
                             is_downloading.set(False)
                             return
@@ -1361,7 +1372,7 @@ def setting_frame():
                     
                     if playing_vid_mode ==0 or playing_vid_mode ==3:
                         if discord_presence_show_playing.get():
-                            discord_presence.update(song_title=playing_vid_info_dict['title'])
+                            discord_presence.update(song_title=playing_vid_info_dict['title'] if playing_vid_info_dict else 'Unknown Title')
                         else:discord_presence.idle()
                     elif playing_vid_mode ==1 or playing_vid_mode ==2:
                         if discord_presence_show_playing.get():
@@ -3041,6 +3052,9 @@ def switch_starred_vid(event=None):
             title = os.path.basename(url_or_path)
             thumb = None
             channel = 'local file'
+    else:
+        ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}','Please select or play a video first!'))
+        return
 
             
 
@@ -3224,7 +3238,7 @@ def update_playing_pos_yt():
             ui_queue.put(lambda hh=h, mm=m, ss=s: player_song_length_label.configure(text=f' / {hh:02}:{mm:02}:{ss:02}'))
             ui_queue.put(lambda hh_=h_, mm_=m_, ss_=s_: pos_for_label.set(f'{hh_:02}:{mm_:02}:{ss_:02}'))   ### set pos str
 
-            if playing_vid_info_dict == None or playing_vid_info_dict.get('live_status') != 'is_live':
+            if not playing_vid_info_dict or playing_vid_info_dict.get('live_status') != 'is_live':
                 if show_cache.get():
                     try:
                         cache = player.demuxer_cache_duration
@@ -3442,6 +3456,7 @@ def stop_playing_video():
     try:
         player.stop()
     except:pass
+    playing_vid_info_dict.clear()
 
 def playprevnext(direction:int)->None:
     '''
@@ -3735,7 +3750,7 @@ def load_thread():  ### add every try except to a new log system for next update
                             )
                             messagebox.showerror(f'JaTubePlayer {ver}', 'Failed to extract video information, Please refer to log for more details')
                     except Exception as e:
-                        playing_vid_info_dict = None
+                        playing_vid_info_dict = {}
                         log_handle(
                             content=f"Video information extraction degraded: {e}",
                             errtype="warning",
@@ -4002,6 +4017,9 @@ def load_thread():  ### add every try except to a new log system for next update
                                 playing_vid_info_dict = {"original_url": chosen_file}
 
                                 loadingvideo = False
+                            else:
+                                playing_vid_info_dict = {}
+                                loadingvideo = False
                         else:
                             log_handle(
                                 content=f"Local media file no longer exists: {chosen_file}",
@@ -4011,7 +4029,7 @@ def load_thread():  ### add every try except to a new log system for next update
                             ui_queue.put(lambda: messagebox.showerror(f'JaTubePlayer {ver}', 'The file does not exist anymore, please choose another file'))
                             loadingvideo = False
                             ui_queue.put(lambda: player_loading_label.configure(text=''))
-
+                            playing_vid_info_dict = {}
                             if current_idx is not None:
                                 media_list_page_controller.remove_playing_tag()
                 except Exception as e:
@@ -4108,7 +4126,7 @@ def download_and_play(event=None):### button and double click event
     if playing_vid_mode == 0:
         if check_internet_socket():
             #load from youtube
-            if selected_song_number is not None and playlisttreebox.identify_row:
+            if selected_song_number is not None and media_list_page_controller.page_change_select:
                 load_thread_queue.put((None,media_data_list.vid_url[selected_song_number]))
                 
                     
@@ -4123,7 +4141,7 @@ def download_and_play(event=None):### button and double click event
             )
     elif playing_vid_mode == 1 or playing_vid_mode == 2:       
         # load local file/folder
-        if selected_song_number is not None:
+        if selected_song_number is not None and media_list_page_controller.page_change_select:
             load_thread_queue.put((media_data_list.vid_url[selected_song_number],None))
             if playing_vid_mode ==2 :
                 media_data_list.current_media_page = media_list_page_controller.current_page
@@ -4131,7 +4149,7 @@ def download_and_play(event=None):### button and double click event
         else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
 
     elif playing_vid_mode == 4:
-        if selected_song_number != None:
+        if selected_song_number != None and media_list_page_controller.page_change_select:
             url_or_path = media_data_list.vid_url[selected_song_number]
             if url_or_path.startswith(('http://', 'https://')):
                 if check_internet_socket():
@@ -4148,7 +4166,7 @@ def download_and_play(event=None):### button and double click event
                 load_thread_queue.put((url_or_path,None))
         else: messagebox.showerror(f'JaTubePlayer {ver}','please select a video first')
     if playing_vid_mode in [0,2,4]:
-        media_data_list.current_playing_idx_num = selected_song_number
+        media_data_list.current_playing_idx_num = selected_song_number if selected_song_number is not None else -1
         media_data_list.current_media_page = media_list_page_controller.current_page
 
 
