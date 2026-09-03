@@ -226,7 +226,7 @@ Issues missing both a useful description and the relevant log may be closed unti
 > [!Note] Author's Note
 > *Since this project is maintained solely by me, some parts of the codebase include messy legacy logic from earlier stages of development.
 A full refactor is not currently planned, as it would be a large task; however, some targeted refactors and logic refinements have already been made, with additional improvements planned over time.
-Due to other ongoing work and commitments, pull requests will not be reviewed or merged, but issues and feedback are always welcome!*
+Due to other ongoing work and commitments, pull requests will take longer to review, but issues and feedback are always welcome!*
 
 ---
 
