@@ -242,7 +242,8 @@ with Image.open(os.path.join(_internal_dir,"banner.png")) as title_icon_source:
 
 
 # ==== 狀態控制 ====
-
+seeking = False
+userposition = None
 loadingplaylist = False
 loadingvideo = False
 insert_treeview_quene = queue.Queue()
@@ -3345,57 +3346,38 @@ def scaler_finish_seek(event):
     except:pass
 
 
-seeking = False
-def arrow_release(event):
-    global seeking,userposition
-    if not seeking:
-        userposition = None#####   make it continous
 
-userposition = None
-def set_position_keyboard_thread(mode):#1 == backward 2 == forward
+def arrow_release(event):
+    global userposition
+    userposition = None
+
+
+def _set_position_keyboard_thread(mode):
+    '''1 == backward 2 == forward'''
     global seeking,userposition
-    log_handle(
-        content=f"{seeking} {userposition}",
-        errtype='info',
-        component='player',
-    ) 
     try:
         if str(root.focus_get()) != '.!entry' and player.duration != None and not seeking:
             seeking = True
+            if not userposition :userposition = player.time_pos
             if mode == 1:
-                try:
-                    if not userposition :userposition = player.time_pos
-
-                    userposition = max(0, userposition - 5)##not fk it to the negative lol
-
-                    player.seek(userposition, reference='absolute+exact')
-                except Exception as e:log_handle(
-                                          content=str(e),
-                                          errtype='error',
-                                          component='player',
-                                      )
+                userposition = max(0, userposition - 5)
             elif mode == 2:
-                try:
-                    if not userposition :userposition = player.time_pos
-                    userposition = min(player.duration - 1, userposition + 5)##not fk it to the end
-                    player.seek(userposition, reference='absolute+exact')
-                except Exception as e:log_handle(
-                                          content=str(e),
-                                          errtype='error',
-                                          component='player',
-                                      )
-            time.sleep(0.2)
-            seeking = False
+                userposition = min(player.duration - 1, userposition + 5)
+            player.seek(userposition, reference='absolute+exact')
     except Exception as e:
             log_handle(
                 content=str(e),
                 errtype='error',
-                component='player',
+                component='player seek',
             )
-            seeking = False
+    finally:
+        time.sleep(0.1)
+        seeking = False
 
 def set_position_keyboard(mode):
-    threading.Thread(daemon=True,target=lambda:set_position_keyboard_thread(mode)).start()    
+    if not seeking:
+        threading.Thread(daemon=True,target=lambda:_set_position_keyboard_thread(mode)).start()    
+
 def pause(mode):#1 == mouse/btn pause 2 == keyboard pause
     try:
         global paused
