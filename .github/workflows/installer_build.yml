@@ -289,7 +289,8 @@ jobs:
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:DebugType=None `
-            -p:DebugSymbols=false
+            -p:DebugSymbols=false `
+            -p:NoWarn=CS8600%3BCS8602%3BCS8604
           if ($LASTEXITCODE -ne 0) { throw "WebView2Host build failed" }
           Copy-Item "_stage\webview\WebView2Host.exe" "src\account\WebView2Host.exe" -Force
 
@@ -382,6 +383,8 @@ jobs:
             installer_sha256 = (Get-FileHash $env:INSTALLER_PATH -Algorithm SHA256).Hash.ToLowerInvariant()
           }
           $manifest | ConvertTo-Json | Set-Content "build-manifest.json" -Encoding utf8
+          $installerHash = $manifest.installer_sha256
+          Write-Output "::notice title=Installer SHA-256::$installerHash"
           Get-Content "build-manifest.json"
 
       - name: Github Attestation
