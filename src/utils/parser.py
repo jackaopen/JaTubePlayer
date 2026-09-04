@@ -317,7 +317,17 @@ class innertube_parser:
             "thumb": self._thumb(thumbnail),
         }
 
+    def parse_for_error(self, json_data: dict) -> str | None:
+        try:
+            for alert in json_data.get("alerts", []):
+                renderer = alert.get("alertRenderer", {})
+                if renderer.get("type") == "ERROR":
+                    return self._text(renderer.get("text", {}))
+            return 
+        except:
+            return None
     
+
     def parse(self, 
               json_data: dict,
               contiunation_page:bool = False) -> list:

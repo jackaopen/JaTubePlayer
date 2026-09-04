@@ -1,7 +1,5 @@
-
-import json
+from notification.ctkmessagebox import ctk_messagebox
 from utils.innertube_handle import innertube_handle
-from account.Account import account_handle
 from loader.media_data_list import media_data_list_template
 from utils.parser import innertube_parser
 import enum
@@ -19,11 +17,13 @@ class playlist_type(enum.Enum):
 class playlist_retriever_:
     def __init__(self, 
                  innertube_handle: innertube_handle,
-                 log_handle: object):
+                 log_handle: object,
+                 message_box: ctk_messagebox):
         
         self.innertube_handle = innertube_handle
         self.log_handle = log_handle
         self.innertube_parser = innertube_parser()
+        self.message_box = message_box
 
         self.maxresults_recommendation = "100"
         self.maxresults_sub = "100"
@@ -73,6 +73,9 @@ class playlist_retriever_:
                     errtype='error',
                     component='playlist',
                 )
+                self.message_box.showerror(
+                    title="JaTubePlayer",
+                    message=f"Failed to build payload for page '{page}'")
                 break
 
             response = self.innertube_handle.get_innertube_response(payload)
@@ -82,6 +85,19 @@ class playlist_retriever_:
                     errtype='error',
                     component='playlist',
                 )
+                self.message_box.showerror(
+                    title="JaTubePlayer",
+                    message=f"Failed to retrieve innertube content for page '{page.value}'")
+                break
+            if error_message := self.innertube_parser.parse_for_error(response):
+                self.log_handle(
+                    content=f"Error found in innertube response for page '{page}': {error_message}",
+                    errtype='error',
+                    component='playlist',
+                )
+                self.message_box.showerror(
+                    title="JaTubePlayer",
+                    message=f"Error found in innertube response for page '{page.value}': {error_message}")
                 break
 
             for media in self.innertube_parser.parse(response, contiunation_page):
