@@ -8,6 +8,9 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: windows-private-build-${{ github.ref }}
@@ -383,6 +386,11 @@ jobs:
           $installerHash = $manifest.installer_sha256
           Write-Output "::notice title=Installer SHA-256::$installerHash"
           Get-Content "build-manifest.json"
+
+      - name: Github Attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ env.INSTALLER_PATH }}
 
       - name: Upload installer
         uses: actions/upload-artifact@v7
