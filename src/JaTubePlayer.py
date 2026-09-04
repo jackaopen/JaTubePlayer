@@ -735,6 +735,30 @@ def setting_frame():
                 )
             finally:
                 googlelogin_btn.configure(state='normal')
+
+        @check_internet
+        def google_refresh_setting():
+            try:
+                if not account_handler.check_cookie_exist():
+                    ui_queue.put(lambda: messagebox.showerror(
+                        f'JaTubePlayer {ver}',
+                        'No login session found, please login first'))
+                    return
+                google_refresh_btn.configure(state="disabled")
+                if not account_handler.Start_wv_process(1):
+                    ui_queue.put(lambda: messagebox.showerror(
+                        f'JaTubePlayer {ver}',
+                        'Failed to refresh account session, please check the log for more details'))
+                    return
+            except Exception as e:
+                log_handle(
+                    content=f" err:{e}",
+                    errtype="error",
+                    component="google_refresh_setting"
+                )
+            finally:
+                google_refresh_btn.configure(state='normal')
+            
         def google_logout_setting():
             try:
                 googlelogout_btn.configure(state="disabled")
@@ -1149,6 +1173,9 @@ def setting_frame():
             selected_playlist_name = ''
             match init_quickstartup_playlist_mode.get():
                 case "yt_playlist":
+                    if init_playlist_combobox.get() == '':
+                        messagebox.showerror(f'JaTubePlayer {ver}','Please select a playlist first')
+                        return
                     selected_idx = user_playlists_name.index(init_playlist_combobox.get())
                     selected_playlist_id = user_playlist_id_list[selected_idx]
                     selected_playlist_name = user_playlists_name[selected_idx]
@@ -1697,6 +1724,7 @@ def setting_frame():
         google_account_frame.grid_columnconfigure(0, weight=1)
         google_account_frame.grid_columnconfigure(1, weight=1)
         google_account_frame.grid_columnconfigure(2, weight=1)
+        google_account_frame.grid_columnconfigure(3, weight=1)
         
         # YouTube Data Section
         youtube_title = ctk.CTkLabel(youtube_data_frame, text='  \u25b8 YouTube Data', font=('Arial', 15, 'bold'), text_color='#FF6B8A', anchor='w')
@@ -1788,12 +1816,19 @@ def setting_frame():
 
         # ── Google Account Card ──
         google_title = ctk.CTkLabel(google_account_frame, text='  \u25b8 Google Account', font=('Arial', 15, 'bold'), text_color='#FFB347', anchor='w')
-        googlelogin_btn = ctk.CTkButton(google_account_frame, text='Login Google', width=200,
+        googlelogin_btn = ctk.CTkButton(google_account_frame, text='Login Google', width=145,
                                          command=lambda:threading.Thread(daemon=True,target=google_login_setting).start(),
-                                         text_color='white', font=('Arial', 14, 'bold'), fg_color='#3E62DC', hover_color='#4A70F0')
-        googlelogout_btn = ctk.CTkButton(google_account_frame, text='Logout Google', width=200, command=google_logout_setting,
-                                          text_color='white', font=('Arial', 14, 'bold'), fg_color='#3A3A3A', hover_color='#505050')
-        deletesyskey_btn = ctk.CTkButton(google_account_frame, text='Delete System Key', width=200, command=deletesyskey,
+                                         text_color='#7FBC8B', font=('Arial', 14, 'bold'),
+                                         fg_color='#3A3A3A', hover_color='#505050',
+                                         border_width=2, border_color='#4F8A55')
+        google_refresh_btn = ctk.CTkButton(google_account_frame, text='Refresh Google', width=145,
+                                         command=lambda:threading.Thread(daemon=True,target=google_refresh_setting).start(),
+                                         text_color='white', font=('Arial', 14, 'bold'),
+                                         fg_color='#3A3A3A', hover_color='#505050')
+        googlelogout_btn = ctk.CTkButton(google_account_frame, text='Logout Google', width=145, command=google_logout_setting,
+                                          text_color='white', font=('Arial', 14, 'bold'),
+                                          fg_color='#3A3A3A', hover_color='#505050')
+        deletesyskey_btn = ctk.CTkButton(google_account_frame, text='Delete System Key', width=145, command=deletesyskey,
                                           text_color='#D98C8C', font=('Arial', 14, 'bold'),
                                           fg_color='#3A3A3A', hover_color='#4A3030',
                                           border_width=2, border_color='#8A4A4A')
@@ -1808,12 +1843,13 @@ def setting_frame():
             height=56, font=('Arial', 14), text_color='#AFAFAF', fg_color='#242424',
             corner_radius=6, anchor='w', justify='left', wraplength=610)
 
-        google_title.grid(row=0, column=0, columnspan=3, padx=8, pady=(10, 6), sticky='w')
-        ytdlp_use_cookie_checkbtn.grid(row=1, column=0, padx=(24, 8), pady=6, columnspan=3, sticky='w')
-        ytdlp_use_cookie_note.grid(row=2, column=0, padx=16, pady=(0, 8), columnspan=3, sticky='ew')
+        google_title.grid(row=0, column=0, columnspan=4, padx=8, pady=(10, 6), sticky='w')
+        ytdlp_use_cookie_checkbtn.grid(row=1, column=0, padx=(24, 8), pady=6, columnspan=4, sticky='w')
+        ytdlp_use_cookie_note.grid(row=2, column=0, padx=16, pady=(0, 8), columnspan=4, sticky='ew')
         googlelogin_btn.grid(row=3, column=0, padx=(24, 4), pady=(6, 12))
-        googlelogout_btn.grid(row=3, column=1, padx=4, pady=(6, 12))
-        deletesyskey_btn.grid(row=3, column=2, padx=(4, 24), pady=(6, 12))
+        google_refresh_btn.grid(row=3, column=1, padx=4, pady=(6, 12))
+        googlelogout_btn.grid(row=3, column=2, padx=4, pady=(6, 12))
+        deletesyskey_btn.grid(row=3, column=3, padx=(4, 24), pady=(6, 12))
         
         
         # ══════════ Download — Card-style sections ══════════
@@ -4869,7 +4905,8 @@ def _init_load_extra_objs():
                                                  log_handle=log_handle)
     
     playlist_retriever = playlist_retriever_(innertube_handle=innertube_handler,
-                                             log_handle=log_handle)
+                                             log_handle=log_handle,
+                                             message_box=messagebox)
     
     
 
