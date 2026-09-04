@@ -2306,9 +2306,12 @@ def setting_frame():
                     ui_queue.put(lambda: download_seleted_title_text.configure(state='normal'))
                     ui_queue.put(lambda: download_seleted_title_text.delete(0.0,tk.END))
                     
-                    if playing_vid_mode ==3 and playing_vid_info_dict:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
-                    elif selected_song_number != None and media_data_list.playlisttitles:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{media_data_list.playlisttitles[selected_song_number]}'))
-                    else:ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
+                    if playing_vid_mode ==3 and playing_vid_info_dict:
+                        ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{playing_vid_info_dict["title"]}'))
+                    elif selected_song_number != None and media_data_list.playlisttitles and media_list_page_controller.page_change_select:
+                        ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,f'{media_data_list.playlisttitles[selected_song_number]}'))
+                    else:
+                        ui_queue.put(lambda: download_seleted_title_text.insert(tk.END,'Select a video first!'))
                     
                     ui_queue.put(lambda: download_seleted_title_text.configure(state='disabled'))
                         
@@ -2971,7 +2974,6 @@ def youtube_search_thread():
         media_data_list = media_list_page_controller.media_data_list
 
         insert_textbox(playlist_name_textbox, f"Search: {searchentry.get()}")
-        star_btn_ui_functions.star_regular()
 
 
 
