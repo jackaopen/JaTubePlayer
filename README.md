@@ -197,6 +197,15 @@ A newly downloaded JaTubePlayer build may show **“Windows protected your PC”
 - If the file is the expected official build, select **More info → Run anyway**.
 - Stop if the source, filename, signature, or hash is unexpected, and report it instead of launching the file.
 
+#### Verify a release installer 
+Official releases starting with v3.1 include a GitHub artifact attestation. Optionally, you can verify that an installer was attested by this repository’s GitHub Actions workflow. Install the [GitHub CLI](https://cli.github.com/) and run:
+
+```powershell
+gh attestation verify "/path/to/installer" --repo jackaopen/JaTubePlayer
+```
+replace `/path/to/installer` with the downloaded installer path.
+
+
 
 
 ---

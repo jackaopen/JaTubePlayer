@@ -8,6 +8,9 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: windows-private-build-${{ github.ref }}
@@ -380,6 +383,11 @@ jobs:
           }
           $manifest | ConvertTo-Json | Set-Content "build-manifest.json" -Encoding utf8
           Get-Content "build-manifest.json"
+
+      - name: Github Attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ env.INSTALLER_PATH }}
 
       - name: Upload installer
         uses: actions/upload-artifact@v7
