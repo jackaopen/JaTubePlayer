@@ -707,9 +707,11 @@ def setting_frame():
         formats.set(-1)
         #setting.resizable(False, False)
         setting_closed = False
-        root.after(500, lambda: (setting.lift(), setting.iconbitmap(icondir)))
-        root.after(1000, lambda: setting.lift())
-        if blur_window.get():blur(win32gui.FindWindow(None,setting.title()),  hexColor=blur_hexColor.get())
+        root.after(500, lambda: (setting.lift(), setting.iconbitmap(icondir), setting.focus_force()))
+        root.after(1000, lambda: setting.focus_force())
+        if blur_window.get():
+            blur(win32gui.FindWindow(None,setting.title()), 
+                hexColor=blur_hexColor.get())
 
         setting_tab = ctk.CTkTabview(setting, width=700, height=500,fg_color='#242424')
         setting_tab.grid(row=0, column=0, padx=0, pady=20, sticky="nsew")
@@ -825,7 +827,7 @@ def setting_frame():
                         component='download',
                     )
                 finally:
-                    ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
+                    ui_queue.put(lambda: resolution_title.configure(text='III. Resolution'))
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
             elif playing_vid_mode == 3:
                 try:
@@ -848,7 +850,7 @@ def setting_frame():
                         component='download',
                     )
                 finally:
-                    ui_queue.put(lambda: resolution_title.configure(text='Video Resolution'))
+                    ui_queue.put(lambda: resolution_title.configure(text='III. Resolution'))
                     ui_queue.put(lambda: get_resoltion_btn.configure(state='normal'))
                 
             else:
@@ -1877,7 +1879,7 @@ def setting_frame():
                                            font=('Arial', 13), text_color='#C8C8C8')
         
         # Resolution Section
-        resolution_title = ctk.CTkLabel(resolution_frame, text='  III. Resolution', font=('Arial', 15, 'bold'), text_color='#80C8E0', anchor='w')
+        resolution_title = ctk.CTkLabel(resolution_frame, text='III. Resolution', font=('Arial', 15, 'bold'), text_color='#80C8E0', anchor='w')
         resoltion_combox = ctk.CTkComboBox(resolution_frame, font=('Arial', 13), width=200, values=[],state='readonly',
                                             dropdown_fg_color='#333333', button_color='#444444')
         get_resoltion_btn = ctk.CTkButton(resolution_frame, text='Get Available', width=140,
