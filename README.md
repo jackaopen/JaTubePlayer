@@ -8,11 +8,8 @@
 **JaTubePlayer** seamlessly bridges online streaming and local playback with **Python**, **yt-dlp**, and **mpv**.  
 Stream videos, access playlists, archive content —all through a stunning **Windows 11-inspired** interface featuring **glass/acrylic blur effects** and intuitive **customtkinter** design.
 
-
-> [!Important] 🔒 **Privacy-First Architecture**
-> Your login session cookies are encrypted locally with **AES-256-GCM**, and the encryption key is protected for the current Windows user with **DPAPI**.
-
 </div>
+
 <img width="1448" height="772" alt="螢幕擷取畫面 2026-08-16 220359" src="https://github.com/user-attachments/assets/33cb4bcf-58c4-4e94-a46d-8bc95717ecf6" />
 
 
@@ -80,10 +77,12 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 <br>
 
-> [!NOTE]
+> [!Important]
 > **The essentials work without signing in.** Local playback, online search, playback lists, starred media, and media saving are immediately available.
 >
 > Personal playlists, subscriptions, liked videos, and optional signed-in requests are enabled from **Settings → Account & Playlist → Login Google**. No manually entered API key, client-secret file, or raw cookie file is required.
+> 
+> Your login sessions are encrypted locally with **AES-256-GCM**, and the encryption key is protected for the current Windows user with **DPAPI**.
 
 <br>
 <div align="center">
@@ -122,11 +121,11 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 <br>
 
-### 🔹Keeping yt-dlp Current
-
-- Update **yt-dlp** before reporting online playback, extraction, playlist, or download failures because supported sites change frequently.
-- The built-in updater supports both **Stable** and **Nightly** channels. If the latest stable build still fails, install the latest nightly build and try the same operation again.
-- Reproduce the issue after updating and attach the new session log when reporting it.
+> [!Tip]
+> ### Keeping yt-dlp Current
+> - Update **yt-dlp** before reporting online playback, extraction, playlist, or download failures because supported sites change frequently.
+> - The built-in updater supports both **Stable** and **Nightly** channels. If the latest stable build still fails, install the latest nightly build and try the same operation again.
+> - Reproduce the issue after updating and attach the new session log when reporting it.
 
 
 
@@ -172,32 +171,32 @@ Stream videos, access playlists, archive content —all through a stunning **Win
 
 
 
-##  Security & User Precautions
+## 🔏Security & User Precautions
 
 JaTubePlayer 3.0 includes general safeguards against common risks. They support safer operation but still users are required to have basic security awareness.
 
-#### What we implemented
+### What we implemented
 
 - **Account and WebView2 checks** — Account data uses AES-256-GCM and DPAPI. The app and WebView2 host perform two-sided checks covering the helper hash, launch location, local pages, and per-run token.
 - **Update checks** — The updater verifies the OpenPGP `.sig` and SHA-256 hashes, validates its registered installation location, limits elevated replacement paths, and supports backup and rollback.
 - **General operation guards** — Network retrieval stays outside the elevated updater, while local-interface restrictions, input checks, busy guards, cancellation, and cleanup reduce common misuse and inconsistent operations.
 
-#### Recommended precautions
+### Recommended precautions
 
 - Use the default installation folder under **`Program Files`**, where standard Windows permissions better protect application files.
 - Obtain JaTubePlayer and its extension from official sources, and approve UAC only after starting an update from the app.
 - Keep Windows and application components current, and protect account files and logs from unauthorized access or sharing.
 
-#### Windows SmartScreen
+### Windows SmartScreen
 
-A newly downloaded JaTubePlayer build may show **“Windows protected your PC”** when Microsoft SmartScreen has not established enough reputation for that file. This warning alone does not identify the file as malware.
+A newly downloaded JaTubePlayer build may show **“Windows protected your PC”** when Microsoft SmartScreen has not established enough reputation for that file. This warning is caused by the installer is currently unsigned; it does *not* mean that malware was detected.
 
-- Download JaTubePlayer only from the official project release.
-- Confirm the expected filename, source, signature, or published hash before continuing.
+- Download JaTubePlayer only from the official github release.
+- Confirm the expected filename, source, attestation, or published hash before continuing.
 - If the file is the expected official build, select **More info → Run anyway**.
 - Stop if the source, filename, signature, or hash is unexpected, and report it instead of launching the file.
 
-#### Verify a release installer 
+### Verify a release installer 
 Official releases starting with v3.1 include a GitHub artifact attestation. Optionally, you can verify that an installer was attested by this repository’s GitHub Actions workflow. Install the [GitHub CLI](https://cli.github.com/) and run:
 
 ```powershell
@@ -213,7 +212,7 @@ replace `/path/to/installer` with the downloaded installer path.
 ### Contribution Guidelines
 
 If you have problems, ideas, suggestions, or improvements, feel free to **Open an issue** first to discuss proposed changes. I appreciate all feedback and suggestions! 🚀
-> [!Note]
+> [!Tip]
 >  Before opening an issue, update yt-dlp (try the latest **Nightly** build when the stable build still fails), reproduce the problem, and collect the log from the same session.
 > 
 >  you can check out part of codebase explantion in `docs_3.0`folder
@@ -231,7 +230,6 @@ Issues missing both a useful description and the relevant log may be closed unti
 
 
 
----
 > [!Note]
 > *Since this project is maintained solely by me, some parts of the codebase include messy legacy logic from earlier stages of development.
 A full refactor is not currently planned, as it would be a large task; however, some targeted refactors and logic refinements have already been made, with additional improvements planned over time.
