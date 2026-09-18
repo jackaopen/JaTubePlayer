@@ -15,7 +15,7 @@ static class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         
-        if (args.Length != 3 || (args[2] != "login" && args[2] != "refresh" && args[2] != "clear"))
+        if (!(args.Length == 3 || args.Length == 4) || (args[2] != "login" && args[2] != "refresh" && args[2] != "clear" && args[2]!= "record"))
         {
             Helper.ErrorLog("invalid arg");
             Environment.Exit(1);
@@ -46,7 +46,7 @@ static class Program
             Environment.Exit(1);
         }
         
-        Application.Run(new CookieForm(args[0], args[1] , args[2]));
+        Application.Run(new CookieForm(args[0], args[1] , args[2], args.Length == 4 ? args[3] : null));
     }
     
 }
@@ -71,6 +71,7 @@ public class CookieForm : Form
     readonly string mode;
     readonly string keyPath = "";
     readonly WebView2 view = new WebView2 { Dock = DockStyle.Fill };
+    readonly string? recordPath;
     bool checking;
     bool done;
     bool signInStarted;
@@ -83,9 +84,10 @@ public class CookieForm : Form
             return startTask ??= Start();
         }
 
-    public CookieForm(string rootDir, string appdataDir, string mode)
+    public CookieForm(string rootDir, string appdataDir, string mode, string? recordPath=null)
     {
-        
+        this.recordPath = recordPath;
+
         profileDir = Path.Combine(appdataDir, "JaTubePlayer", "profile");
         keyPath = Path.Combine(appdataDir, "JaTubePlayer", "AES_key.enc");
 
@@ -108,7 +110,7 @@ public class CookieForm : Form
         }
         if(mode=="login"||mode=="clear"){Shown += async (sender, args) => await EnsureStartedAsync();}
         else if (mode=="refresh"){Shown += async (sender, args) => await refresh();}
-        
+        else if (mode=="record"){Shown += async (sender, args) => await record();}
         
         if (mode == "login") {
             waitingForm = new CookieForm(rootDir, appdataDir, "process");
@@ -262,7 +264,85 @@ public class CookieForm : Form
     }
 
 
-    
+    async Task record()
+
+    {
+        try
+            {
+            Directory.CreateDirectory(profileDir);
+            Helper.Log("refreshing wv profile");
+            // Use our own WebView2 profile. Never touch the user's real browser profile.
+            var env = await CoreWebView2Environment.CreateAsync(
+                null,
+                profileDir,
+                new CoreWebView2EnvironmentOptions("--disable-extensions")
+            );
+            await view.EnsureCoreWebView2Async(env);
+            Helper.Log("WebView2 initialized");
+            
+            // Keep the WebView small and locked down.
+            view.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+            view.CoreWebView2.Settings.AreHostObjectsAllowed = false;
+            view.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            view.CoreWebView2.Settings.IsWebMessageEnabled = false;
+            
+            view.CoreWebView2.NavigationStarting += (sender, args) =>
+            {
+                
+                Helper.Log("navigation starting: " + Helper.LeftPartialToPath(args.Uri));
+                string ErrorPageUri = new Uri(ErrorPagePath).AbsoluteUri;
+                if (string.Equals(args.Uri, 
+                    ErrorPageUri,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    
+                    Activate();
+                    Opacity = 1.0;
+                    Show();
+                }
+                else Hide();
+             
+
+                
+                if (Helper.Allowed(args.Uri)) return;
+                else{
+                    args.Cancel = true;
+                    Helper.Log("blocked redirect: " + Helper.LeftPartialToPath(args.Uri));
+                }
+                
+            };
+
+            view.CoreWebView2.NewWindowRequested += (sender, args) =>
+            {
+                args.Handled = true;
+                Helper.Log("new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
+                if (Helper.Allowed(args.Uri)) view.CoreWebView2.Navigate(args.Uri);
+                else Helper.Log("blocked new-window redirect: " + Helper.LeftPartialToPath(args.Uri));
+            };
+
+            view.CoreWebView2.NavigationCompleted += async (sender, args) =>
+            {
+                string url = view.CoreWebView2.Source;
+                Helper.Log("navigation completed: " + Helper.LeftPartialToPath(url));
+
+                if (Helper.YoutubeHost(url))
+                {
+                    Helper.Log("YouTube host detected");
+                    Environment.ExitCode = 0;
+                    Close();
+                }
+            };
+
+            view.CoreWebView2.Navigate(recordPath ?? YoutubeUrl);
+        }
+        catch (Exception ex)
+        {
+            Helper.Log("Error initializing WebView2: " + ex.ToString());
+            Environment.ExitCode = 1;
+            Close();
+        }
+    }
 
     async Task refresh()
 

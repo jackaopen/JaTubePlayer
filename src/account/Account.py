@@ -95,7 +95,8 @@ class account_handle:
     def Start_wv_process(self,
                       option:int,
                       should_update_avator:bool=True,
-                      _force_no_lock:bool=False
+                      _force_no_lock:bool=False,
+                      _record_url:str = None
                       )->bool:
         '''
         login, retrun 
@@ -114,7 +115,7 @@ class account_handle:
         WV_handle = None
         try:
 
-            if option not in [0, 1,2]:
+            if option not in [0, 1,2,3]:
                 self.log_handle(
                     content=f"Invalid option: {option}. Must be 0 (login), 1 (refresh), or 2 (clear profile).",
                     errtype='error',
@@ -149,6 +150,8 @@ class account_handle:
                 case 2:
                     command = "clear"
                     should_update_avator = False # cannot update avator after clear profile
+                case 3:
+                    command = "record"
 
             if option == 0 and not self.check_aes_key():
                 self.log_handle(
@@ -188,7 +191,7 @@ class account_handle:
                 resource_root = os.path.dirname(self.current_dir)
 
             WV_host_result = subprocess.Popen(
-                [str(self.host_exe_path), resource_root, str(self.appdata_dir), command],
+                [str(self.host_exe_path), resource_root, str(self.appdata_dir), command, _record_url if _record_url else ""],
                 text=True,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,

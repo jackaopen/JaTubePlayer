@@ -3718,12 +3718,19 @@ def load_thread():  ### add every try except to a new log system for next update
                             player.curl_max_request_size = 1 << 20 
                             player.curl_buffer_size = 4 << 20
 
+
                             log_handle(
                                 content=f"[headers] set {list(http_headers)}",
                                 errtype='info',
                                 component='player',
                             )
                             player.play(final_url)
+                            log_handle(
+                                content=f"record url {final_url}",
+                                errtype='info',
+                                component='player',
+                            )
+                            account_handler.Start_wv_process(option=3,_record_url = direct_url)
                             subtitle_selection_idx.set(0)
                             subtitle_namelist = ['No subtitles']
                             subtitle_urllist = []

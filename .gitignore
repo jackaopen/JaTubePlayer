@@ -56,3 +56,6 @@ docs/Test_update_vs_main_complete_change_report.md
 docs_old/
 packaging_assets/inno_setup/inno.ps1
 /src/chrome_ext_pack
+*.ps1
+/dist_fixed
+/build_fixed
